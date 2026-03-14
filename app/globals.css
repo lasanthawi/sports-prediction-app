@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background: linear-gradient(to bottom, #0f0f23, #1a1a3e);
+  color: white;
+  font-family: 'Orbitron', sans-serif;
+  min-height: 100vh;
+}
+
+.text-glow {
+  text-shadow: 0 0 10px rgba(0, 255, 135, 0.5);
+}
+
+.card-glow {
+  box-shadow: 0 0 20px rgba(0, 255, 135, 0.2);
+}
+
+.btn-game {
+  @apply bg-gradient-to-r from-green-400 to-pink-500 text-white font-bold py-3 px-6 rounded-lg transform transition hover:scale-105;
+}
