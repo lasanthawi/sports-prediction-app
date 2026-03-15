@@ -1,7 +1,7 @@
 import sharp from 'sharp'
 import { MatchRecord } from './types'
 
-const DEFAULT_MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image-preview'
+const DEFAULT_MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image-preview'
 const PROMPT_VERSION = 'gemini-match-card-v2'
 
 function safe(value: string | null | undefined, fallback: string) {
@@ -48,20 +48,13 @@ export function buildGeminiPrompt(match: MatchRecord, variant: 'prediction' | 'r
   ].join(' ')
 }
 
-function extractInlineImage(payload: any) {
-  const candidates = Array.isArray(payload?.candidates) ? payload.candidates : []
-  for (const candidate of candidates) {
-    const parts = candidate?.content?.parts
-    if (!Array.isArray(parts)) {
-      continue
-    }
-
-    for (const part of parts) {
-      if (part?.inlineData?.data && part?.inlineData?.mimeType?.startsWith('image/')) {
-        return {
-          mimeType: part.inlineData.mimeType as string,
-          data: part.inlineData.data as string,
-        }
+function extractGeneratedImage(payload: any) {
+  const outputs = Array.isArray(payload?.outputs) ? payload.outputs : []
+  for (const output of outputs) {
+    if (output?.type === 'image' && output?.data && output?.mime_type?.startsWith('image/')) {
+      return {
+        mimeType: output.mime_type as string,
+        data: output.data as string,
       }
     }
   }
@@ -70,7 +63,7 @@ function extractInlineImage(payload: any) {
 }
 
 export async function generateGeminiPortraitArtwork(match: MatchRecord, variant: 'prediction' | 'result') {
-  const apiKey = process.env.GEMINI_API_KEY
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY
   const prompt = buildGeminiPrompt(match, variant)
 
   if (!apiKey) {
@@ -81,17 +74,22 @@ export async function generateGeminiPortraitArtwork(match: MatchRecord, variant:
     }
   }
 
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${DEFAULT_MODEL}:generateContent?key=${apiKey}`
+  const endpoint = 'https://generativelanguage.googleapis.com/v1beta/interactions'
   const response = await fetch(endpoint, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': apiKey,
+    },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseModalities: ['TEXT', 'IMAGE'],
-      },
-      imageConfig: {
-        aspectRatio: '9:16',
+      model: DEFAULT_MODEL,
+      input: prompt,
+      response_modalities: ['IMAGE'],
+      generation_config: {
+        image_config: {
+          aspect_ratio: '9:16',
+          image_size: '2k',
+        },
       },
     }),
   })
@@ -106,7 +104,7 @@ export async function generateGeminiPortraitArtwork(match: MatchRecord, variant:
   }
 
   const payload = await response.json()
-  const image = extractInlineImage(payload)
+  const image = extractGeneratedImage(payload)
   if (!image) {
     return {
       ok: false as const,
