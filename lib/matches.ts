@@ -155,6 +155,30 @@ export async function updateMatch(id: number, input: MatchUpdateInput) {
   return rows[0]
 }
 
+export async function getMatch(id: number) {
+  await ensureSchema()
+
+  const { rows } = await sql<MatchRecord>`
+    SELECT *
+    FROM matches
+    WHERE id = ${id}
+  `
+
+  return rows[0] || null
+}
+
+export async function deleteMatch(id: number) {
+  await ensureSchema()
+
+  const { rows } = await sql<MatchRecord>`
+    DELETE FROM matches
+    WHERE id = ${id}
+    RETURNING *
+  `
+
+  return rows[0] || null
+}
+
 export async function upsertFeedMatches(feedMatches: FeedMatch[]) {
   await ensureSchema()
 

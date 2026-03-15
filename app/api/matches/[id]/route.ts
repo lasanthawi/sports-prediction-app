@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { generateAssetsForMatches } from '@/lib/automation'
-import { updateMatch } from '@/lib/matches'
+import { deleteMatch, getMatch, updateMatch } from '@/lib/matches'
 
 interface RouteContext {
   params: {
@@ -27,6 +27,46 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     return NextResponse.json({ match })
   } catch (error: any) {
     console.error('Update match error:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+}
+
+export async function POST(_: Request, { params }: RouteContext) {
+  try {
+    const id = Number(params.id)
+    if (!Number.isInteger(id)) {
+      return NextResponse.json({ error: 'Invalid match id' }, { status: 400 })
+    }
+
+    const match = await getMatch(id)
+    if (!match) {
+      return NextResponse.json({ error: 'Match not found' }, { status: 404 })
+    }
+
+    await generateAssetsForMatches([match])
+
+    return NextResponse.json({ success: true })
+  } catch (error: any) {
+    console.error('Regenerate asset error:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+}
+
+export async function DELETE(_: Request, { params }: RouteContext) {
+  try {
+    const id = Number(params.id)
+    if (!Number.isInteger(id)) {
+      return NextResponse.json({ error: 'Invalid match id' }, { status: 400 })
+    }
+
+    const match = await deleteMatch(id)
+    if (!match) {
+      return NextResponse.json({ error: 'Match not found' }, { status: 404 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error: any) {
+    console.error('Delete match error:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
