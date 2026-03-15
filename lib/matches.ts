@@ -14,6 +14,7 @@ function hydrateMatches(rows: MatchRecord[]) {
   return rows.map((row) => {
     const predictionCardUrl = toAssetUrl(row.prediction_card_asset_id)
     const resultCardUrl = toAssetUrl(row.result_card_asset_id)
+    const publishStatus = row.status === 'finished' ? row.result_publish_status : row.prediction_publish_status
 
     return {
       ...row,
@@ -24,6 +25,7 @@ function hydrateMatches(rows: MatchRecord[]) {
       card_asset_url: row.status === 'finished' ? resultCardUrl : predictionCardUrl,
       asset_generation_status:
         (row.status === 'finished' ? row.result_asset_status : row.prediction_asset_status) || null,
+      publish_status: publishStatus || 'draft',
     }
   })
 }
@@ -46,9 +48,11 @@ function matchSelectClause() {
       prediction_art.id AS prediction_artwork_asset_id,
       prediction_art.generation_status AS prediction_asset_status,
       prediction_card.id AS prediction_card_asset_id,
+      prediction_card.published_status AS prediction_publish_status,
       result_art.id AS result_artwork_asset_id,
       result_art.generation_status AS result_asset_status,
-      result_card.id AS result_card_asset_id
+      result_card.id AS result_card_asset_id,
+      result_card.published_status AS result_publish_status
     FROM matches
     LEFT JOIN LATERAL (
       SELECT id, generation_status
@@ -60,7 +64,7 @@ function matchSelectClause() {
       LIMIT 1
     ) prediction_art ON TRUE
     LEFT JOIN LATERAL (
-      SELECT id
+      SELECT id, published_status
       FROM generated_assets
       WHERE match_id = matches.id
         AND asset_type = 'card'
@@ -78,7 +82,7 @@ function matchSelectClause() {
       LIMIT 1
     ) result_art ON TRUE
     LEFT JOIN LATERAL (
-      SELECT id
+      SELECT id, published_status
       FROM generated_assets
       WHERE match_id = matches.id
         AND asset_type = 'card'

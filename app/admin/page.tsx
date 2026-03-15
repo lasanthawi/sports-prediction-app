@@ -28,6 +28,7 @@ interface MatchRecord {
   result_artwork_url?: string | null
   result_card_url?: string | null
   asset_generation_status?: string | null
+  publish_status?: string | null
   team1_captain?: string | null
   team2_captain?: string | null
   team1_palette?: string | null
@@ -572,8 +573,9 @@ export default function AdminPage() {
                         {item.provider} · {item.source} · {new Date(item.match_time).toLocaleString()}
                       </p>
                     </div>
-                    <div className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-2 text-xs font-bold uppercase tracking-[0.18em] text-cyan-200">
-                      {item.sync_status}
+                    <div className="flex flex-wrap gap-2">
+                      <StatusBadge label="Fetch" value={item.sync_status} tone={feedFetchTone(item.sync_status)} />
+                      <StatusBadge label="Provider" value={item.provider} tone="cyan" />
                     </div>
                   </div>
 
@@ -763,7 +765,11 @@ export default function AdminPage() {
                                 {match.source} · {match.status}
                                 {match.result_summary ? ` · ${match.result_summary}` : ''}
                               </p>
-                              <p className="mt-2 text-xs text-yellow-300">Asset status: {match.asset_generation_status || 'pending'}</p>
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                <StatusBadge label="Fetched" value={match.source === 'manual' ? 'manual' : 'synced'} tone={match.source === 'manual' ? 'slate' : 'cyan'} />
+                                <StatusBadge label="Generated" value={match.asset_generation_status || 'pending'} tone={assetTone(match.asset_generation_status)} />
+                                <StatusBadge label="Published" value={match.publish_status || 'draft'} tone={publishTone(match.publish_status)} />
+                              </div>
                               {match.rivalry_tagline ? <p className="mt-2 text-sm text-gray-300">{match.rivalry_tagline}</p> : null}
                             </div>
 
@@ -964,6 +970,76 @@ function PulseRow({ label, value }: { label: string; value: string }) {
       <span className="text-right font-semibold text-white">{value}</span>
     </div>
   )
+}
+
+function StatusBadge({
+  label,
+  value,
+  tone,
+}: {
+  label: string
+  value: string
+  tone: 'green' | 'yellow' | 'red' | 'cyan' | 'slate'
+}) {
+  const toneClass = {
+    green: 'border-green-400/30 bg-green-400/10 text-green-200',
+    yellow: 'border-yellow-400/30 bg-yellow-400/10 text-yellow-200',
+    red: 'border-red-400/30 bg-red-400/10 text-red-200',
+    cyan: 'border-cyan-400/30 bg-cyan-400/10 text-cyan-200',
+    slate: 'border-white/15 bg-white/5 text-gray-200',
+  }[tone]
+
+  return (
+    <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[0.65rem] font-bold uppercase tracking-[0.18em] ${toneClass}`}>
+      <span className="text-white/55">{label}</span>
+      <span>{value}</span>
+    </span>
+  )
+}
+
+function assetTone(value?: string | null): 'green' | 'yellow' | 'red' | 'cyan' | 'slate' {
+  if (value === 'generated') {
+    return 'green'
+  }
+  if (value === 'fallback') {
+    return 'yellow'
+  }
+  if (value === 'failed') {
+    return 'red'
+  }
+  if (value === 'queued') {
+    return 'cyan'
+  }
+
+  return 'slate'
+}
+
+function publishTone(value?: string | null): 'green' | 'yellow' | 'red' | 'cyan' | 'slate' {
+  if (value === 'published') {
+    return 'green'
+  }
+  if (value === 'failed') {
+    return 'red'
+  }
+  if (value === 'ready') {
+    return 'cyan'
+  }
+
+  return 'slate'
+}
+
+function feedFetchTone(value: FeedQueueItem['sync_status']): 'green' | 'yellow' | 'red' | 'cyan' | 'slate' {
+  if (value === 'queued') {
+    return 'cyan'
+  }
+  if (value === 'imported') {
+    return 'green'
+  }
+  if (value === 'dismissed') {
+    return 'slate'
+  }
+
+  return 'slate'
 }
 
 function PaginationControls({
