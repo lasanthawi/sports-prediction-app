@@ -6,6 +6,7 @@ import { ArrowLeft, CheckCircle2, Database, Edit3, Image as ImageIcon, PlayCircl
 import MatchCard from '@/app/components/MatchCard'
 
 type MatchStatus = 'upcoming' | 'live' | 'finished' | 'cancelled'
+type AdminTab = 'overview' | 'create' | 'matches' | 'automation'
 
 interface MatchRecord {
   id: number
@@ -95,6 +96,16 @@ export default function AdminPage() {
   const [jobState, setJobState] = useState<Record<string, boolean>>({})
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editForm, setEditForm] = useState(emptyEditForm)
+  const [activeTab, setActiveTab] = useState<AdminTab>('overview')
+  const [matchPage, setMatchPage] = useState(1)
+  const [runsPage, setRunsPage] = useState(1)
+
+  const matchesPerPage = 4
+  const runsPerPage = 6
+  const totalMatchPages = Math.max(1, Math.ceil(matches.length / matchesPerPage))
+  const totalRunPages = Math.max(1, Math.ceil(runs.length / runsPerPage))
+  const visibleMatches = matches.slice((matchPage - 1) * matchesPerPage, matchPage * matchesPerPage)
+  const visibleRuns = runs.slice((runsPage - 1) * runsPerPage, runsPage * runsPerPage)
 
   useEffect(() => {
     void refreshDashboard()
@@ -112,6 +123,8 @@ export default function AdminPage() {
       const runsPayload = await runsRes.json()
       setMatches(matchesPayload.matches || [])
       setRuns(runsPayload.runs || [])
+      setMatchPage(1)
+      setRunsPage(1)
     } catch (error) {
       console.error(error)
       setMessage('Failed to load admin dashboard')
@@ -326,6 +339,14 @@ export default function AdminPage() {
           </div>
         ) : null}
 
+        <nav className="flex flex-wrap gap-3">
+          <TabButton active={activeTab === 'overview'} onClick={() => setActiveTab('overview')}>Overview</TabButton>
+          <TabButton active={activeTab === 'create'} onClick={() => setActiveTab('create')}>Create Match</TabButton>
+          <TabButton active={activeTab === 'matches'} onClick={() => setActiveTab('matches')}>Matches</TabButton>
+          <TabButton active={activeTab === 'automation'} onClick={() => setActiveTab('automation')}>Automation</TabButton>
+        </nav>
+
+        {(activeTab === 'overview' || activeTab === 'automation') ? (
         <section className="grid gap-4 md:grid-cols-5">
           <ActionCard title="Initialize DB" description="Creates and migrates required tables." icon={<Database className="h-5 w-5" />} onClick={() => void runJob('setup', '/api/admin/setup', 'Database tables are ready')} busy={jobState.setup} />
           <ActionCard title="Sync Feed" description="Pull fixtures and visual metadata from SPORTS_SYNC_FEED_URL." icon={<RefreshCw className="h-5 w-5" />} onClick={() => void runJob('sync', '/api/automation/sync', 'Feed sync completed')} busy={jobState.sync} />
@@ -333,7 +354,9 @@ export default function AdminPage() {
           <ActionCard title="Run Pipeline" description="Sync, generate, and publish rendered cards in one flow." icon={<Rocket className="h-5 w-5" />} onClick={() => void runJob('pipeline', '/api/automation/run', 'Automation pipeline completed')} busy={jobState.pipeline} />
           <ActionCard title="Publish" description="Send final rendered cards to your webhook." icon={<Rocket className="h-5 w-5" />} onClick={() => void runJob('publish', '/api/automation/publish', 'Publish job completed')} busy={jobState.publish} />
         </section>
+        ) : null}
 
+        {(activeTab === 'overview' || activeTab === 'create') ? (
         <div className="grid gap-8 xl:grid-cols-[1.1fr,0.9fr]">
           <section className="card-glow rounded-2xl border border-green-400/20 bg-gray-800/80 p-6">
             <div className="mb-6 flex items-center gap-2">
@@ -385,11 +408,16 @@ export default function AdminPage() {
             </div>
           </section>
         </div>
+        ) : null}
 
+        {(activeTab === 'overview' || activeTab === 'matches') ? (
         <section className="rounded-2xl border border-green-400/20 bg-gray-800/80 p-6">
           <div className="mb-5 flex items-center justify-between gap-4">
             <h2 className="text-2xl font-bold">Matches</h2>
-            <span className="text-sm text-gray-400">{matches.length} total</span>
+            <div className="text-right text-sm text-gray-400">
+              <p>{matches.length} total</p>
+              <p>Page {matchPage} of {totalMatchPages}</p>
+            </div>
           </div>
 
           {loading ? (
@@ -398,7 +426,7 @@ export default function AdminPage() {
             <p className="text-gray-400">No matches yet. Initialize the DB, then add one manually or sync from a feed.</p>
           ) : (
             <div className="space-y-6">
-              {matches.map((match) => (
+              {visibleMatches.map((match) => (
                 <div key={match.id} className="rounded-2xl border border-white/10 bg-gray-900/70 p-5">
                   <div className="grid gap-6 xl:grid-cols-[380px_1fr]">
                     <div className="flex justify-center">
@@ -516,21 +544,32 @@ export default function AdminPage() {
                   </div>
                 </div>
               ))}
+              <PaginationControls
+                page={matchPage}
+                totalPages={totalMatchPages}
+                onPrevious={() => setMatchPage((current) => Math.max(1, current - 1))}
+                onNext={() => setMatchPage((current) => Math.min(totalMatchPages, current + 1))}
+              />
             </div>
           )}
         </section>
+        ) : null}
 
+        {(activeTab === 'overview' || activeTab === 'automation') ? (
         <section className="rounded-2xl border border-green-400/20 bg-gray-800/80 p-6">
           <div className="mb-5 flex items-center justify-between gap-4">
             <h2 className="text-2xl font-bold">Recent Automation Runs</h2>
-            <span className="text-sm text-gray-400">{runs.length} shown</span>
+            <div className="text-right text-sm text-gray-400">
+              <p>{runs.length} total</p>
+              <p>Page {runsPage} of {totalRunPages}</p>
+            </div>
           </div>
 
           {runs.length === 0 ? (
             <p className="text-gray-400">No automation runs yet.</p>
           ) : (
             <div className="space-y-3">
-              {runs.map((run) => (
+              {visibleRuns.map((run) => (
                 <div key={run.id} className="rounded-xl border border-white/10 bg-gray-900/70 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
@@ -544,11 +583,41 @@ export default function AdminPage() {
                   </div>
                 </div>
               ))}
+              <PaginationControls
+                page={runsPage}
+                totalPages={totalRunPages}
+                onPrevious={() => setRunsPage((current) => Math.max(1, current - 1))}
+                onNext={() => setRunsPage((current) => Math.min(totalRunPages, current + 1))}
+              />
             </div>
           )}
         </section>
+        ) : null}
       </div>
     </div>
+  )
+}
+
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`rounded-full border px-4 py-2 text-sm font-bold transition ${
+        active
+          ? 'border-green-300 bg-green-400/15 text-green-300'
+          : 'border-white/10 bg-gray-900/40 text-gray-300 hover:border-green-400/40 hover:text-white'
+      }`}
+    >
+      {children}
+    </button>
   )
 }
 
@@ -579,6 +648,36 @@ function ActionButton({
     <button onClick={onClick} disabled={disabled} className={`rounded-lg border px-4 py-3 text-left disabled:opacity-60 ${tone}`}>
       {children}
     </button>
+  )
+}
+
+function PaginationControls({
+  page,
+  totalPages,
+  onPrevious,
+  onNext,
+}: {
+  page: number
+  totalPages: number
+  onPrevious: () => void
+  onNext: () => void
+}) {
+  if (totalPages <= 1) {
+    return null
+  }
+
+  return (
+    <div className="flex items-center justify-between rounded-xl border border-white/10 bg-gray-950/40 px-4 py-3 text-sm text-gray-300">
+      <span>Page {page} of {totalPages}</span>
+      <div className="flex gap-2">
+        <button onClick={onPrevious} disabled={page === 1} className="rounded-lg border border-white/15 px-3 py-2 disabled:opacity-40">
+          Previous
+        </button>
+        <button onClick={onNext} disabled={page === totalPages} className="rounded-lg border border-white/15 px-3 py-2 disabled:opacity-40">
+          Next
+        </button>
+      </div>
+    </div>
   )
 }
 
