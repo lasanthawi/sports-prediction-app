@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState, type ReactNode } from 'react'
-import { Bell, CalendarDays, LogIn, Sparkles, Swords, Target, Trophy, Waves } from 'lucide-react'
+import { ArrowRight, Bell, CalendarDays, ChevronLeft, ChevronRight, LogIn, Sparkles, Swords, Target, Trophy, Waves } from 'lucide-react'
 import MatchCard from './components/MatchCard'
 
 interface MatchRecord {
@@ -31,6 +31,7 @@ export default function Home() {
   const [matches, setMatches] = useState<MatchRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [votingMode, setVotingMode] = useState(false)
 
   useEffect(() => {
     void fetchMatches()
@@ -59,6 +60,7 @@ export default function Home() {
   const upcomingMatches = matches.filter((match) => match.status === 'upcoming')
   const finishedMatches = matches.filter((match) => match.status === 'finished')
   const featuredMatches = [...liveMatches, ...upcomingMatches].slice(0, 4)
+  const mobileVotingMatches = [...liveMatches, ...upcomingMatches].slice(0, 8)
   const totalVotes = matches.reduce((sum, match) => sum + match.poll_team1_votes + match.poll_team2_votes, 0)
   const spotlightResult = [...finishedMatches].sort((a, b) => (b.poll_team1_votes + b.poll_team2_votes) - (a.poll_team1_votes + a.poll_team2_votes))[0]
 
@@ -66,7 +68,7 @@ export default function Home() {
     <main
       className="relative min-h-screen overflow-hidden"
       style={{
-        backgroundImage: `linear-gradient(180deg, rgba(5,8,20,0.7), rgba(10,8,27,0.88)), url(${COSMIC_BACKGROUND})`,
+        backgroundImage: `linear-gradient(180deg, rgba(5,8,20,0.72), rgba(10,8,27,0.9)), url(${COSMIC_BACKGROUND})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center top',
         backgroundAttachment: 'fixed',
@@ -74,7 +76,19 @@ export default function Home() {
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.05),transparent_28%),radial-gradient(circle_at_20%_70%,rgba(34,211,238,0.08),transparent_22%),radial-gradient(circle_at_85%_20%,rgba(244,114,182,0.1),transparent_24%)]" />
 
-      <div className="relative mx-auto max-w-[1380px] px-4 py-6 md:px-8 md:py-8">
+      <MobileArenaApp
+        matches={mobileVotingMatches}
+        totalVotes={totalVotes}
+        liveCount={liveMatches.length}
+        upcomingCount={upcomingMatches.length}
+        loading={loading}
+        error={error}
+        votingMode={votingMode}
+        setVotingMode={setVotingMode}
+        onRefresh={fetchMatches}
+      />
+
+      <div className="relative mx-auto hidden max-w-[1380px] px-4 py-6 md:block md:px-8 md:py-8">
         <header className="mb-10">
           <div className="mb-8 flex items-center justify-between gap-4">
             <nav className="hidden gap-6 text-sm text-white/70 md:flex">
@@ -230,6 +244,210 @@ export default function Home() {
         </footer>
       </div>
     </main>
+  )
+}
+
+function MobileArenaApp({
+  matches,
+  totalVotes,
+  liveCount,
+  upcomingCount,
+  loading,
+  error,
+  votingMode,
+  setVotingMode,
+  onRefresh,
+}: {
+  matches: MatchRecord[]
+  totalVotes: number
+  liveCount: number
+  upcomingCount: number
+  loading: boolean
+  error: string
+  votingMode: boolean
+  setVotingMode: (value: boolean) => void
+  onRefresh: () => Promise<void>
+}) {
+  return (
+    <div className="relative md:hidden">
+      <section className="mobile-arena-shell">
+        <div className="mobile-arena-topbar">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.32em] text-green-300/80">Prediction Arena</p>
+            <h1 className="mt-2 text-3xl font-black leading-none text-white">Arena App</h1>
+          </div>
+          <Link href="/login" className="glass-button !rounded-2xl !px-4 !py-3 text-sm">
+            <LogIn size={16} />
+          </Link>
+        </div>
+
+        <div className="mobile-hero-card">
+          <p className="text-xs font-bold uppercase tracking-[0.28em] text-cyan-300">Pocket Control</p>
+          <h2 className="mt-3 text-3xl font-black text-white">Enter Voting Mode</h2>
+          <p className="mt-3 text-sm leading-6 text-white/70">
+            Full-screen battle cards, swipe navigation, and zero cramped scrolling. Built for quick picks on mobile.
+          </p>
+          <div className="mt-5 grid grid-cols-3 gap-3">
+            <MobileStat label="Live" value={String(liveCount)} />
+            <MobileStat label="Queue" value={String(upcomingCount)} />
+            <MobileStat label="Votes" value={String(totalVotes)} />
+          </div>
+          <button
+            onClick={() => setVotingMode(true)}
+            className="btn-game mt-5 flex w-full items-center justify-center gap-2 rounded-[1.35rem] py-4 text-base"
+          >
+            Start Voting <ArrowRight size={18} />
+          </button>
+        </div>
+
+        <div className="grid flex-1 grid-rows-[auto,1fr,auto] gap-4 overflow-hidden">
+          <div className="rounded-[1.75rem] border border-white/10 bg-black/25 px-4 py-3 backdrop-blur-md">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold text-white">Featured Tonight</p>
+                <p className="text-xs text-white/60">{matches.length} ready-to-vote cards</p>
+              </div>
+              <button onClick={() => void onRefresh()} className="text-xs font-bold uppercase tracking-[0.18em] text-green-300">
+                Refresh
+              </button>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center rounded-[2rem] border border-white/10 bg-black/25 px-6 text-center backdrop-blur-md">
+              <div>
+                <div className="mx-auto h-12 w-12 animate-spin rounded-full border-t-4 border-green-400" />
+                <p className="mt-4 text-sm text-white/70">Loading the arena...</p>
+              </div>
+            </div>
+          ) : error ? (
+            <div className="flex items-center justify-center rounded-[2rem] border border-red-400/20 bg-black/25 px-6 text-center backdrop-blur-md">
+              <div>
+                <p className="text-base font-bold text-red-300">{error}</p>
+                <button onClick={() => void onRefresh()} className="btn-game mt-4 rounded-xl px-4 py-3">
+                  Retry
+                </button>
+              </div>
+            </div>
+          ) : matches.length === 0 ? (
+            <div className="flex items-center justify-center rounded-[2rem] border border-white/10 bg-black/25 px-6 text-center backdrop-blur-md">
+              <div>
+                <p className="text-xl font-bold text-white">No battles loaded yet</p>
+                <p className="mt-2 text-sm text-white/65">Create or sync matches from Admin Studio and they’ll appear here.</p>
+              </div>
+            </div>
+          ) : (
+            <div className="grid gap-4 overflow-hidden">
+              {matches.slice(0, 2).map((match) => (
+                <div key={match.id} className="rounded-[1.75rem] border border-white/10 bg-black/20 p-3 backdrop-blur-md">
+                  <div className="mb-3 flex items-center justify-between gap-3 px-1">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/55">{match.league || match.sport}</p>
+                      <p className="text-lg font-black text-white">{match.team1} vs {match.team2}</p>
+                    </div>
+                    <span className="rounded-full border border-green-300/20 bg-green-300/10 px-3 py-1 text-[0.65rem] font-bold uppercase tracking-[0.18em] text-green-200">
+                      {match.status}
+                    </span>
+                  </div>
+                  <MatchCard
+                    match={match}
+                    onVote={() => void onRefresh()}
+                    className="!min-h-[24rem] !max-w-none"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-center justify-between rounded-[1.75rem] border border-white/10 bg-black/25 px-4 py-4 text-sm text-white/70 backdrop-blur-md">
+            <div>
+              <p className="font-bold text-white">Swipe mode ready</p>
+              <p className="text-xs text-white/55">Landscape-style voting cards on your phone</p>
+            </div>
+            <button
+              onClick={() => setVotingMode(true)}
+              className="rounded-full border border-cyan-300/40 bg-cyan-400/10 px-4 py-2 font-bold text-cyan-200"
+            >
+              Open
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {votingMode ? (
+        <MobileVotingOverlay matches={matches} onClose={() => setVotingMode(false)} onVote={onRefresh} />
+      ) : null}
+    </div>
+  )
+}
+
+function MobileVotingOverlay({
+  matches,
+  onClose,
+  onVote,
+}: {
+  matches: MatchRecord[]
+  onClose: () => void
+  onVote: () => Promise<void>
+}) {
+  const voteMatches = matches.length > 0 ? matches : []
+
+  return (
+    <div className="fixed inset-0 z-50 md:hidden">
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,8,20,0.92),rgba(10,8,27,0.97)),url('https://img.freepik.com/free-photo/cosmic-lightning-storm-space-background_23-2151955881.jpg?semt=ais_hybrid&w=740&q=80')] bg-cover bg-center" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(34,211,238,0.16),transparent_26%),radial-gradient(circle_at_85%_15%,rgba(244,114,182,0.18),transparent_24%)]" />
+
+      <div className="relative flex h-[100dvh] flex-col overflow-hidden px-4 py-4">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <button onClick={onClose} className="glass-button !rounded-2xl !px-4 !py-3 text-sm">
+            <ChevronLeft size={16} /> Exit
+          </button>
+          <div className="text-center">
+            <p className="text-xs font-bold uppercase tracking-[0.28em] text-green-300/80">Voting Mode</p>
+            <p className="text-sm text-white/70">Swipe left or right through the arena</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-xs font-bold uppercase tracking-[0.18em] text-white/70">
+            {voteMatches.length} cards
+          </div>
+        </div>
+
+        {voteMatches.length === 0 ? (
+          <div className="flex flex-1 items-center justify-center text-center text-white/70">
+            No voting cards available right now.
+          </div>
+        ) : (
+          <>
+            <div className="mb-3 flex items-center justify-between px-1 text-xs uppercase tracking-[0.24em] text-white/50">
+              <span>Slide for next battle</span>
+              <span className="inline-flex items-center gap-1">
+                <ChevronLeft size={14} />
+                <ChevronRight size={14} />
+              </span>
+            </div>
+            <div className="no-scrollbar flex flex-1 snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-hidden pb-2">
+              {voteMatches.map((match) => (
+                <div key={match.id} className="flex w-[calc(100vw-2rem)] shrink-0 snap-center items-center justify-center">
+                  <MatchCard
+                    match={match}
+                    onVote={() => void onVote()}
+                    className="!max-w-[min(92vw,26rem)] !min-h-[calc(100dvh-8.75rem)]"
+                  />
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function MobileStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[1.25rem] border border-white/10 bg-black/20 px-3 py-3 text-center">
+      <div className="text-xl font-black text-yellow-300">{value}</div>
+      <div className="mt-1 text-[0.65rem] font-bold uppercase tracking-[0.22em] text-white/60">{label}</div>
+    </div>
   )
 }
 

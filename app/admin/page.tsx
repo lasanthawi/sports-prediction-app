@@ -501,7 +501,7 @@ export default function AdminPage() {
         </section>
         ) : null}
 
-        {(activeTab === 'overview' || activeTab === 'create') ? (
+        {activeTab === 'create' ? (
         <div className="grid gap-8 xl:grid-cols-[1.1fr,0.9fr]">
           <section className="card-glow rounded-2xl border border-green-400/20 bg-gray-800/80 p-6">
             <div className="mb-6 flex items-center gap-2">
@@ -555,7 +555,7 @@ export default function AdminPage() {
         </div>
         ) : null}
 
-        {(activeTab === 'overview' || activeTab === 'matches') ? (
+        {activeTab === 'matches' ? (
         <section className="rounded-2xl border border-green-400/20 bg-gray-800/80 p-6">
           <div className="mb-5 flex items-center justify-between gap-4">
             <h2 className="text-2xl font-bold">Matches</h2>
@@ -700,7 +700,7 @@ export default function AdminPage() {
         </section>
         ) : null}
 
-        {(activeTab === 'overview' || activeTab === 'automation') ? (
+        {activeTab === 'automation' ? (
         <section className="rounded-2xl border border-green-400/20 bg-gray-800/80 p-6">
           <div className="mb-5 flex items-center justify-between gap-4">
             <h2 className="text-2xl font-bold">Recent Automation Runs</h2>

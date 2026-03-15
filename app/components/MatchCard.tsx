@@ -26,6 +26,7 @@ interface MatchCardProps {
   onVote?: () => void
   interactive?: boolean
   footerSlot?: ReactNode
+  className?: string
 }
 
 interface CountdownState {
@@ -36,7 +37,7 @@ interface CountdownState {
   seconds?: number
 }
 
-export default function MatchCard({ match, onVote, interactive = true, footerSlot }: MatchCardProps) {
+export default function MatchCard({ match, onVote, interactive = true, footerSlot, className = '' }: MatchCardProps) {
   const [voted, setVoted] = useState(false)
   const [selectedTeam, setSelectedTeam] = useState<number | null>(null)
   const [timeLeft, setTimeLeft] = useState<CountdownState>({})
@@ -113,7 +114,7 @@ export default function MatchCard({ match, onVote, interactive = true, footerSlo
   }
 
   return (
-    <article className={`match-poster pack-enter ${votedFlash ? 'vote-burst' : 'pack-float'} ${!interactive ? 'admin-poster' : ''}`}>
+    <article className={`match-poster pack-enter ${votedFlash ? 'vote-burst' : 'pack-float'} ${!interactive ? 'admin-poster' : ''} ${className}`}>
       <div className="poster-noise" />
       <div className="poster-vignette" />
       <div
