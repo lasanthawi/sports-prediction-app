@@ -19,6 +19,7 @@ interface MatchRecord {
   winner: number | null
   poll_team1_votes: number
   poll_team2_votes: number
+  card_asset_url?: string | null
   source: string
 }
 
@@ -103,7 +104,10 @@ export default function AdminPage() {
       const res = await fetch('/api/matches', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          match_time: new Date(formData.match_time).toISOString(),
+        }),
       })
 
       const payload = await res.json()
@@ -174,7 +178,7 @@ export default function AdminPage() {
           </div>
         ) : null}
 
-        <section className="grid gap-4 md:grid-cols-4">
+        <section className="grid gap-4 md:grid-cols-5">
           <ActionCard
             title="Initialize DB"
             description="Creates the required tables the first time."
@@ -195,6 +199,13 @@ export default function AdminPage() {
             icon={<PlayCircle className="h-5 w-5" />}
             onClick={() => void runJob('assets', '/api/automation/assets', 'Assets generated')}
             busy={jobState.assets}
+          />
+          <ActionCard
+            title="Run Pipeline"
+            description="Sync, generate assets, and publish in one job."
+            icon={<Rocket className="h-5 w-5" />}
+            onClick={() => void runJob('pipeline', '/api/automation/run', 'Automation pipeline completed')}
+            busy={jobState.pipeline}
           />
           <ActionCard
             title="Publish"
@@ -266,23 +277,20 @@ export default function AdminPage() {
           <section className="rounded-2xl border border-green-400/20 bg-gray-800/80 p-6">
             <div className="mb-5 flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5 text-green-400" />
-              <h2 className="text-2xl font-bold">Automation Design</h2>
+              <h2 className="text-2xl font-bold">Feed Setup</h2>
             </div>
             <div className="space-y-4 text-sm text-gray-300">
-              <p>The automation loop now has four stages: ingest fixtures and results, upsert matches, generate SVG assets, and publish those assets through a webhook.</p>
+              <p>For a safe first setup, set <code>SPORTS_SYNC_FEED_URL</code> to your deployed sample endpoint:</p>
+              <p className="rounded-lg bg-gray-900 px-3 py-2 font-mono text-xs text-green-300">https://your-app.vercel.app/api/feed/sample</p>
               <p>
-                Configure <code>SPORTS_SYNC_FEED_URL</code> with a JSON feed that returns an array of matches or an
-                object containing a <code>matches</code> array. Each item can include <code>externalId</code>,{' '}
-                <code>team1</code>, <code>team2</code>, <code>sport</code>, <code>league</code>, <code>matchTime</code>,{' '}
-                <code>status</code>, <code>winner</code>, and <code>resultSummary</code>.
+                For real automation, point it to your own normalized JSON endpoint that returns an array of matches or an
+                object containing a <code>matches</code> array with <code>externalId</code>, <code>team1</code>, <code>team2</code>,{' '}
+                <code>sport</code>, <code>league</code>, <code>matchTime</code>, <code>status</code>, <code>winner</code>, and{' '}
+                <code>resultSummary</code>.
               </p>
               <p>
-                Configure <code>PUBLISH_WEBHOOK_URL</code> to send generated assets to your scheduler, CMS, Zapier
-                flow, or custom poster. If the webhook is missing, assets stay in a ready-to-publish queue.
-              </p>
-              <p>
-                For hands-off operation on Vercel, schedule three cron calls: <code>/api/automation/sync</code>,{' '}
-                <code>/api/automation/assets</code>, and <code>/api/automation/publish</code>.
+                The remaining automation pieces are now covered: sync can ingest matches, asset generation runs on create
+                and sync, and the pipeline route can sync, generate, and publish in one step.
               </p>
             </div>
           </section>
@@ -302,6 +310,14 @@ export default function AdminPage() {
             <div className="space-y-4">
               {matches.map((match) => (
                 <div key={match.id} className="rounded-xl border border-white/10 bg-gray-900/70 p-4">
+                  {match.card_asset_url ? (
+                    <img
+                      src={match.card_asset_url}
+                      alt={`${match.team1} vs ${match.team2}`}
+                      className="mb-4 h-40 w-full rounded-lg object-cover"
+                    />
+                  ) : null}
+
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <h3 className="text-lg font-bold text-white">

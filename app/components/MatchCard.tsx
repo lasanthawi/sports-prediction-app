@@ -16,6 +16,7 @@ interface MatchCardProps {
     poll_team2_votes: number
     status: 'upcoming' | 'live' | 'finished' | 'cancelled'
     result_summary?: string | null
+    card_asset_url?: string | null
   }
   onVote?: () => void
 }
@@ -35,12 +36,12 @@ export default function MatchCard({ match, onVote }: MatchCardProps) {
   const [voting, setVoting] = useState(false)
 
   useEffect(() => {
-    const timer = setInterval(() => {
+    const updateCountdown = () => {
       const now = Date.now()
       const matchTime = new Date(match.match_time).getTime()
       const distance = matchTime - now
 
-      if (distance < 0) {
+      if (distance <= 0) {
         setTimeLeft({ expired: true })
         return
       }
@@ -51,7 +52,10 @@ export default function MatchCard({ match, onVote }: MatchCardProps) {
         minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
         seconds: Math.floor((distance % (1000 * 60)) / 1000),
       })
-    }, 1000)
+    }
+
+    updateCountdown()
+    const timer = setInterval(updateCountdown, 1000)
 
     return () => clearInterval(timer)
   }, [match.match_time])
@@ -59,9 +63,10 @@ export default function MatchCard({ match, onVote }: MatchCardProps) {
   const totalVotes = match.poll_team1_votes + match.poll_team2_votes
   const team1Percentage = totalVotes > 0 ? Math.round((match.poll_team1_votes / totalVotes) * 100) : 50
   const team2Percentage = totalVotes > 0 ? Math.round((match.poll_team2_votes / totalVotes) * 100) : 50
+  const isVotingOpen = match.status === 'upcoming' && !timeLeft.expired
 
   async function handleVote(team: number) {
-    if (match.status !== 'upcoming' || voting) {
+    if (!isVotingOpen || voting) {
       return
     }
 
@@ -89,10 +94,16 @@ export default function MatchCard({ match, onVote }: MatchCardProps) {
     }
   }
 
-  const isUpcoming = match.status === 'upcoming' && !timeLeft.expired
-
   return (
     <div className="card-glow overflow-hidden rounded-xl bg-gray-800 transition-all hover:scale-[1.02]">
+      {match.card_asset_url ? (
+        <img
+          src={match.card_asset_url}
+          alt={`${match.team1} vs ${match.team2}`}
+          className="h-56 w-full object-cover"
+        />
+      ) : null}
+
       <div className="p-6">
         <div className="mb-4 flex items-center justify-between">
           <span className="rounded-full bg-green-400/20 px-3 py-1 text-xs font-bold text-green-400">
@@ -117,11 +128,11 @@ export default function MatchCard({ match, onVote }: MatchCardProps) {
           </div>
         </div>
 
-        {isUpcoming ? (
+        {isVotingOpen ? (
           <div className="mb-4 rounded-lg bg-gradient-to-r from-green-400/10 to-pink-500/10 p-4">
             <div className="mb-2 flex items-center justify-center gap-2">
               <Clock className="h-4 w-4 text-green-400" />
-              <span className="text-xs text-gray-400">Voting ends in</span>
+              <span className="text-xs text-gray-400">Voting ends at kickoff</span>
             </div>
             <div className="grid grid-cols-4 gap-2">
               {['days', 'hours', 'minutes', 'seconds'].map((unit) => (
@@ -136,7 +147,7 @@ export default function MatchCard({ match, onVote }: MatchCardProps) {
           </div>
         ) : null}
 
-        {timeLeft.expired && match.status !== 'finished' ? (
+        {!isVotingOpen && match.status !== 'finished' ? (
           <div className="mb-4 rounded-lg bg-red-500/20 py-4 text-center">
             <span className="font-bold text-red-400">Voting closed</span>
           </div>
@@ -164,7 +175,7 @@ export default function MatchCard({ match, onVote }: MatchCardProps) {
               percentage={team1Percentage}
               accentClass="from-green-400/50 to-green-400/20"
               textClass="text-green-400"
-              disabled={!isUpcoming || voted || voting}
+              disabled={!isVotingOpen || voted || voting}
               selected={selectedTeam === 1}
               onClick={() => void handleVote(1)}
             />
@@ -173,7 +184,7 @@ export default function MatchCard({ match, onVote }: MatchCardProps) {
               percentage={team2Percentage}
               accentClass="from-pink-500/50 to-pink-500/20"
               textClass="text-pink-500"
-              disabled={!isUpcoming || voted || voting}
+              disabled={!isVotingOpen || voted || voting}
               selected={selectedTeam === 2}
               onClick={() => void handleVote(2)}
             />

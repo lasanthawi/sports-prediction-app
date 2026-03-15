@@ -6,29 +6,73 @@ function normalizeText(value: string | null | undefined) {
   return value?.trim() || null
 }
 
+function hydrateMatches(rows: MatchRecord[]) {
+  return rows.map((row) => ({
+    ...row,
+    card_asset_url: row.card_asset_id ? `/api/assets/${row.card_asset_id}` : null,
+  }))
+}
+
+export async function refreshDerivedMatchStatuses() {
+  await ensureSchema()
+
+  await sql`
+    UPDATE matches
+    SET status = 'live'
+    WHERE status = 'upcoming'
+      AND match_time <= NOW()
+  `
+}
+
 export async function listMatches() {
   await ensureSchema()
+  await refreshDerivedMatchStatuses()
   const { rows } = await sql<MatchRecord>`
-    SELECT *
+    SELECT
+      matches.*,
+      asset.id AS card_asset_id,
+      asset.asset_type AS card_asset_type
     FROM matches
+    LEFT JOIN LATERAL (
+      SELECT id, asset_type
+      FROM generated_assets
+      WHERE match_id = matches.id
+        AND asset_type = CASE WHEN matches.status = 'finished' THEN 'result' ELSE 'upcoming' END
+        AND format = 'svg'
+      ORDER BY id DESC
+      LIMIT 1
+    ) asset ON TRUE
     ORDER BY match_time ASC, id DESC
     LIMIT 50
   `
 
-  return rows
+  return hydrateMatches(rows)
 }
 
 export async function listVisibleMatches() {
   await ensureSchema()
+  await refreshDerivedMatchStatuses()
   const { rows } = await sql<MatchRecord>`
-    SELECT *
+    SELECT
+      matches.*,
+      asset.id AS card_asset_id,
+      asset.asset_type AS card_asset_type
     FROM matches
+    LEFT JOIN LATERAL (
+      SELECT id, asset_type
+      FROM generated_assets
+      WHERE match_id = matches.id
+        AND asset_type = CASE WHEN matches.status = 'finished' THEN 'result' ELSE 'upcoming' END
+        AND format = 'svg'
+      ORDER BY id DESC
+      LIMIT 1
+    ) asset ON TRUE
     WHERE status IN ('upcoming', 'live')
     ORDER BY match_time ASC, id DESC
     LIMIT 20
   `
 
-  return rows
+  return hydrateMatches(rows)
 }
 
 export async function createMatch(input: MatchInput) {

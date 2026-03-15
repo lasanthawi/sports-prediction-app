@@ -1,18 +1,24 @@
 import { NextResponse } from 'next/server'
 import { sql } from '@vercel/postgres'
 import { ensureSchema } from '@/lib/db'
+import { refreshDerivedMatchStatuses } from '@/lib/matches'
 
 export async function POST(request: Request) {
   try {
     await ensureSchema()
+    await refreshDerivedMatchStatuses()
     const { matchId, team } = await request.json()
     
     // Check if match is still upcoming
     const { rows: matchCheck } = await sql`
-      SELECT status FROM matches WHERE id = ${matchId}
+      SELECT status, match_time FROM matches WHERE id = ${matchId}
     `
     
-    if (!matchCheck.length || matchCheck[0].status !== 'upcoming') {
+    if (
+      !matchCheck.length ||
+      matchCheck[0].status !== 'upcoming' ||
+      new Date(matchCheck[0].match_time).getTime() <= Date.now()
+    ) {
       return NextResponse.json({ 
         error: 'Voting is closed for this match' 
       }, { status: 400 })

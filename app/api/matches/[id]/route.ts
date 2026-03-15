@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { generateAssetsForMatches } from '@/lib/automation'
 import { updateMatch } from '@/lib/matches'
 
 interface RouteContext {
@@ -20,6 +21,8 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     if (!match) {
       return NextResponse.json({ error: 'Match not found' }, { status: 404 })
     }
+
+    await generateAssetsForMatches([match])
 
     return NextResponse.json({ match })
   } catch (error: any) {

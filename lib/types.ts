@@ -17,6 +17,9 @@ export interface MatchRecord {
   winner: number | null
   poll_team1_votes: number
   poll_team2_votes: number
+  card_asset_id?: number | null
+  card_asset_type?: string | null
+  card_asset_url?: string | null
   created_at: string
   updated_at: string
 }

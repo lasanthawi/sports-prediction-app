@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { generateAssetsForMatches } from '@/lib/automation'
 import { createMatch, listMatches, listVisibleMatches } from '@/lib/matches'
 
 export const dynamic = 'force-dynamic'
@@ -28,6 +29,7 @@ export async function POST(request: Request) {
     }
 
     const match = await createMatch(body)
+    await generateAssetsForMatches([match])
 
     return NextResponse.json({ match })
   } catch (error: any) {

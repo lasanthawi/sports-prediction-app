@@ -1,6 +1,6 @@
 import { sql } from '@vercel/postgres'
 import { ensureSchema } from './db'
-import { upsertFeedMatches } from './matches'
+import { refreshDerivedMatchStatuses, upsertFeedMatches } from './matches'
 import { AssetRecord, FeedMatch, MatchRecord } from './types'
 
 const DEFAULT_WEBHOOK_TIMEOUT_MS = 10000
@@ -129,6 +129,8 @@ export async function syncMatchesFromFeed() {
   }
 
   const matches = await upsertFeedMatches(feedMatches)
+  await refreshDerivedMatchStatuses()
+  await generateAssetsForMatches(matches)
   await logAutomationRun('sync_matches', 'success', `Synced ${matches.length} matches from feed`, {
     count: matches.length,
   })
@@ -258,6 +260,25 @@ export async function publishReadyAssets() {
     queued: rows.length,
     mode: 'webhook',
     assets: rows,
+  }
+}
+
+export async function runAutomationPipeline() {
+  await ensureSchema()
+  const sync = await syncMatchesFromFeed()
+  const assets = sync.matches.length ? await generateAssetsForMatches(sync.matches) : []
+  const publish = await publishReadyAssets()
+
+  await logAutomationRun('run_pipeline', 'success', 'Ran sync, asset generation, and publish pipeline', {
+    synced: sync.count,
+    generated: assets.length,
+    published: publish.published,
+  })
+
+  return {
+    sync,
+    assets: { count: assets.length },
+    publish,
   }
 }
 
