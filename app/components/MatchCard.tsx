@@ -19,6 +19,8 @@ interface MatchCardProps {
     status: 'upcoming' | 'live' | 'finished' | 'cancelled'
     result_summary?: string | null
     rivalry_tagline?: string | null
+    prediction_artwork_url?: string | null
+    result_artwork_url?: string | null
     card_asset_url?: string | null
   }
   onVote?: () => void
@@ -71,6 +73,10 @@ export default function MatchCard({ match, onVote, interactive = true, footerSlo
   const isVotingOpen = interactive && match.status === 'upcoming' && !timeLeft.expired
   const headline = match.league?.toUpperCase() || `${match.sport.toUpperCase()} SHOWDOWN`
   const versusTitle = `${match.team1} vs ${match.team2}`.toUpperCase()
+  const backgroundArtworkUrl =
+    (match.status === 'finished' ? match.result_artwork_url : match.prediction_artwork_url) ||
+    match.card_asset_url ||
+    null
   const question =
     match.status === 'finished'
       ? match.result_summary || 'Result locked in'
@@ -113,8 +119,8 @@ export default function MatchCard({ match, onVote, interactive = true, footerSlo
       <div
         className="absolute inset-0 bg-cover bg-center"
         style={{
-          backgroundImage: match.card_asset_url
-            ? `linear-gradient(180deg, rgba(7,10,20,0.2), rgba(7,10,20,0.9)), url(${match.card_asset_url})`
+          backgroundImage: backgroundArtworkUrl
+            ? `linear-gradient(180deg, rgba(7,10,20,0.18), rgba(7,10,20,0.82)), url(${backgroundArtworkUrl})`
             : 'linear-gradient(135deg, rgba(237,29,36,0.72), rgba(14,165,233,0.72))',
         }}
       />

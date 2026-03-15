@@ -2,7 +2,7 @@ import sharp from 'sharp'
 import { MatchRecord } from './types'
 
 const DEFAULT_MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image-preview'
-const PROMPT_VERSION = 'gemini-match-card-v1'
+const PROMPT_VERSION = 'gemini-match-card-v2'
 
 function safe(value: string | null | undefined, fallback: string) {
   return value?.trim() || fallback
@@ -17,32 +17,34 @@ export function buildGeminiPrompt(match: MatchRecord, variant: 'prediction' | 'r
   const team2Palette = safe(match.team2_palette, 'team two authentic colors')
   const team1Flag = safe(match.team1_flag_colors, 'flag-inspired gradients')
   const team2Flag = safe(match.team2_flag_colors, 'flag-inspired gradients')
-  const captain1 = safe(match.team1_captain, `${match.team1} captain silhouette`)
-  const captain2 = safe(match.team2_captain, `${match.team2} captain silhouette`)
-  const style = safe(match.art_style, 'premium collectible sports booster pack')
+  const captain1 = safe(match.team1_captain, `${match.team1} star captain`)
+  const captain2 = safe(match.team2_captain, `${match.team2} star captain`)
+  const style = safe(match.art_style, 'photoreal cinematic sports poster')
   const creativeDirection = safe(
     match.creative_direction,
-    'high-energy portrait hero artwork with dramatic lighting, foil reflections, aura streaks, and clean safe space for overlay UI'
+    'realistic stadium battle scene with both captains in dynamic action, dramatic split lighting, storm energy, smoke, sparks, and clean negative space for overlay UI'
   )
 
   const variantBrief =
     variant === 'result'
-      ? `Show the winner with a stronger heroic emphasis. Mood should feel decisive, celebratory, and endgame-ready. Match result context: ${safe(match.result_summary, 'final result not supplied yet')}.`
-      : 'Build anticipation before kickoff with both captains looking battle-ready and balanced visual tension.'
+      ? `Show the winner with stronger heroic emphasis and the loser with dramatic tension. Mood should feel decisive, realistic, celebratory, and endgame-ready. Match result context: ${safe(match.result_summary, 'final result not supplied yet')}.`
+      : 'Build anticipation before kickoff with both captains looking battle-ready, charging toward each other, and framed like a blockbuster rivalry poster.'
 
   return [
-    'Create a portrait 9:16 hero artwork for a premium sports prediction match card.',
+    'Create a portrait 9:16 realistic hero artwork for a sports match prediction card background.',
     `Visual style: ${style}.`,
     `Creative direction: ${creativeDirection}.`,
     `Match: ${match.team1} versus ${match.team2}. Sport: ${match.sport}. League: ${safe(match.league, 'major competition')}. Venue: ${safe(match.venue, 'stadium atmosphere')}.`,
-    `Feature the captains prominently: ${captain1} for ${match.team1}; ${captain2} for ${match.team2}.`,
-    `Integrate ${match.team1} palette (${team1Palette}) and flag colors (${team1Flag}) on one side; integrate ${match.team2} palette (${team2Palette}) and flag colors (${team2Flag}) on the other side.`,
+    `Feature the captains prominently: ${captain1} for ${match.team1}; ${captain2} for ${match.team2}. Make them feel like real elite athletes in action, not illustrated icons or silhouettes.`,
+    `Integrate ${match.team1} palette (${team1Palette}) and flag colors (${team1Flag}) on one side of the composition; integrate ${match.team2} palette (${team2Palette}) and flag colors (${team2Flag}) on the other side.`,
     `Rivalry angle: ${safe(match.rivalry_tagline, `${match.team1} and ${match.team2} in a high-stakes showdown`)}.`,
     variantBrief,
-    'Do not include any text, logos, scoreboards, UI buttons, countdowns, percentage bars, or watermarks.',
-    'Reserve clear negative space for a top title band, a mid-card versus zone, a lower vote CTA area, and a footer strip.',
+    'Scene should look like a dramatic match battle poster in a realistic stadium, with cinematic lighting, atmospheric smoke, sparks, and energy between the players.',
+    'Do not include any text, logos, scoreboards, badges, UI buttons, countdowns, percentage bars, card frames, packaging, or watermarks.',
+    'Do not generate a flyer template or trading card template. This is only the raw realistic background artwork.',
+    'Reserve clear negative space for a top title band, a center versus zone, a lower vote CTA area, and a footer strip.',
     'Faces must stay visible and not be covered by foreground effects.',
-    'Output a polished cinematic vertical key art suitable for a collectible pack card.',
+    'Output polished realistic vertical key art suitable as the background of a premium sports prediction card.',
   ].join(' ')
 }
 
