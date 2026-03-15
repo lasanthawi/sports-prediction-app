@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     
     await sql`
       INSERT INTO sessions (user_id, session_token, expires_at)
-      VALUES (${user.id}, ${sessionToken}, ${expiresAt})
+      VALUES (${user.id}, ${sessionToken}, ${expiresAt.toISOString()})
     `
     
     const response = NextResponse.json({ 
