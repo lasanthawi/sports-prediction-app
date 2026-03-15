@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server'
 import { sql } from '@vercel/postgres'
 import { cookies } from 'next/headers'
+import { ensureSchema } from '@/lib/db'
 
 export async function GET() {
   try {
+    await ensureSchema()
     const cookieStore = cookies()
     const sessionToken = cookieStore.get('session')?.value
     

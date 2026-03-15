@@ -1,11 +1,77 @@
 import { sql } from '@vercel/postgres'
+import { createHash } from 'crypto'
 
 let schemaReady = false
+
+const seededUsers = [
+  {
+    email: 'admin@sports.com',
+    name: 'Arena Admin',
+    role: 'admin',
+    password: 'admin123',
+    points: 0,
+    predictionsCount: 0,
+    correctPredictions: 0,
+  },
+  {
+    email: 'player1@sports.com',
+    name: 'John Doe',
+    role: 'player',
+    password: 'player123',
+    points: 250,
+    predictionsCount: 34,
+    correctPredictions: 18,
+  },
+  {
+    email: 'player2@sports.com',
+    name: 'Jane Smith',
+    role: 'player',
+    password: 'player123',
+    points: 420,
+    predictionsCount: 52,
+    correctPredictions: 33,
+  },
+  {
+    email: 'player3@sports.com',
+    name: 'Mike Wilson',
+    role: 'player',
+    password: 'player123',
+    points: 180,
+    predictionsCount: 28,
+    correctPredictions: 12,
+  },
+]
 
 export async function ensureSchema() {
   if (schemaReady) {
     return
   }
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'player',
+      password_hash TEXT NOT NULL,
+      points INTEGER NOT NULL DEFAULT 0,
+      predictions_count INTEGER NOT NULL DEFAULT 0,
+      correct_predictions INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      CONSTRAINT users_role_check CHECK (role IN ('admin', 'player'))
+    )
+  `
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS sessions (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      session_token TEXT NOT NULL UNIQUE,
+      expires_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `
 
   await sql`
     CREATE TABLE IF NOT EXISTS matches (
@@ -71,6 +137,50 @@ export async function ensureSchema() {
     END;
     $$ LANGUAGE plpgsql;
   `
+
+  await sql`
+    DROP TRIGGER IF EXISTS set_users_updated_at ON users;
+  `
+
+  await sql`
+    CREATE TRIGGER set_users_updated_at
+    BEFORE UPDATE ON users
+    FOR EACH ROW
+    EXECUTE FUNCTION set_updated_at();
+  `
+
+  for (const user of seededUsers) {
+    const passwordHash = createHash('sha256').update(user.password).digest('hex')
+
+    await sql`
+      INSERT INTO users (
+        email,
+        name,
+        role,
+        password_hash,
+        points,
+        predictions_count,
+        correct_predictions
+      )
+      VALUES (
+        ${user.email},
+        ${user.name},
+        ${user.role},
+        ${passwordHash},
+        ${user.points},
+        ${user.predictionsCount},
+        ${user.correctPredictions}
+      )
+      ON CONFLICT (email)
+      DO UPDATE SET
+        name = EXCLUDED.name,
+        role = EXCLUDED.role,
+        password_hash = EXCLUDED.password_hash,
+        points = EXCLUDED.points,
+        predictions_count = EXCLUDED.predictions_count,
+        correct_predictions = EXCLUDED.correct_predictions
+    `
+  }
 
   await sql`
     DROP TRIGGER IF EXISTS set_matches_updated_at ON matches;

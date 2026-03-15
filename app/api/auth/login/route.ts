@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server'
 import { sql } from '@vercel/postgres'
 import { createHash } from 'crypto'
+import { ensureSchema } from '@/lib/db'
 
 export async function POST(request: Request) {
   try {
+    await ensureSchema()
     const { email, password } = await request.json()
     
     // Hash password
