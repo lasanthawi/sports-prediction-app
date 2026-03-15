@@ -26,6 +26,7 @@ interface MatchRecord {
 }
 
 const COSMIC_BACKGROUND = 'https://img.freepik.com/free-photo/cosmic-lightning-storm-space-background_23-2151955881.jpg?semt=ais_hybrid&w=740&q=80'
+const BRAND_IMAGE = 'https://i.ibb.co/qLsG4ByG/70325951-97a2-4fb3-ad27-a3c7ba251676.png'
 
 export default function Home() {
   const [matches, setMatches] = useState<MatchRecord[]>([])
@@ -118,6 +119,11 @@ export default function Home() {
           </div>
 
           <div className="mx-auto max-w-5xl text-center">
+            <div className="mb-5 flex justify-center">
+              <div className="rounded-[2rem] border border-white/10 bg-black/20 p-3 shadow-[0_0_35px_rgba(255,216,77,0.18)] backdrop-blur-sm">
+                <img src={BRAND_IMAGE} alt="Prediction Arena logo" className="h-24 w-24 object-contain md:h-32 md:w-32" />
+              </div>
+            </div>
             <div className="mb-4 inline-flex items-center gap-3 rounded-full border border-white/10 bg-black/25 px-5 py-2 text-sm font-bold uppercase tracking-[0.24em] text-white/80 backdrop-blur-sm">
               <Trophy className="h-5 w-5 text-yellow-400" />
               Prediction Arena
@@ -287,9 +293,12 @@ function MobileArenaApp({
     <div className="relative md:hidden">
       <section className="mobile-arena-shell">
         <div className="mobile-arena-topbar">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.32em] text-green-300/80">Prediction Arena</p>
-            <h1 className="mt-2 text-3xl font-black leading-none text-white">Arena App</h1>
+          <div className="flex items-start gap-3">
+            <img src={BRAND_IMAGE} alt="Prediction Arena logo" className="h-14 w-14 rounded-2xl border border-white/10 bg-black/25 object-cover p-1 shadow-[0_0_22px_rgba(255,216,77,0.2)]" />
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.32em] text-green-300/80">Prediction Arena</p>
+              <h1 className="mt-2 text-3xl font-black leading-none text-white">Arena App</h1>
+            </div>
           </div>
           <Link href="/login" className="glass-button !rounded-2xl !px-4 !py-3 text-sm">
             <LogIn size={16} />
