@@ -106,6 +106,18 @@ export default function AdminPage() {
   const totalRunPages = Math.max(1, Math.ceil(runs.length / runsPerPage))
   const visibleMatches = matches.slice((matchPage - 1) * matchesPerPage, matchPage * matchesPerPage)
   const visibleRuns = runs.slice((runsPage - 1) * runsPerPage, runsPage * runsPerPage)
+  const upcomingMatches = matches.filter((match) => match.status === 'upcoming')
+  const liveMatches = matches.filter((match) => match.status === 'live')
+  const finishedMatches = matches.filter((match) => match.status === 'finished')
+  const pendingAssets = matches.filter((match) => !match.asset_generation_status || match.asset_generation_status === 'pending')
+  const totalVotes = matches.reduce((sum, match) => sum + match.poll_team1_votes + match.poll_team2_votes, 0)
+  const nextKickoff = [...matches]
+    .filter((match) => new Date(match.match_time).getTime() > Date.now())
+    .sort((a, b) => new Date(a.match_time).getTime() - new Date(b.match_time).getTime())[0]
+  const spotlightMatches = [...matches]
+    .sort((a, b) => (b.poll_team1_votes + b.poll_team2_votes) - (a.poll_team1_votes + a.poll_team2_votes))
+    .slice(0, 2)
+  const recentRuns = runs.slice(0, 4)
 
   useEffect(() => {
     void refreshDashboard()
@@ -346,7 +358,140 @@ export default function AdminPage() {
           <TabButton active={activeTab === 'automation'} onClick={() => setActiveTab('automation')}>Automation</TabButton>
         </nav>
 
-        {(activeTab === 'overview' || activeTab === 'automation') ? (
+        {activeTab === 'overview' ? (
+        <section className="grid gap-6 xl:grid-cols-[1.2fr,0.8fr]">
+          <div className="space-y-6">
+            <section className="rounded-2xl border border-green-400/20 bg-gray-800/80 p-6 card-glow">
+              <div className="mb-5 flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-bold text-white">Control Center</h2>
+                  <p className="text-sm text-gray-400">Everything important at a glance: match volume, asset health, live action, and the next operational move.</p>
+                </div>
+                <span className="rounded-full border border-green-400/30 bg-green-400/10 px-3 py-2 text-xs font-bold uppercase tracking-[0.18em] text-green-300">
+                  Studio Live
+                </span>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <OverviewStat title="Total Matches" value={String(matches.length)} detail={`${upcomingMatches.length} upcoming`} accent="text-green-300" />
+                <OverviewStat title="Live Now" value={String(liveMatches.length)} detail={`${finishedMatches.length} finished`} accent="text-red-300" />
+                <OverviewStat title="Pending Assets" value={String(pendingAssets.length)} detail={pendingAssets.length ? 'Needs generation attention' : 'Asset pipeline healthy'} accent="text-yellow-300" />
+                <OverviewStat title="Community Votes" value={String(totalVotes)} detail={nextKickoff ? `Next kickoff: ${nextKickoff.team1} vs ${nextKickoff.team2}` : 'No kickoff scheduled'} accent="text-pink-300" />
+              </div>
+            </section>
+
+            <section className="grid gap-6 lg:grid-cols-2">
+              <div className="rounded-2xl border border-white/10 bg-gray-800/80 p-6">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <h3 className="text-xl font-bold text-white">Priority Queue</h3>
+                  <span className="text-xs uppercase tracking-[0.18em] text-gray-400">Action first</span>
+                </div>
+                <div className="space-y-3">
+                  <QueueItem
+                    title="Initialize and verify database"
+                    detail="Run schema setup if this environment is freshly deployed or showing DB-related 500s."
+                    actionLabel={jobState.setup ? 'Running...' : 'Initialize DB'}
+                    onClick={() => void runJob('setup', '/api/admin/setup', 'Database tables are ready')}
+                    disabled={jobState.setup}
+                  />
+                  <QueueItem
+                    title="Sync the latest fixtures and results"
+                    detail="Pull in external feed data before generating or publishing any new cards."
+                    actionLabel={jobState.sync ? 'Running...' : 'Sync Feed'}
+                    onClick={() => void runJob('sync', '/api/automation/sync', 'Feed sync completed')}
+                    disabled={jobState.sync}
+                  />
+                  <QueueItem
+                    title="Refresh all artwork and card assets"
+                    detail="Use this when prompts, card layout, or feed details have changed."
+                    actionLabel={jobState.assets ? 'Running...' : 'Generate Assets'}
+                    onClick={() => void runJob('assets', '/api/automation/assets', 'Assets generated')}
+                    disabled={jobState.assets}
+                  />
+                  <QueueItem
+                    title="Publish card queue"
+                    detail="Send ready card assets to the configured webhook once previews look good."
+                    actionLabel={jobState.publish ? 'Running...' : 'Publish'}
+                    onClick={() => void runJob('publish', '/api/automation/publish', 'Publish job completed')}
+                    disabled={jobState.publish}
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-gray-800/80 p-6">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <h3 className="text-xl font-bold text-white">Operational Pulse</h3>
+                  <span className="text-xs uppercase tracking-[0.18em] text-gray-400">What matters now</span>
+                </div>
+                <div className="space-y-4 text-sm text-gray-300">
+                  <PulseRow label="Next kickoff" value={nextKickoff ? `${nextKickoff.team1} vs ${nextKickoff.team2}` : 'No future match'} />
+                  <PulseRow label="Live match count" value={`${liveMatches.length}`} />
+                  <PulseRow label="Asset backlog" value={`${pendingAssets.length} cards needing attention`} />
+                  <PulseRow label="Top-voted battle" value={spotlightMatches[0] ? `${spotlightMatches[0].team1} vs ${spotlightMatches[0].team2}` : 'No votes yet'} />
+                  <PulseRow label="Latest automation run" value={runs[0] ? `${runs[0].job_name} · ${runs[0].status}` : 'No automation run yet'} />
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <div className="space-y-6">
+            <section className="rounded-2xl border border-white/10 bg-gray-800/80 p-6">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h3 className="text-xl font-bold text-white">Spotlight Matches</h3>
+                <button onClick={() => setActiveTab('matches')} className="text-sm text-green-300 hover:text-green-200">
+                  Open matches
+                </button>
+              </div>
+              {spotlightMatches.length === 0 ? (
+                <p className="text-sm text-gray-400">No matches available yet.</p>
+              ) : (
+                <div className="space-y-4">
+                  {spotlightMatches.map((match) => (
+                    <div key={match.id} className="rounded-xl border border-white/10 bg-gray-900/50 p-4">
+                      <p className="font-bold text-white">{match.team1} vs {match.team2}</p>
+                      <p className="text-sm text-gray-400">{match.sport}{match.league ? ` · ${match.league}` : ''}</p>
+                      <p className="mt-2 text-xs uppercase tracking-[0.18em] text-yellow-300">
+                        {match.poll_team1_votes + match.poll_team2_votes} votes · {match.asset_generation_status || 'pending'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className="rounded-2xl border border-white/10 bg-gray-800/80 p-6">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h3 className="text-xl font-bold text-white">Recent Automation</h3>
+                <button onClick={() => setActiveTab('automation')} className="text-sm text-green-300 hover:text-green-200">
+                  Open automation
+                </button>
+              </div>
+              {recentRuns.length === 0 ? (
+                <p className="text-sm text-gray-400">No automation history yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {recentRuns.map((run) => (
+                    <div key={run.id} className="rounded-xl border border-white/10 bg-gray-900/50 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="font-semibold text-white">{run.job_name}</p>
+                          <p className="text-sm text-gray-400">{run.summary || 'No summary provided'}</p>
+                        </div>
+                        <div className="text-right text-xs uppercase tracking-[0.18em] text-green-300">
+                          <p>{run.status}</p>
+                          <p className="mt-1 text-[0.65rem] text-gray-500">{new Date(run.started_at).toLocaleString()}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          </div>
+        </section>
+        ) : null}
+
+        {activeTab === 'automation' ? (
         <section className="grid gap-4 md:grid-cols-5">
           <ActionCard title="Initialize DB" description="Creates and migrates required tables." icon={<Database className="h-5 w-5" />} onClick={() => void runJob('setup', '/api/admin/setup', 'Database tables are ready')} busy={jobState.setup} />
           <ActionCard title="Sync Feed" description="Pull fixtures and visual metadata from SPORTS_SYNC_FEED_URL." icon={<RefreshCw className="h-5 w-5" />} onClick={() => void runJob('sync', '/api/automation/sync', 'Feed sync completed')} busy={jobState.sync} />
@@ -621,6 +766,26 @@ function TabButton({
   )
 }
 
+function OverviewStat({
+  title,
+  value,
+  detail,
+  accent,
+}: {
+  title: string
+  value: string
+  detail: string
+  accent: string
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-gray-900/50 p-4">
+      <p className="text-xs uppercase tracking-[0.18em] text-gray-400">{title}</p>
+      <p className={`mt-3 text-3xl font-black ${accent}`}>{value}</p>
+      <p className="mt-2 text-sm text-gray-400">{detail}</p>
+    </div>
+  )
+}
+
 function ActionCard({ title, description, icon, onClick, busy }: { title: string; description: string; icon: ReactNode; onClick: () => void; busy?: boolean }) {
   return (
     <button onClick={onClick} disabled={busy} className="rounded-2xl border border-green-400/20 bg-gray-800/80 p-5 text-left transition hover:border-green-400/40 hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60">
@@ -648,6 +813,43 @@ function ActionButton({
     <button onClick={onClick} disabled={disabled} className={`rounded-lg border px-4 py-3 text-left disabled:opacity-60 ${tone}`}>
       {children}
     </button>
+  )
+}
+
+function QueueItem({
+  title,
+  detail,
+  actionLabel,
+  onClick,
+  disabled,
+}: {
+  title: string
+  detail: string
+  actionLabel: string
+  onClick: () => void
+  disabled?: boolean
+}) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-gray-900/50 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="max-w-md">
+          <p className="font-semibold text-white">{title}</p>
+          <p className="mt-1 text-sm text-gray-400">{detail}</p>
+        </div>
+        <button onClick={onClick} disabled={disabled} className="rounded-lg border border-green-400/30 px-4 py-2 text-sm text-green-300 disabled:opacity-50">
+          {actionLabel}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function PulseRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-gray-900/45 px-4 py-3">
+      <span className="text-xs uppercase tracking-[0.18em] text-gray-500">{label}</span>
+      <span className="text-right font-semibold text-white">{value}</span>
+    </div>
   )
 }
 
