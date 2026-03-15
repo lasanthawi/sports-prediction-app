@@ -385,20 +385,10 @@ export async function generateAssetsForMatches(matches: MatchRecord[]) {
   return generated
 }
 
-export async function publishReadyAssets() {
-  await ensureSchema()
-  const { rows } = await sql<AssetRecord>`
-    SELECT *
-    FROM generated_assets
-    WHERE published_status = 'ready'
-      AND asset_type = 'card'
-    ORDER BY created_at ASC
-    LIMIT 20
-  `
-
+async function publishAssets(rows: AssetRecord[], mode: 'queue-only' | 'webhook') {
   const webhookUrl = process.env.PUBLISH_WEBHOOK_URL
   if (!webhookUrl) {
-    await logAutomationRun('publish_assets', 'skipped', 'PUBLISH_WEBHOOK_URL is not configured', { count: rows.length })
+    await logAutomationRun('publish_assets', 'skipped', 'PUBLISH_WEBHOOK_URL is not configured', { count: rows.length, mode })
     return { published: 0, queued: rows.length, mode: 'queue-only', assets: rows }
   }
 
@@ -436,8 +426,35 @@ export async function publishReadyAssets() {
     }
   }
 
-  await logAutomationRun('publish_assets', 'success', `Processed ${rows.length} assets`, { published, queued: rows.length })
+  await logAutomationRun('publish_assets', 'success', `Processed ${rows.length} assets`, { published, queued: rows.length, mode })
   return { published, queued: rows.length, mode: 'webhook', assets: rows }
+}
+
+export async function publishReadyAssets() {
+  await ensureSchema()
+  const { rows } = await sql<AssetRecord>`
+    SELECT *
+    FROM generated_assets
+    WHERE published_status = 'ready'
+      AND asset_type = 'card'
+    ORDER BY created_at ASC
+    LIMIT 20
+  `
+
+  return publishAssets(rows, 'queue-only')
+}
+
+export async function publishMatchAssets(matchId: number) {
+  await ensureSchema()
+  const { rows } = await sql<AssetRecord>`
+    SELECT *
+    FROM generated_assets
+    WHERE match_id = ${matchId}
+      AND asset_type = 'card'
+    ORDER BY asset_variant ASC, created_at DESC
+  `
+
+  return publishAssets(rows, 'webhook')
 }
 
 export async function runAutomationPipeline() {

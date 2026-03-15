@@ -7,9 +7,20 @@ import MatchCard from './components/MatchCard'
 
 interface MatchRecord {
   id: number
+  team1: string
+  team2: string
+  sport: string
+  league?: string | null
+  venue?: string | null
+  match_time: string
   status: 'upcoming' | 'live' | 'finished' | 'cancelled'
   poll_team1_votes: number
   poll_team2_votes: number
+  result_summary?: string | null
+  rivalry_tagline?: string | null
+  team1_logo?: string | null
+  team2_logo?: string | null
+  card_asset_url?: string | null
 }
 
 export default function Home() {
@@ -93,7 +104,7 @@ export default function Home() {
         ) : (
           <div className="grid justify-items-center gap-8 md:grid-cols-2 xl:grid-cols-3">
             {matches.map((match) => (
-              <MatchCard key={match.id} match={match as any} onVote={() => void fetchMatches()} />
+              <MatchCard key={match.id} match={match} onVote={() => void fetchMatches()} />
             ))}
           </div>
         )}

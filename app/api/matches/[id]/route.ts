@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { generateAssetsForMatches, regenerateAssetBundle } from '@/lib/automation'
+import { generateAssetsForMatches, publishMatchAssets, regenerateAssetBundle } from '@/lib/automation'
 import { AssetVariant, MatchUpdateInput } from '@/lib/types'
 import { deleteMatch, getMatch, updateMatch } from '@/lib/matches'
 
@@ -39,11 +39,11 @@ export async function POST(request: Request, { params }: RouteContext) {
       return NextResponse.json({ error: 'Invalid match id' }, { status: 400 })
     }
 
-    let mode: 'artwork' | 'card' | 'full' = 'full'
+    let mode: 'artwork' | 'card' | 'full' | 'publish' = 'full'
     let variant: AssetVariant | undefined
 
     try {
-      const body = await request.json() as { mode?: 'artwork' | 'card' | 'full'; variant?: AssetVariant | 'all' }
+      const body = await request.json() as { mode?: 'artwork' | 'card' | 'full' | 'publish'; variant?: AssetVariant | 'all' }
       mode = body.mode || 'full'
       variant = body.variant && body.variant !== 'all' ? body.variant : undefined
     } catch {
@@ -53,6 +53,11 @@ export async function POST(request: Request, { params }: RouteContext) {
     const match = await getMatch(id)
     if (!match) {
       return NextResponse.json({ error: 'Match not found' }, { status: 404 })
+    }
+
+    if (mode === 'publish') {
+      const published = await publishMatchAssets(id)
+      return NextResponse.json({ success: true, mode, published })
     }
 
     if (variant) {

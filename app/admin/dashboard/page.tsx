@@ -2,8 +2,9 @@
 
 import Link from 'next/link'
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
-import { Edit3, Image as ImageIcon, LogOut, Plus, RefreshCw, Trash2, Trophy, Users, WandSparkles } from 'lucide-react'
+import { Edit3, Image as ImageIcon, LogOut, Plus, RefreshCw, Send, Trash2, Trophy, Users, WandSparkles } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import MatchCard from '@/app/components/MatchCard'
 
 interface MatchRecord {
   id: number
@@ -155,14 +156,19 @@ export default function AdminDashboard() {
         throw new Error(payload.error || 'Failed to update match')
       }
 
-      setMessage('Match metadata updated and assets regenerated')
+      setMessage('Match metadata updated and card variants regenerated')
       setEditingId(null)
       await fetchMatches()
     })
   }
 
-  async function regenerateAsset(id: number, mode: 'artwork' | 'card' | 'full', variant: 'prediction' | 'result' | 'all', successMessage: string) {
-    await runAction(`regen-${id}-${mode}-${variant}`, async () => {
+  async function runMatchAction(
+    id: number,
+    mode: 'artwork' | 'card' | 'full' | 'publish',
+    variant: 'prediction' | 'result' | 'all',
+    successMessage: string
+  ) {
+    await runAction(`${mode}-${variant}-${id}`, async () => {
       const res = await fetch(`/api/matches/${id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -170,7 +176,7 @@ export default function AdminDashboard() {
       })
       const payload = await res.json()
       if (!res.ok) {
-        throw new Error(payload.error || 'Failed to regenerate asset')
+        throw new Error(payload.error || 'Action failed')
       }
 
       setMessage(successMessage)
@@ -217,13 +223,13 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen p-8">
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto max-w-[1400px]">
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Trophy className="h-10 w-10 text-yellow-400" />
             <div>
               <h1 className="text-4xl font-black text-green-400">Admin Dashboard</h1>
-              <p className="text-gray-400">Manage premium artwork metadata, rendered card variants, and match state.</p>
+              <p className="text-gray-400">Match cards here mirror the home page preview and add card-level controls.</p>
             </div>
           </div>
           <div className="flex gap-3">
@@ -254,17 +260,13 @@ export default function AdminDashboard() {
             <div className="rounded-xl bg-gray-800 p-6">No matches found.</div>
           ) : (
             matches.map((match) => (
-              <div key={match.id} className="overflow-hidden rounded-2xl border border-white/10 bg-gray-800/90 card-glow">
-                <div className="grid gap-0 lg:grid-cols-[300px_1fr]">
-                  <div className="bg-black/30">
-                    {match.card_asset_url ? (
-                      <img src={match.card_asset_url} alt={`${match.team1} vs ${match.team2}`} className="h-full min-h-[340px] w-full object-cover object-top" />
-                    ) : (
-                      <div className="flex min-h-[340px] items-center justify-center text-sm text-gray-400">No generated image yet</div>
-                    )}
+              <div key={match.id} className="rounded-2xl border border-white/10 bg-gray-800/90 p-6 card-glow">
+                <div className="grid gap-6 xl:grid-cols-[400px_1fr]">
+                  <div className="flex justify-center">
+                    <MatchCard match={match} interactive={false} />
                   </div>
 
-                  <div className="p-6">
+                  <div>
                     {editingId === match.id ? (
                       <form onSubmit={(event) => void saveEdit(event, match.id)} className="grid gap-4 md:grid-cols-2">
                         <Field label="Team 1" value={editForm.team1} onChange={(value) => setEditForm((current) => ({ ...current, team1: value }))} />
@@ -322,7 +324,7 @@ export default function AdminDashboard() {
                         </div>
                       </form>
                     ) : (
-                      <div className="space-y-4">
+                      <div className="space-y-5">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div className="max-w-3xl">
                             <h2 className="text-2xl font-black text-white">{match.team1} vs {match.team2}</h2>
@@ -345,22 +347,37 @@ export default function AdminDashboard() {
                           </div>
                         </div>
 
-                        <div className="flex flex-wrap gap-3">
-                          <button onClick={() => startEdit(match)} className="rounded-lg border border-blue-400/40 px-4 py-2 text-blue-300">
-                            <Edit3 size={16} className="mr-2 inline" /> Edit
-                          </button>
-                          <button onClick={() => void regenerateAsset(match.id, 'artwork', 'prediction', 'Prediction artwork regenerated')} disabled={busyMap[`regen-${match.id}-artwork-prediction`]} className="rounded-lg border border-purple-400/40 px-4 py-2 text-purple-300 disabled:opacity-60">
+                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                          <ActionButton onClick={() => startEdit(match)} tone="border-blue-400/40 text-blue-300">
+                            <Edit3 size={16} className="mr-2 inline" /> Edit Metadata
+                          </ActionButton>
+                          <ActionButton onClick={() => void runMatchAction(match.id, 'artwork', 'prediction', 'Prediction artwork regenerated')} disabled={busyMap[`artwork-prediction-${match.id}`]} tone="border-purple-400/40 text-purple-300">
                             <ImageIcon size={16} className="mr-2 inline" /> Regenerate Art
-                          </button>
-                          <button onClick={() => void regenerateAsset(match.id, 'full', 'all', 'Prediction and result cards regenerated')} disabled={busyMap[`regen-${match.id}-full-all`]} className="rounded-lg border border-yellow-400/40 px-4 py-2 text-yellow-300 disabled:opacity-60">
+                          </ActionButton>
+                          <ActionButton onClick={() => void runMatchAction(match.id, 'full', 'all', 'Prediction and result cards regenerated')} disabled={busyMap[`full-all-${match.id}`]} tone="border-yellow-400/40 text-yellow-300">
                             <WandSparkles size={16} className="mr-2 inline" /> Regenerate Full Card Set
-                          </button>
-                          <button onClick={() => void removeMatch(match.id)} disabled={busyMap[`delete-${match.id}`]} className="rounded-lg border border-red-400/40 px-4 py-2 text-red-300 disabled:opacity-60">
-                            <Trash2 size={16} className="mr-2 inline" /> Delete
-                          </button>
-                          {match.prediction_artwork_url ? <a href={match.prediction_artwork_url} target="_blank" className="rounded-lg border border-cyan-400/40 px-4 py-2 text-cyan-300">Preview Prediction Art</a> : null}
-                          {match.prediction_card_url ? <a href={match.prediction_card_url} target="_blank" className="rounded-lg border border-fuchsia-400/40 px-4 py-2 text-fuchsia-300">Preview Prediction Card</a> : null}
-                          {match.result_card_url ? <a href={match.result_card_url} target="_blank" className="rounded-lg border border-green-400/40 px-4 py-2 text-green-300">Preview Result Card</a> : null}
+                          </ActionButton>
+                          <ActionButton onClick={() => void runMatchAction(match.id, 'publish', 'all', 'Match assets published')} disabled={busyMap[`publish-all-${match.id}`]} tone="border-emerald-400/40 text-emerald-300">
+                            <Send size={16} className="mr-2 inline" /> Publish Match Assets
+                          </ActionButton>
+                          <ActionButton onClick={() => void removeMatch(match.id)} disabled={busyMap[`delete-${match.id}`]} tone="border-red-400/40 text-red-300">
+                            <Trash2 size={16} className="mr-2 inline" /> Delete Match
+                          </ActionButton>
+                          {match.prediction_card_url ? (
+                            <a href={match.prediction_card_url} target="_blank" className="rounded-lg border border-fuchsia-400/40 px-4 py-3 text-fuchsia-300">
+                              Open Prediction Card
+                            </a>
+                          ) : null}
+                          {match.result_card_url ? (
+                            <a href={match.result_card_url} target="_blank" className="rounded-lg border border-green-400/40 px-4 py-3 text-green-300">
+                              Open Result Card
+                            </a>
+                          ) : null}
+                          {match.prediction_artwork_url ? (
+                            <a href={match.prediction_artwork_url} target="_blank" className="rounded-lg border border-cyan-400/40 px-4 py-3 text-cyan-300">
+                              Open Raw Artwork
+                            </a>
+                          ) : null}
                         </div>
                       </div>
                     )}
@@ -386,6 +403,24 @@ function StatCard({ label, value, icon }: { label: string; value: string; icon: 
         {icon}
       </div>
     </div>
+  )
+}
+
+function ActionButton({
+  children,
+  onClick,
+  tone,
+  disabled,
+}: {
+  children: ReactNode
+  onClick: () => void
+  tone: string
+  disabled?: boolean
+}) {
+  return (
+    <button onClick={onClick} disabled={disabled} className={`rounded-lg border px-4 py-3 text-left disabled:opacity-60 ${tone}`}>
+      {children}
+    </button>
   )
 }
 

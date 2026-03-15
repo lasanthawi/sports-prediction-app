@@ -138,7 +138,8 @@ export async function ensureSchema() {
   await sql`ALTER TABLE generated_assets ADD COLUMN IF NOT EXISTS source_asset_id INTEGER REFERENCES generated_assets(id) ON DELETE SET NULL`
 
   await sql`
-    DROP INDEX IF EXISTS generated_assets_match_id_asset_type_format_key;
+    ALTER TABLE generated_assets
+    DROP CONSTRAINT IF EXISTS generated_assets_match_id_asset_type_format_key;
   `
 
   await sql`
