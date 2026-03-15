@@ -3,6 +3,8 @@ import { sql } from '@vercel/postgres'
 import { cookies } from 'next/headers'
 import { ensureSchema } from '@/lib/db'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     await ensureSchema()

@@ -3,6 +3,8 @@ import { sql } from '@vercel/postgres'
 import { createHash } from 'crypto'
 import { ensureSchema } from '@/lib/db'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: Request) {
   try {
     await ensureSchema()
@@ -44,6 +46,7 @@ export async function POST(request: Request) {
     // Set cookie
     response.cookies.set('session', sessionToken, {
       httpOnly: true,
+      path: '/',
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       expires: expiresAt

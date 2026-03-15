@@ -3,6 +3,8 @@ import { sql } from '@vercel/postgres'
 import { cookies } from 'next/headers'
 import { ensureSchema } from '@/lib/db'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST() {
   try {
     await ensureSchema()
@@ -14,7 +16,7 @@ export async function POST() {
     }
     
     const response = NextResponse.json({ success: true })
-    response.cookies.delete('session')
+    response.cookies.delete({ name: 'session', path: '/' })
     
     return response
   } catch (error) {

@@ -27,10 +27,11 @@ export default function Login() {
 
       if (res.ok) {
         if (data.user.role === 'admin') {
-          router.push('/admin/dashboard')
+          router.replace('/admin')
         } else {
-          router.push('/player/dashboard')
+          router.replace('/player/dashboard')
         }
+        router.refresh()
       } else {
         setError(data.error || 'Login failed')
       }

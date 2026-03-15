@@ -17,7 +17,7 @@ export default function AdminDashboard() {
   }, [])
 
   const checkAuth = async () => {
-    const res = await fetch('/api/auth/me')
+    const res = await fetch('/api/auth/me', { cache: 'no-store' })
     const data = await res.json()
     
     if (!data.user || data.user.role !== 'admin') {
@@ -30,7 +30,7 @@ export default function AdminDashboard() {
 
   const fetchMatches = async () => {
     try {
-      const res = await fetch('/api/matches')
+      const res = await fetch('/api/matches', { cache: 'no-store' })
       const data = await res.json()
       setMatches(data.matches || [])
     } catch (error) {

@@ -16,7 +16,7 @@ export default function PlayerDashboard() {
   }, [])
 
   const checkAuth = async () => {
-    const res = await fetch('/api/auth/me')
+    const res = await fetch('/api/auth/me', { cache: 'no-store' })
     const data = await res.json()
     
     if (!data.user) {
@@ -28,7 +28,7 @@ export default function PlayerDashboard() {
   }
 
   const fetchMatches = async () => {
-    const res = await fetch('/api/matches')
+    const res = await fetch('/api/matches', { cache: 'no-store' })
     const data = await res.json()
     setMatches(data.matches || [])
   }
