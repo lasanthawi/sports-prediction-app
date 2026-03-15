@@ -47,6 +47,22 @@ interface AutomationRun {
   started_at: string
 }
 
+interface FeedQueueItem {
+  id: number
+  external_id: string
+  provider: string
+  source: string
+  sport: string
+  league: string | null
+  team1: string
+  team2: string
+  match_time: string
+  venue: string | null
+  status: MatchStatus
+  sync_status: 'queued' | 'imported' | 'dismissed'
+  imported_match_id: number | null
+}
+
 const initialForm = {
   team1: '',
   team2: '',
@@ -89,6 +105,7 @@ const emptyEditForm = {
 export default function AdminPage() {
   const [matches, setMatches] = useState<MatchRecord[]>([])
   const [runs, setRuns] = useState<AutomationRun[]>([])
+  const [feedQueue, setFeedQueue] = useState<FeedQueueItem[]>([])
   const [formData, setFormData] = useState(initialForm)
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(true)
@@ -118,6 +135,7 @@ export default function AdminPage() {
     .sort((a, b) => (b.poll_team1_votes + b.poll_team2_votes) - (a.poll_team1_votes + a.poll_team2_votes))
     .slice(0, 2)
   const recentRuns = runs.slice(0, 4)
+  const queuedFeedItems = feedQueue.filter((item) => item.sync_status === 'queued')
 
   useEffect(() => {
     void refreshDashboard()
@@ -126,15 +144,18 @@ export default function AdminPage() {
   async function refreshDashboard() {
     setLoading(true)
     try {
-      const [matchesRes, runsRes] = await Promise.all([
+      const [matchesRes, runsRes, queueRes] = await Promise.all([
         fetch('/api/matches?includeAll=1', { cache: 'no-store' }),
         fetch('/api/automation/runs', { cache: 'no-store' }),
+        fetch('/api/feed/queue', { cache: 'no-store' }),
       ])
 
       const matchesPayload = await matchesRes.json()
       const runsPayload = await runsRes.json()
+      const queuePayload = await queueRes.json()
       setMatches(matchesPayload.matches || [])
       setRuns(runsPayload.runs || [])
+      setFeedQueue(queuePayload.items || [])
       setMatchPage(1)
       setRunsPage(1)
     } catch (error) {
@@ -323,6 +344,23 @@ export default function AdminPage() {
     }
   }
 
+  async function handleFeedQueueAction(id: number, action: 'import' | 'generate' | 'publish' | 'dismiss', successMessage: string) {
+    await runAction(`feed-${action}-${id}`, async () => {
+      const res = await fetch(`/api/feed/queue/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      })
+      const payload = await res.json()
+      if (!res.ok) {
+        throw new Error(payload.error || 'Feed queue action failed')
+      }
+
+      setMessage(successMessage)
+      await refreshDashboard()
+    })
+  }
+
   return (
     <div className="min-h-screen p-6 md:p-8">
       <div className="mx-auto flex max-w-[1450px] flex-col gap-8">
@@ -494,10 +532,85 @@ export default function AdminPage() {
         {activeTab === 'automation' ? (
         <section className="grid gap-4 md:grid-cols-5">
           <ActionCard title="Initialize DB" description="Creates and migrates required tables." icon={<Database className="h-5 w-5" />} onClick={() => void runJob('setup', '/api/admin/setup', 'Database tables are ready')} busy={jobState.setup} />
-          <ActionCard title="Sync Feed" description="Pull fixtures and visual metadata from SPORTS_SYNC_FEED_URL." icon={<RefreshCw className="h-5 w-5" />} onClick={() => void runJob('sync', '/api/automation/sync', 'Feed sync completed')} busy={jobState.sync} />
+          <ActionCard title="Sync Feed" description="Fetch real upcoming fixtures into the admin staging queue." icon={<RefreshCw className="h-5 w-5" />} onClick={() => void runJob('sync', '/api/automation/sync', 'Feed sync completed and queue refreshed')} busy={jobState.sync} />
           <ActionCard title="Generate Assets" description="Generate artwork plus prediction/result card variants." icon={<PlayCircle className="h-5 w-5" />} onClick={() => void runJob('assets', '/api/automation/assets', 'Assets generated')} busy={jobState.assets} />
           <ActionCard title="Run Pipeline" description="Sync, generate, and publish rendered cards in one flow." icon={<Rocket className="h-5 w-5" />} onClick={() => void runJob('pipeline', '/api/automation/run', 'Automation pipeline completed')} busy={jobState.pipeline} />
           <ActionCard title="Publish" description="Send final rendered cards to your webhook." icon={<Rocket className="h-5 w-5" />} onClick={() => void runJob('publish', '/api/automation/publish', 'Publish job completed')} busy={jobState.publish} />
+        </section>
+        ) : null}
+
+        {activeTab === 'automation' ? (
+        <section className="rounded-2xl border border-green-400/20 bg-gray-800/80 p-6">
+          <div className="mb-5 flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-bold">Feed Staging Queue</h2>
+              <p className="mt-1 text-sm text-gray-400">
+                Sync pulls real upcoming fixtures into this inbox first. Review them here, then import, generate, or publish one by one.
+              </p>
+            </div>
+            <div className="text-right text-sm text-gray-400">
+              <p>{queuedFeedItems.length} queued</p>
+              <p>{feedQueue.length} total items</p>
+            </div>
+          </div>
+
+          {feedQueue.length === 0 ? (
+            <p className="text-gray-400">No staged feed items yet. Click `Sync Feed` to fetch upcoming matches from the configured provider.</p>
+          ) : (
+            <div className="space-y-4">
+              {feedQueue.slice(0, 8).map((item) => (
+                <div key={item.id} className="rounded-xl border border-white/10 bg-gray-900/70 p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      <p className="text-lg font-bold text-white">{item.team1} vs {item.team2}</p>
+                      <p className="text-sm text-gray-400">
+                        {item.sport}
+                        {item.league ? ` · ${item.league}` : ''}
+                        {item.venue ? ` · ${item.venue}` : ''}
+                      </p>
+                      <p className="mt-2 text-xs uppercase tracking-[0.18em] text-gray-500">
+                        {item.provider} · {item.source} · {new Date(item.match_time).toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-2 text-xs font-bold uppercase tracking-[0.18em] text-cyan-200">
+                      {item.sync_status}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 md:grid-cols-4">
+                    <ActionButton
+                      onClick={() => void handleFeedQueueAction(item.id, 'import', 'Feed item imported to matches')}
+                      disabled={item.sync_status !== 'queued' || jobState[`feed-import-${item.id}`]}
+                      tone="border-blue-400/40 text-blue-300"
+                    >
+                      Import Match
+                    </ActionButton>
+                    <ActionButton
+                      onClick={() => void handleFeedQueueAction(item.id, 'generate', 'Feed item imported and asset generation started')}
+                      disabled={item.sync_status !== 'queued' || jobState[`feed-generate-${item.id}`]}
+                      tone="border-purple-400/40 text-purple-300"
+                    >
+                      Import + Generate
+                    </ActionButton>
+                    <ActionButton
+                      onClick={() => void handleFeedQueueAction(item.id, 'publish', 'Feed item imported, generated, and published')}
+                      disabled={item.sync_status !== 'queued' || jobState[`feed-publish-${item.id}`]}
+                      tone="border-emerald-400/40 text-emerald-300"
+                    >
+                      Publish Now
+                    </ActionButton>
+                    <ActionButton
+                      onClick={() => void handleFeedQueueAction(item.id, 'dismiss', 'Feed item dismissed')}
+                      disabled={item.sync_status !== 'queued' || jobState[`feed-dismiss-${item.id}`]}
+                      tone="border-red-400/40 text-red-300"
+                    >
+                      Dismiss
+                    </ActionButton>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
         ) : null}
 

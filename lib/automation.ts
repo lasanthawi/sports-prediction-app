@@ -1,8 +1,9 @@
 import { sql } from '@vercel/postgres'
 import { ensureSchema } from './db'
+import { fetchConfiguredFeedMatches, stageFeedMatches } from './feed'
 import { buildGeminiPrompt, generateGeminiPortraitArtwork, getPromptVersion } from './gemini'
-import { getMatch, refreshDerivedMatchStatuses, upsertFeedMatches } from './matches'
-import { AssetRecord, AssetVariant, FeedMatch, MatchRecord } from './types'
+import { getMatch } from './matches'
+import { AssetRecord, AssetVariant, MatchRecord } from './types'
 
 const DEFAULT_WEBHOOK_TIMEOUT_MS = 10000
 const RENDER_RECIPE_VERSION = 'portrait-card-v1'
@@ -302,51 +303,7 @@ export async function logAutomationRun(jobName: string, status: string, summary:
 }
 
 export async function fetchFeedMatches() {
-  const feedUrl = process.env.SPORTS_SYNC_FEED_URL
-  if (!feedUrl) {
-    return []
-  }
-
-  const res = await fetch(feedUrl, {
-    headers: { Accept: 'application/json' },
-    cache: 'no-store',
-  })
-
-  if (!res.ok) {
-    throw new Error(`Feed request failed with ${res.status}`)
-  }
-
-  const payload = await res.json()
-  const rawItems = Array.isArray(payload) ? payload : payload.matches
-
-  if (!Array.isArray(rawItems)) {
-    throw new Error('Feed response must be an array or an object with a matches array')
-  }
-
-  return rawItems.map((item: Record<string, unknown>, index: number): FeedMatch => ({
-    externalId: String(item.externalId || item.id || `feed-${index}`),
-    source: String(item.source || 'feed'),
-    sport: String(item.sport || 'Football'),
-    league: item.league ? String(item.league) : null,
-    team1: String(item.team1 || item.homeTeam || ''),
-    team2: String(item.team2 || item.awayTeam || ''),
-    matchTime: String(item.matchTime || item.match_time || item.startsAt || ''),
-    venue: item.venue ? String(item.venue) : null,
-    team1Logo: item.team1Logo ? String(item.team1Logo) : null,
-    team2Logo: item.team2Logo ? String(item.team2Logo) : null,
-    team1Captain: item.team1Captain ? String(item.team1Captain) : null,
-    team2Captain: item.team2Captain ? String(item.team2Captain) : null,
-    team1Palette: item.team1Palette ? String(item.team1Palette) : null,
-    team2Palette: item.team2Palette ? String(item.team2Palette) : null,
-    team1FlagColors: item.team1FlagColors ? String(item.team1FlagColors) : null,
-    team2FlagColors: item.team2FlagColors ? String(item.team2FlagColors) : null,
-    creativeDirection: item.creativeDirection ? String(item.creativeDirection) : null,
-    rivalryTagline: item.rivalryTagline ? String(item.rivalryTagline) : null,
-    artStyle: item.artStyle ? String(item.artStyle) : null,
-    status: (item.status as FeedMatch['status']) || 'upcoming',
-    winner: typeof item.winner === 'number' ? item.winner : null,
-    resultSummary: item.resultSummary ? String(item.resultSummary) : null,
-  }))
+  return fetchConfiguredFeedMatches()
 }
 
 export async function syncMatchesFromFeed() {
@@ -354,16 +311,15 @@ export async function syncMatchesFromFeed() {
   const feedMatches = await fetchFeedMatches()
 
   if (!feedMatches.length) {
-    await logAutomationRun('sync_matches', 'skipped', 'No feed configured or feed returned no matches', { count: 0 })
-    return { count: 0, matches: [] as MatchRecord[], skipped: true }
+    await logAutomationRun('sync_matches', 'skipped', 'No feed configured or provider returned no matches', { count: 0 })
+    return { count: 0, staged: [] as unknown[], skipped: true }
   }
 
-  const matches = await upsertFeedMatches(feedMatches)
-  await refreshDerivedMatchStatuses()
-  await generateAssetsForMatches(matches)
-  await logAutomationRun('sync_matches', 'success', `Synced ${matches.length} matches from feed`, { count: matches.length })
+  const provider = (process.env.SPORTS_SYNC_PROVIDER || (process.env.SPORTS_SYNC_FEED_URL ? 'custom' : 'thesportsdb')).trim() || 'feed'
+  const staged = await stageFeedMatches(feedMatches, provider)
+  await logAutomationRun('sync_matches', 'success', `Fetched and staged ${staged.length} feed matches`, { count: staged.length, provider })
 
-  return { count: matches.length, matches, skipped: false }
+  return { count: staged.length, staged, skipped: false }
 }
 
 export async function generateAssetsForMatches(matches: MatchRecord[]) {
@@ -460,7 +416,7 @@ export async function publishMatchAssets(matchId: number) {
 export async function runAutomationPipeline() {
   await ensureSchema()
   const sync = await syncMatchesFromFeed()
-  const assets = sync.matches.length ? await generateAssetsForMatches(sync.matches) : []
+  const assets = [] as AssetRecord[]
   const publish = await publishReadyAssets()
 
   await logAutomationRun('run_pipeline', 'success', 'Ran sync, asset generation, and publish pipeline', {

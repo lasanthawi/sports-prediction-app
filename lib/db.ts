@@ -160,6 +160,44 @@ export async function ensureSchema() {
   `
 
   await sql`
+    CREATE TABLE IF NOT EXISTS feed_sync_items (
+      id SERIAL PRIMARY KEY,
+      external_id TEXT NOT NULL UNIQUE,
+      provider TEXT NOT NULL DEFAULT 'custom',
+      source TEXT NOT NULL DEFAULT 'feed',
+      sport TEXT NOT NULL,
+      league TEXT,
+      team1 TEXT NOT NULL,
+      team2 TEXT NOT NULL,
+      team1_logo TEXT,
+      team2_logo TEXT,
+      team1_captain TEXT,
+      team2_captain TEXT,
+      team1_palette TEXT,
+      team2_palette TEXT,
+      team1_flag_colors TEXT,
+      team2_flag_colors TEXT,
+      creative_direction TEXT,
+      rivalry_tagline TEXT,
+      art_style TEXT,
+      match_time TIMESTAMPTZ NOT NULL,
+      venue TEXT,
+      status TEXT NOT NULL DEFAULT 'upcoming',
+      result_summary TEXT,
+      winner SMALLINT,
+      sync_status TEXT NOT NULL DEFAULT 'queued',
+      imported_match_id INTEGER REFERENCES matches(id) ON DELETE SET NULL,
+      payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+      last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      CONSTRAINT feed_sync_items_status_check CHECK (status IN ('upcoming', 'live', 'finished', 'cancelled')),
+      CONSTRAINT feed_sync_items_sync_status_check CHECK (sync_status IN ('queued', 'imported', 'dismissed')),
+      CONSTRAINT feed_sync_items_winner_check CHECK (winner IN (1, 2) OR winner IS NULL)
+    )
+  `
+
+  await sql`
     CREATE OR REPLACE FUNCTION set_updated_at()
     RETURNS TRIGGER AS $$
     BEGIN
@@ -222,6 +260,14 @@ export async function ensureSchema() {
   await sql`
     CREATE TRIGGER set_generated_assets_updated_at
     BEFORE UPDATE ON generated_assets
+    FOR EACH ROW
+    EXECUTE FUNCTION set_updated_at();
+  `
+
+  await sql`DROP TRIGGER IF EXISTS set_feed_sync_items_updated_at ON feed_sync_items`
+  await sql`
+    CREATE TRIGGER set_feed_sync_items_updated_at
+    BEFORE UPDATE ON feed_sync_items
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
   `

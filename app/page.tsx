@@ -37,6 +37,21 @@ export default function Home() {
     void fetchMatches()
   }, [])
 
+  useEffect(() => {
+    const previousBodyOverflow = document.body.style.overflow
+    const previousHtmlOverflow = document.documentElement.style.overflow
+
+    if (votingMode) {
+      document.body.style.overflow = 'hidden'
+      document.documentElement.style.overflow = 'hidden'
+    }
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow
+      document.documentElement.style.overflow = previousHtmlOverflow
+    }
+  }, [votingMode])
+
   async function fetchMatches() {
     try {
       const res = await fetch('/api/matches', { cache: 'no-store' })
@@ -426,11 +441,11 @@ function MobileVotingOverlay({
             </div>
             <div className="no-scrollbar flex flex-1 snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-hidden pb-2">
               {voteMatches.map((match) => (
-                <div key={match.id} className="flex w-[calc(100vw-2rem)] shrink-0 snap-center items-center justify-center">
+                <div key={match.id} className="flex h-full w-[calc(100vw-2rem)] shrink-0 snap-center items-center justify-center">
                   <MatchCard
                     match={match}
                     onVote={() => void onVote()}
-                    className="!max-w-[min(92vw,26rem)] !min-h-[calc(100dvh-8.75rem)]"
+                    className="!h-[calc(100dvh-8.75rem)] !min-h-0 !w-full !max-w-[min(100%,26rem)]"
                   />
                 </div>
               ))}

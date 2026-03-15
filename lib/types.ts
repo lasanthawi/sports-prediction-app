@@ -1,4 +1,5 @@
 export type MatchStatus = 'upcoming' | 'live' | 'finished' | 'cancelled'
+export type FeedQueueStatus = 'queued' | 'imported' | 'dismissed'
 
 export type AssetType = 'artwork' | 'card'
 export type AssetVariant = 'prediction' | 'result'
@@ -152,4 +153,37 @@ export interface FeedMatch {
   status?: MatchStatus
   winner?: number | null
   resultSummary?: string | null
+}
+
+export interface FeedQueueRecord {
+  id: number
+  external_id: string
+  provider: string
+  source: string
+  sport: string
+  league: string | null
+  team1: string
+  team2: string
+  team1_logo: string | null
+  team2_logo: string | null
+  team1_captain: string | null
+  team2_captain: string | null
+  team1_palette: string | null
+  team2_palette: string | null
+  team1_flag_colors: string | null
+  team2_flag_colors: string | null
+  creative_direction: string | null
+  rivalry_tagline: string | null
+  art_style: string | null
+  match_time: string
+  venue: string | null
+  status: MatchStatus
+  result_summary: string | null
+  winner: number | null
+  sync_status: FeedQueueStatus
+  imported_match_id: number | null
+  payload: unknown
+  last_seen_at: string
+  created_at: string
+  updated_at: string
 }
