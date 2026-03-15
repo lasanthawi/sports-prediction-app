@@ -1,12 +1,13 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
-import { ArrowLeft, CheckCircle2, Database, Edit3, Image as ImageIcon, PlayCircle, Plus, RefreshCw, Rocket, Send, Trash2, Trophy, WandSparkles } from 'lucide-react'
+import { useEffect, useState, type Dispatch, type FormEvent, type ReactNode, type SetStateAction } from 'react'
+import { ArrowLeft, CheckCircle2, ChevronDown, Database, Edit3, Image as ImageIcon, MoreHorizontal, PlayCircle, Plus, RefreshCw, Rocket, Search, Send, Square, Trash2, Trophy, WandSparkles } from 'lucide-react'
 import MatchCard from '@/app/components/MatchCard'
 
 type MatchStatus = 'upcoming' | 'live' | 'finished' | 'cancelled'
 type AdminTab = 'overview' | 'create' | 'matches' | 'automation'
+type MatchView = 'matches' | 'results'
 
 interface MatchRecord {
   id: number
@@ -117,12 +118,14 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview')
   const [matchPage, setMatchPage] = useState(1)
   const [runsPage, setRunsPage] = useState(1)
+  const [matchQuery, setMatchQuery] = useState('')
+  const [matchSort, setMatchSort] = useState<'newest' | 'oldest' | 'live-first'>('newest')
+  const [matchView, setMatchView] = useState<MatchView>('matches')
+  const [selectedMatchIds, setSelectedMatchIds] = useState<number[]>([])
 
-  const matchesPerPage = 6
+  const matchesPerPage = 5
   const runsPerPage = 6
-  const totalMatchPages = Math.max(1, Math.ceil(matches.length / matchesPerPage))
   const totalRunPages = Math.max(1, Math.ceil(runs.length / runsPerPage))
-  const visibleMatches = matches.slice((matchPage - 1) * matchesPerPage, matchPage * matchesPerPage)
   const visibleRuns = runs.slice((runsPage - 1) * runsPerPage, runsPage * runsPerPage)
   const upcomingMatches = matches.filter((match) => match.status === 'upcoming')
   const liveMatches = matches.filter((match) => match.status === 'live')
@@ -137,10 +140,67 @@ export default function AdminPage() {
     .slice(0, 2)
   const recentRuns = runs.slice(0, 4)
   const queuedFeedItems = feedQueue.filter((item) => item.sync_status === 'queued')
+  const viewMatches = matches.filter((match) => (
+    matchView === 'results'
+      ? match.status === 'finished'
+      : match.status !== 'finished'
+  ))
+  const filteredMatches = viewMatches
+    .filter((match) => {
+      const haystack = [
+        match.team1,
+        match.team2,
+        match.sport,
+        match.league,
+        match.venue,
+        match.source,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+      return haystack.includes(matchQuery.trim().toLowerCase())
+    })
+    .sort((a, b) => {
+      if (matchSort === 'oldest') {
+        return new Date(a.match_time).getTime() - new Date(b.match_time).getTime()
+      }
+      if (matchSort === 'live-first') {
+        const weight = (match: MatchRecord) => {
+          if (match.status === 'live') return 0
+          if (match.status === 'upcoming') return 1
+          if (match.status === 'finished') return 2
+          return 3
+        }
+        return weight(a) - weight(b) || new Date(b.match_time).getTime() - new Date(a.match_time).getTime()
+      }
+      return new Date(b.match_time).getTime() - new Date(a.match_time).getTime()
+    })
+  const totalMatchPages = Math.max(1, Math.ceil(filteredMatches.length / matchesPerPage))
+  const visibleMatches = filteredMatches.slice((matchPage - 1) * matchesPerPage, matchPage * matchesPerPage)
+  const featuredMatch = visibleMatches[0] || null
+  const secondaryMatches = visibleMatches.slice(1)
+  const allVisibleSelected = visibleMatches.length > 0 && visibleMatches.every((match) => selectedMatchIds.includes(match.id))
 
   useEffect(() => {
     void refreshDashboard()
   }, [])
+
+  useEffect(() => {
+    setMatchPage(1)
+  }, [matchQuery, matchSort, matchView])
+
+  useEffect(() => {
+    setSelectedMatchIds((current) => {
+      const next = current.filter((id) => filteredMatches.some((match) => match.id === id))
+      return next.length === current.length && next.every((id, index) => id === current[index]) ? current : next
+    })
+  }, [filteredMatches])
+
+  useEffect(() => {
+    if (matchPage > totalMatchPages) {
+      setMatchPage(totalMatchPages)
+    }
+  }, [matchPage, totalMatchPages])
 
   async function refreshDashboard() {
     setLoading(true)
@@ -247,6 +307,23 @@ export default function AdminPage() {
     setEditForm(emptyEditForm)
   }
 
+  function toggleMatchSelection(id: number) {
+    setSelectedMatchIds((current) => (
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
+    ))
+  }
+
+  function toggleVisibleSelection() {
+    setSelectedMatchIds((current) => {
+      if (allVisibleSelected) {
+        return current.filter((id) => !visibleMatches.some((match) => match.id === id))
+      }
+      const next = new Set(current)
+      visibleMatches.forEach((match) => next.add(match.id))
+      return Array.from(next)
+    })
+  }
+
   async function saveEdit(event: FormEvent<HTMLFormElement>, id: number) {
     event.preventDefault()
     await runAction(`save-${id}`, async () => {
@@ -270,6 +347,51 @@ export default function AdminPage() {
       setMessage('Match updated and assets regenerated')
       setEditingId(null)
       await refreshDashboard()
+    })
+  }
+
+  async function bulkRun(action: 'generate' | 'publish' | 'live' | 'delete') {
+    if (selectedMatchIds.length === 0) {
+      setMessage('Select at least one match first')
+      return
+    }
+
+    await runAction(`bulk-${action}`, async () => {
+      const requests = selectedMatchIds.map(async (id) => {
+        if (action === 'generate') {
+          await fetch(`/api/matches/${id}?mode=full&variant=all`, { method: 'POST' })
+          return
+        }
+
+        if (action === 'publish') {
+          await fetch(`/api/matches/${id}?mode=publish&variant=all`, { method: 'POST' })
+          return
+        }
+
+        if (action === 'live') {
+          await fetch(`/api/matches/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'live' }),
+          })
+          return
+        }
+
+        await fetch(`/api/matches/${id}`, { method: 'DELETE' })
+      })
+
+      await Promise.all(requests)
+      setSelectedMatchIds([])
+      await refreshDashboard()
+      setMessage(
+        action === 'generate'
+          ? 'Selected matches queued for generation'
+          : action === 'publish'
+            ? 'Selected matches sent to publish flow'
+            : action === 'live'
+              ? 'Selected matches marked live'
+              : 'Selected matches deleted',
+      )
     })
   }
 
@@ -534,181 +656,135 @@ export default function AdminPage() {
         <section className="rounded-2xl border border-green-400/20 bg-gray-800/80 p-6">
           <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-bold">Match Operations</h2>
-              <p className="mt-1 text-sm text-gray-400">
-                A cleaner workspace for reviewing match health, generation status, and publishing readiness.
-              </p>
+              <h2 className="text-2xl font-bold text-white">Match Studio</h2>
+              <p className="mt-1 text-sm text-gray-400">Browse, filter, and operate on cards without the layout fighting you.</p>
             </div>
-            <div className="flex flex-wrap gap-3 text-sm">
-              <MiniStat label="Total" value={String(matches.length)} />
-              <MiniStat label="Live" value={String(liveMatches.length)} />
-              <MiniStat label="Upcoming" value={String(upcomingMatches.length)} />
-              <MiniStat label="Page" value={`${matchPage}/${totalMatchPages}`} />
+            <div className="flex gap-3">
+              <button onClick={() => setActiveTab('create')} className="rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 text-sm font-semibold text-cyan-100 transition hover:border-cyan-300/60 hover:text-white">
+                <Plus size={16} className="mr-2 inline" /> Create Match
+              </button>
+              <button onClick={() => void refreshDashboard()} className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-gray-200 transition hover:border-white/20 hover:text-white">
+                <RefreshCw size={16} className="mr-2 inline" /> Refresh
+              </button>
             </div>
           </div>
 
-          {loading ? (
-            <p className="text-gray-400">Loading matches...</p>
-          ) : matches.length === 0 ? (
-            <p className="text-gray-400">No matches yet. Initialize the DB, then add one manually or sync from a feed.</p>
-          ) : (
-            <div className="space-y-4">
-              {visibleMatches.map((match) => {
-                const isPublished = match.publish_status === 'published'
-                const publishButtonLabel = isPublished ? 'Published' : 'Publish'
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-white/10 bg-gray-900/60 p-4">
+              <div className="relative">
+                <Search size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+                <input
+                  value={matchQuery}
+                  onChange={(event) => setMatchQuery(event.target.value)}
+                  placeholder="Search matches, leagues, venues..."
+                  className="w-full rounded-xl border border-white/10 bg-[#151a2f] py-3 pl-11 pr-4 text-white outline-none transition focus:border-cyan-400/50"
+                />
+              </div>
+            </div>
 
-                return (
-                  <div key={match.id} className="rounded-2xl border border-white/10 bg-gray-900/70 p-4 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
-                    <div className="grid items-start gap-4 xl:grid-cols-[128px_minmax(0,1fr)_340px]">
-                      <div className="flex justify-center xl:justify-start">
-                        <MatchCard match={match} interactive={false} className="!max-w-[7.5rem] !min-h-[13.5rem]" />
-                      </div>
+            <div className="rounded-2xl border border-white/10 bg-gray-900/60 p-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <button onClick={toggleVisibleSelection} className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white transition hover:border-white/20">
+                  {allVisibleSelected ? 'Clear Visible' : 'Select Visible'}
+                </button>
+                <ToolbarButton onClick={() => void bulkRun('generate')} disabled={selectedMatchIds.length === 0 || jobState['bulk-generate']} tone="emerald">Generate Assets</ToolbarButton>
+                <ToolbarButton onClick={() => void bulkRun('publish')} disabled={selectedMatchIds.length === 0 || jobState['bulk-publish']} tone="violet">Publish</ToolbarButton>
+                <ToolbarButton onClick={() => void bulkRun('live')} disabled={selectedMatchIds.length === 0 || jobState['bulk-live']} tone="cyan">Mark Live</ToolbarButton>
+                <ToolbarButton onClick={() => void bulkRun('delete')} disabled={selectedMatchIds.length === 0 || jobState['bulk-delete']} tone="rose">Delete</ToolbarButton>
+                <div className="ml-auto flex items-center gap-3">
+                  <span className="text-xs uppercase tracking-[0.2em] text-gray-500">{selectedMatchIds.length} selected</span>
+                  <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-gray-200">
+                    <span>Sort</span>
+                    <select value={matchSort} onChange={(event) => setMatchSort(event.target.value as 'newest' | 'oldest' | 'live-first')} className="bg-transparent text-white outline-none">
+                      <option value="newest">Newest</option>
+                      <option value="oldest">Oldest</option>
+                      <option value="live-first">Live first</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+            </div>
 
-                      <div>
-                        {editingId === match.id ? (
-                          <form onSubmit={(event) => void saveEdit(event, match.id)} className="grid gap-4 md:grid-cols-2">
-                            <Field label="Team 1" value={editForm.team1} onChange={(value) => setEditForm((current) => ({ ...current, team1: value }))} />
-                            <Field label="Team 2" value={editForm.team2} onChange={(value) => setEditForm((current) => ({ ...current, team2: value }))} />
-                            <Field label="Sport" value={editForm.sport} onChange={(value) => setEditForm((current) => ({ ...current, sport: value }))} />
-                            <Field label="League" value={editForm.league} onChange={(value) => setEditForm((current) => ({ ...current, league: value }))} required={false} />
-                            <Field label="Venue" value={editForm.venue} onChange={(value) => setEditForm((current) => ({ ...current, venue: value }))} required={false} />
-                            <Field label="Match Time" value={editForm.match_time} onChange={(value) => setEditForm((current) => ({ ...current, match_time: value }))} type="datetime-local" />
-                            <Field label="Team 1 Captain" value={editForm.team1_captain} onChange={(value) => setEditForm((current) => ({ ...current, team1_captain: value }))} required={false} />
-                            <Field label="Team 2 Captain" value={editForm.team2_captain} onChange={(value) => setEditForm((current) => ({ ...current, team2_captain: value }))} required={false} />
-                            <Field label="Team 1 Palette" value={editForm.team1_palette} onChange={(value) => setEditForm((current) => ({ ...current, team1_palette: value }))} required={false} />
-                            <Field label="Team 2 Palette" value={editForm.team2_palette} onChange={(value) => setEditForm((current) => ({ ...current, team2_palette: value }))} required={false} />
-                            <Field label="Team 1 Flag Colors" value={editForm.team1_flag_colors} onChange={(value) => setEditForm((current) => ({ ...current, team1_flag_colors: value }))} required={false} />
-                            <Field label="Team 2 Flag Colors" value={editForm.team2_flag_colors} onChange={(value) => setEditForm((current) => ({ ...current, team2_flag_colors: value }))} required={false} />
-                            <Field label="Rivalry Tagline" value={editForm.rivalry_tagline} onChange={(value) => setEditForm((current) => ({ ...current, rivalry_tagline: value }))} required={false} />
-                            <Field label="Art Style" value={editForm.art_style} onChange={(value) => setEditForm((current) => ({ ...current, art_style: value }))} required={false} />
-                            <label className="block">
-                              <span className="mb-2 block text-sm font-bold text-gray-200">Status</span>
-                              <select
-                                value={editForm.status}
-                                onChange={(event) => setEditForm((current) => ({ ...current, status: event.target.value as MatchStatus }))}
-                                className="w-full rounded-lg border border-green-400/30 bg-gray-900 px-4 py-3 outline-none focus:border-green-400"
-                              >
-                                <option value="upcoming">upcoming</option>
-                                <option value="live">live</option>
-                                <option value="finished">finished</option>
-                                <option value="cancelled">cancelled</option>
-                              </select>
-                            </label>
-                            <Field label="Winner (1 or 2)" value={editForm.winner} onChange={(value) => setEditForm((current) => ({ ...current, winner: value }))} required={false} />
-                            <label className="block md:col-span-2">
-                              <span className="mb-2 block text-sm font-bold text-gray-200">Result Summary</span>
-                              <input
-                                value={editForm.result_summary}
-                                onChange={(event) => setEditForm((current) => ({ ...current, result_summary: event.target.value }))}
-                                className="w-full rounded-lg border border-green-400/30 bg-gray-900 px-4 py-3 outline-none focus:border-green-400"
-                              />
-                            </label>
-                            <label className="block md:col-span-2">
-                              <span className="mb-2 block text-sm font-bold text-gray-200">Creative Direction</span>
-                              <textarea
-                                value={editForm.creative_direction}
-                                onChange={(event) => setEditForm((current) => ({ ...current, creative_direction: event.target.value }))}
-                                rows={3}
-                                className="w-full rounded-lg border border-green-400/30 bg-gray-900 px-4 py-3 outline-none focus:border-green-400"
-                              />
-                            </label>
-                            <div className="flex gap-3 md:col-span-2">
-                              <button type="submit" disabled={jobState[`save-${match.id}`]} className="btn-game disabled:cursor-not-allowed disabled:opacity-60">
-                                Save Changes
-                              </button>
-                              <button type="button" onClick={stopEdit} className="rounded-lg border border-white/20 px-4 py-3 text-gray-300">
-                                Cancel
-                              </button>
-                            </div>
-                          </form>
-                        ) : (
-                          <div className="space-y-3">
-                            <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-3">
-                                <h3 className="text-lg font-black text-white">{match.team1} vs {match.team2}</h3>
-                                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[0.65rem] font-bold uppercase tracking-[0.18em] text-gray-300">
-                                  {match.status}
-                                </span>
-                              </div>
-                              <p className="mt-1 text-sm text-gray-400">
-                                {match.sport}
-                                {match.league ? ` · ${match.league}` : ''}
-                                {' · '}
-                                {new Date(match.match_time).toLocaleString()}
-                              </p>
-                              <p className="mt-1 text-xs uppercase tracking-wide text-gray-500">
-                                {match.source}
-                                {match.result_summary ? ` · ${match.result_summary}` : ''}
-                              </p>
-                              <div className="mt-3 flex flex-wrap gap-2">
-                                <StatusBadge label="Fetched" value={match.source === 'manual' ? 'manual' : 'synced'} tone={match.source === 'manual' ? 'slate' : 'cyan'} />
-                                <StatusBadge label="Generated" value={match.asset_generation_status || 'pending'} tone={assetTone(match.asset_generation_status)} />
-                                <StatusBadge label="Published" value={match.publish_status || 'draft'} tone={publishTone(match.publish_status)} />
-                              </div>
-                            </div>
+            <div className="rounded-2xl border border-white/10 bg-gray-900/60">
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 px-4 py-4">
+                <div className="flex items-center gap-3">
+                  <button onClick={() => setMatchView('matches')} className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${matchView === 'matches' ? 'border border-cyan-400/40 bg-cyan-400/10 text-cyan-100' : 'border border-white/10 bg-white/5 text-gray-300'}`}>
+                    Matches
+                  </button>
+                  <button onClick={() => setMatchView('results')} className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${matchView === 'results' ? 'border border-cyan-400/40 bg-cyan-400/10 text-cyan-100' : 'border border-white/10 bg-white/5 text-gray-300'}`}>
+                    Results
+                  </button>
+                  <span className="text-sm text-gray-400">Showing {filteredMatches.length} total</span>
+                </div>
+                <div className="text-sm text-gray-400">Page {matchPage} of {totalMatchPages}</div>
+              </div>
 
-                            <div className="grid gap-2 md:grid-cols-2">
-                              <InfoStrip label="Venue" value={match.venue || 'TBA'} />
-                              <InfoStrip label="Votes" value={`${match.poll_team1_votes + match.poll_team2_votes}`} />
-                              <InfoStrip label="Prediction Card" value={match.prediction_card_url ? 'Ready' : 'Not generated'} />
-                              <InfoStrip label="Result Card" value={match.result_card_url ? 'Ready' : 'Not generated'} />
-                            </div>
-
-                            {match.rivalry_tagline ? <p className="text-sm text-gray-300">{match.rivalry_tagline}</p> : null}
+              <div className="p-4">
+                {loading ? (
+                  <p className="text-gray-400">Loading matches...</p>
+                ) : filteredMatches.length === 0 ? (
+                  <p className="text-gray-400">No matches found for the current filters.</p>
+                ) : (
+                  <div className="space-y-5">
+                    {featuredMatch ? (
+                      <div className="rounded-2xl border border-white/10 bg-[#12172a]">
+                        {editingId === featuredMatch.id ? (
+                          <div className="p-4">
+                            <MatchEditForm match={featuredMatch} editForm={editForm} setEditForm={setEditForm} onCancel={stopEdit} onSave={(event) => void saveEdit(event, featuredMatch.id)} saving={jobState[`save-${featuredMatch.id}`]} />
                           </div>
+                        ) : (
+                          <FeaturedMatchRow
+                            match={featuredMatch}
+                            selected={selectedMatchIds.includes(featuredMatch.id)}
+                            onSelect={() => toggleMatchSelection(featuredMatch.id)}
+                            onEdit={() => startEdit(featuredMatch)}
+                            onGenerateImage={() => void runMatchAction(featuredMatch.id, 'artwork', 'prediction', 'Individual artwork generation started')}
+                            onGenerateSet={() => void runMatchAction(featuredMatch.id, 'full', 'all', 'Prediction and result cards regenerated')}
+                            onPublish={() => void runMatchAction(featuredMatch.id, 'publish', 'all', featuredMatch.publish_status === 'published' ? 'Match cards are already published' : 'Match assets published')}
+                            onMarkLive={() => void updateMatch(featuredMatch.id, { status: 'live' }, 'Match marked live')}
+                            onFinish={() => void updateMatch(featuredMatch.id, { status: 'finished', winner: featuredMatch.poll_team1_votes >= featuredMatch.poll_team2_votes ? 1 : 2, result_summary: `${featuredMatch.team1} ${featuredMatch.poll_team1_votes} - ${featuredMatch.poll_team2_votes} ${featuredMatch.team2}` }, 'Match marked finished')}
+                            onDelete={() => void removeMatch(featuredMatch.id)}
+                            busy={{ match: !!jobState[`match-${featuredMatch.id}`], image: !!jobState[`artwork-prediction-${featuredMatch.id}`], full: !!jobState[`full-all-${featuredMatch.id}`], publish: !!jobState[`publish-all-${featuredMatch.id}`], delete: !!jobState[`delete-${featuredMatch.id}`] }}
+                          />
                         )}
                       </div>
+                    ) : null}
 
-                      {editingId === match.id ? null : (
-                        <div className="space-y-3">
-                          <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-                            <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">State Controls</p>
-                            <div className="mt-3 grid gap-2 grid-cols-3">
-                              <button onClick={() => void updateMatch(match.id, { status: 'live' }, 'Match marked live')} disabled={jobState[`match-${match.id}`]} className="rounded-lg border border-yellow-400/40 px-3 py-2 text-sm text-yellow-300">Mark Live</button>
-                              <button onClick={() => void updateMatch(match.id, { status: 'finished', winner: match.poll_team1_votes >= match.poll_team2_votes ? 1 : 2, result_summary: `${match.team1} ${match.poll_team1_votes} - ${match.poll_team2_votes} ${match.team2}` }, 'Match marked finished')} disabled={jobState[`match-${match.id}`]} className="rounded-lg border border-green-400/40 px-3 py-2 text-sm text-green-300">Finish</button>
-                              <button onClick={() => void updateMatch(match.id, { status: 'cancelled' }, 'Match cancelled')} disabled={jobState[`match-${match.id}`]} className="rounded-lg border border-red-400/40 px-3 py-2 text-sm text-red-300">Cancel</button>
-                            </div>
+                    {secondaryMatches.length > 0 ? (
+                      <div className="grid gap-4 xl:grid-cols-2">
+                        {secondaryMatches.map((match) => (
+                          <div key={match.id} className="rounded-2xl border border-white/10 bg-[#12172a] p-4">
+                            {editingId === match.id ? (
+                              <MatchEditForm match={match} editForm={editForm} setEditForm={setEditForm} onCancel={stopEdit} onSave={(event) => void saveEdit(event, match.id)} saving={jobState[`save-${match.id}`]} />
+                            ) : (
+                              <CompactMatchCard
+                                match={match}
+                                selected={selectedMatchIds.includes(match.id)}
+                                onSelect={() => toggleMatchSelection(match.id)}
+                                onEdit={() => startEdit(match)}
+                                onGenerate={() => void runMatchAction(match.id, 'artwork', 'prediction', 'Individual artwork generation started')}
+                                onPublish={() => void runMatchAction(match.id, 'publish', 'all', match.publish_status === 'published' ? 'Match cards are already published' : 'Match assets published')}
+                                onMarkLive={() => void updateMatch(match.id, { status: 'live' }, 'Match marked live')}
+                                onDelete={() => void removeMatch(match.id)}
+                                busy={{ image: !!jobState[`artwork-prediction-${match.id}`], publish: !!jobState[`publish-all-${match.id}`], match: !!jobState[`match-${match.id}`], delete: !!jobState[`delete-${match.id}`] }}
+                              />
+                            )}
                           </div>
+                        ))}
+                      </div>
+                    ) : null}
 
-                          <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-                            <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Asset Actions</p>
-                            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                              <ActionButton onClick={() => startEdit(match)} tone="border-blue-400/40 text-blue-300">
-                                <Edit3 size={16} className="mr-2 inline" /> Edit Match
-                              </ActionButton>
-                              <ActionButton onClick={() => void runMatchAction(match.id, 'artwork', 'prediction', 'Individual artwork generation started')} disabled={jobState[`artwork-prediction-${match.id}`]} tone="border-purple-400/40 text-purple-300">
-                                <ImageIcon size={16} className="mr-2 inline" /> Generate Image
-                              </ActionButton>
-                              <ActionButton onClick={() => void runMatchAction(match.id, 'full', 'all', 'Prediction and result cards regenerated')} disabled={jobState[`full-all-${match.id}`]} tone="border-yellow-400/40 text-yellow-300">
-                                <WandSparkles size={16} className="mr-2 inline" /> Generate Full Card Set
-                              </ActionButton>
-                              <ActionButton onClick={() => void runMatchAction(match.id, 'publish', 'all', isPublished ? 'Match cards are already published' : 'Match assets published')} disabled={jobState[`publish-all-${match.id}`] || isPublished} tone={isPublished ? 'border-white/15 text-gray-400' : 'border-emerald-400/40 text-emerald-300'}>
-                                <Send size={16} className="mr-2 inline" /> {publishButtonLabel}
-                              </ActionButton>
-                              {match.prediction_card_url ? (
-                                <a href={match.prediction_card_url} target="_blank" className="rounded-lg border border-fuchsia-400/40 px-4 py-3 text-fuchsia-300">
-                                  Open Prediction Card
-                                </a>
-                              ) : null}
-                              <ActionButton onClick={() => void removeMatch(match.id)} disabled={jobState[`delete-${match.id}`]} tone="border-red-400/40 text-red-300">
-                                <Trash2 size={16} className="mr-2 inline" /> Delete
-                              </ActionButton>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    <PaginationControls
+                      page={matchPage}
+                      totalPages={totalMatchPages}
+                      onPrevious={() => setMatchPage((current) => Math.max(1, current - 1))}
+                      onNext={() => setMatchPage((current) => Math.min(totalMatchPages, current + 1))}
+                    />
                   </div>
-                )
-              })}
-              <PaginationControls
-                page={matchPage}
-                totalPages={totalMatchPages}
-                onPrevious={() => setMatchPage((current) => Math.max(1, current - 1))}
-                onNext={() => setMatchPage((current) => Math.min(totalMatchPages, current + 1))}
-              />
+                )}
+              </div>
             </div>
-          )}
+          </div>
         </section>
         ) : null}
 
@@ -1050,6 +1126,256 @@ export default function AdminPage() {
   )
 }
 
+function MatchEditForm({
+  match,
+  editForm,
+  setEditForm,
+  onCancel,
+  onSave,
+  saving,
+}: {
+  match: MatchRecord
+  editForm: typeof emptyEditForm
+  setEditForm: Dispatch<SetStateAction<typeof emptyEditForm>>
+  onCancel: () => void
+  onSave: (event: FormEvent<HTMLFormElement>) => void
+  saving: boolean
+}) {
+  return (
+    <form onSubmit={onSave} className="grid gap-4 md:grid-cols-2">
+      <Field label="Team 1" value={editForm.team1} onChange={(value) => setEditForm((current) => ({ ...current, team1: value }))} />
+      <Field label="Team 2" value={editForm.team2} onChange={(value) => setEditForm((current) => ({ ...current, team2: value }))} />
+      <Field label="Sport" value={editForm.sport} onChange={(value) => setEditForm((current) => ({ ...current, sport: value }))} />
+      <Field label="League" value={editForm.league} onChange={(value) => setEditForm((current) => ({ ...current, league: value }))} required={false} />
+      <Field label="Venue" value={editForm.venue} onChange={(value) => setEditForm((current) => ({ ...current, venue: value }))} required={false} />
+      <Field label="Match Time" value={editForm.match_time} onChange={(value) => setEditForm((current) => ({ ...current, match_time: value }))} type="datetime-local" />
+      <Field label="Team 1 Captain" value={editForm.team1_captain} onChange={(value) => setEditForm((current) => ({ ...current, team1_captain: value }))} required={false} />
+      <Field label="Team 2 Captain" value={editForm.team2_captain} onChange={(value) => setEditForm((current) => ({ ...current, team2_captain: value }))} required={false} />
+      <Field label="Team 1 Palette" value={editForm.team1_palette} onChange={(value) => setEditForm((current) => ({ ...current, team1_palette: value }))} required={false} />
+      <Field label="Team 2 Palette" value={editForm.team2_palette} onChange={(value) => setEditForm((current) => ({ ...current, team2_palette: value }))} required={false} />
+      <Field label="Team 1 Flag Colors" value={editForm.team1_flag_colors} onChange={(value) => setEditForm((current) => ({ ...current, team1_flag_colors: value }))} required={false} />
+      <Field label="Team 2 Flag Colors" value={editForm.team2_flag_colors} onChange={(value) => setEditForm((current) => ({ ...current, team2_flag_colors: value }))} required={false} />
+      <Field label="Rivalry Tagline" value={editForm.rivalry_tagline} onChange={(value) => setEditForm((current) => ({ ...current, rivalry_tagline: value }))} required={false} />
+      <Field label="Art Style" value={editForm.art_style} onChange={(value) => setEditForm((current) => ({ ...current, art_style: value }))} required={false} />
+      <label className="block">
+        <span className="mb-2 block text-sm font-bold text-gray-200">Status</span>
+        <select
+          value={editForm.status}
+          onChange={(event) => setEditForm((current) => ({ ...current, status: event.target.value as MatchStatus }))}
+          className="w-full rounded-lg border border-green-400/30 bg-gray-900 px-4 py-3 outline-none focus:border-green-400"
+        >
+          <option value="upcoming">upcoming</option>
+          <option value="live">live</option>
+          <option value="finished">finished</option>
+          <option value="cancelled">cancelled</option>
+        </select>
+      </label>
+      <Field label="Winner (1 or 2)" value={editForm.winner} onChange={(value) => setEditForm((current) => ({ ...current, winner: value }))} required={false} />
+      <label className="block md:col-span-2">
+        <span className="mb-2 block text-sm font-bold text-gray-200">Result Summary</span>
+        <input
+          value={editForm.result_summary}
+          onChange={(event) => setEditForm((current) => ({ ...current, result_summary: event.target.value }))}
+          className="w-full rounded-lg border border-green-400/30 bg-gray-900 px-4 py-3 outline-none focus:border-green-400"
+        />
+      </label>
+      <label className="block md:col-span-2">
+        <span className="mb-2 block text-sm font-bold text-gray-200">Creative Direction</span>
+        <textarea
+          value={editForm.creative_direction}
+          onChange={(event) => setEditForm((current) => ({ ...current, creative_direction: event.target.value }))}
+          rows={3}
+          className="w-full rounded-lg border border-green-400/30 bg-gray-900 px-4 py-3 outline-none focus:border-green-400"
+        />
+      </label>
+      <div className="flex gap-3 md:col-span-2">
+        <button type="submit" disabled={saving} className="btn-game disabled:cursor-not-allowed disabled:opacity-60">
+          Save Changes
+        </button>
+        <button type="button" onClick={onCancel} className="rounded-lg border border-white/20 px-4 py-3 text-gray-300">
+          Cancel
+        </button>
+      </div>
+      <p className="md:col-span-2 text-xs uppercase tracking-[0.18em] text-gray-500">
+        Editing match #{match.id}
+      </p>
+    </form>
+  )
+}
+
+function FeaturedMatchRow({
+  match,
+  selected,
+  onSelect,
+  onEdit,
+  onGenerateImage,
+  onGenerateSet,
+  onPublish,
+  onMarkLive,
+  onFinish,
+  onDelete,
+  busy,
+}: {
+  match: MatchRecord
+  selected: boolean
+  onSelect: () => void
+  onEdit: () => void
+  onGenerateImage: () => void
+  onGenerateSet: () => void
+  onPublish: () => void
+  onMarkLive: () => void
+  onFinish: () => void
+  onDelete: () => void
+  busy: Record<string, boolean>
+}) {
+  const isPublished = match.publish_status === 'published'
+  const imageUrl = match.prediction_artwork_url || match.prediction_card_url || match.result_artwork_url || match.result_card_url || null
+
+  return (
+    <div className="grid gap-0 xl:grid-cols-[180px_minmax(0,1fr)]">
+      <div className="border-b border-white/10 p-4 xl:border-b-0 xl:border-r">
+        <ThumbnailPreview imageUrl={imageUrl} title={`${match.team1} vs ${match.team2}`} className="!w-full !max-w-none !rounded-xl" />
+      </div>
+      <div className="p-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <button onClick={onSelect} className="mt-1 rounded-lg border border-white/10 bg-white/5 p-2 text-gray-300 transition hover:border-white/20 hover:text-white">
+              {selected ? <CheckCircle2 size={16} className="text-green-300" /> : <Square size={16} />}
+            </button>
+            <div>
+              <h3 className="text-3xl font-black tracking-tight text-white">{match.team1} vs {match.team2}</h3>
+              <p className="mt-1 text-base text-gray-300">
+                {match.league || match.sport} {match.venue ? `• ${match.venue}` : ''}
+              </p>
+              <p className="mt-3 text-sm text-gray-400">{new Date(match.match_time).toLocaleString()}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <StatusBadge label="Fetched" value={match.source === 'manual' ? 'manual' : 'synced'} tone={match.source === 'manual' ? 'slate' : 'cyan'} />
+            <StatusBadge label="Generated" value={match.asset_generation_status || 'pending'} tone={assetTone(match.asset_generation_status)} />
+            <StatusBadge label="Published" value={match.publish_status || 'draft'} tone={publishTone(match.publish_status)} />
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="space-y-4">
+            <div className="grid gap-3 md:grid-cols-2">
+              <InfoStrip label="Sport" value={match.sport} />
+              <InfoStrip label="Votes" value={`${match.poll_team1_votes + match.poll_team2_votes}`} />
+              <InfoStrip label="Prediction Card" value={match.prediction_card_url ? 'Ready' : 'Missing'} />
+              <InfoStrip label="Result Card" value={match.result_card_url ? 'Ready' : 'Missing'} />
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-300">
+                <span className="font-semibold text-white">Pipeline</span>
+                <StepDot active={!!match.asset_generation_status && match.asset_generation_status !== 'pending'} label="Assets" />
+                <StepDot active={!!match.publish_status && match.publish_status !== 'draft'} label="Published" />
+                <StepDot active={match.status === 'live'} label="Live" />
+                <StepDot active={match.status === 'finished'} label="Finished" />
+              </div>
+              {match.rivalry_tagline ? <p className="mt-3 text-sm text-gray-400">{match.rivalry_tagline}</p> : null}
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-4">
+              <ToolbarButton onClick={onEdit} tone="slate">Edit</ToolbarButton>
+              <ToolbarButton onClick={onGenerateImage} disabled={busy.image} tone="violet">Generate</ToolbarButton>
+              <ToolbarButton onClick={onPublish} disabled={busy.publish || isPublished} tone="violet">{isPublished ? 'Published' : 'Publish'}</ToolbarButton>
+              <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-gray-300">
+                {match.prediction_card_url ? <a href={match.prediction_card_url} target="_blank" className="text-cyan-200 hover:text-white">Open card</a> : 'No card yet'}
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Controls</p>
+            <div className="mt-3 grid gap-2">
+              <ToolbarButton onClick={onMarkLive} disabled={busy.match} tone="amber">Mark Live</ToolbarButton>
+              <ToolbarButton onClick={onFinish} disabled={busy.match} tone="emerald">Finish</ToolbarButton>
+              <ToolbarButton onClick={onGenerateSet} disabled={busy.full} tone="emerald">Generate Full Set</ToolbarButton>
+              <ToolbarButton onClick={onDelete} disabled={busy.delete} tone="rose">Delete</ToolbarButton>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CompactMatchCard({
+  match,
+  selected,
+  onSelect,
+  onEdit,
+  onGenerate,
+  onPublish,
+  onMarkLive,
+  onDelete,
+  busy,
+}: {
+  match: MatchRecord
+  selected: boolean
+  onSelect: () => void
+  onEdit: () => void
+  onGenerate: () => void
+  onPublish: () => void
+  onMarkLive: () => void
+  onDelete: () => void
+  busy: Record<string, boolean>
+}) {
+  const isPublished = match.publish_status === 'published'
+  const imageUrl = match.prediction_artwork_url || match.prediction_card_url || match.result_artwork_url || match.result_card_url || null
+
+  return (
+    <div className="grid gap-4 md:grid-cols-[150px_minmax(0,1fr)]">
+      <div className="flex items-start gap-3">
+        <button onClick={onSelect} className="rounded-lg border border-white/10 bg-white/5 p-2 text-gray-300 transition hover:border-white/20 hover:text-white">
+          {selected ? <CheckCircle2 size={16} className="text-green-300" /> : <Square size={16} />}
+        </button>
+        <ThumbnailPreview imageUrl={imageUrl} title={`${match.team1} vs ${match.team2}`} className="!w-[7.5rem]" />
+      </div>
+
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h4 className="text-xl font-bold text-white">{match.team1} vs {match.team2}</h4>
+            <p className="mt-1 text-sm text-gray-400">
+              {match.league || match.sport} {match.venue ? `• ${match.venue}` : ''}
+            </p>
+          </div>
+          <button className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-gray-300">
+            Newest <ChevronDown size={15} className="ml-2 inline" />
+          </button>
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          <StatusBadge label="Generated" value={match.asset_generation_status || 'pending'} tone={assetTone(match.asset_generation_status)} />
+          <StatusBadge label="Published" value={match.publish_status || 'draft'} tone={publishTone(match.publish_status)} />
+          <StatusBadge label="Status" value={match.status} tone={match.status === 'live' ? 'green' : match.status === 'finished' ? 'slate' : 'cyan'} />
+        </div>
+
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          <ToolbarButton onClick={onEdit} tone="slate">Edit</ToolbarButton>
+          <ToolbarButton onClick={onGenerate} disabled={busy.image} tone="violet">Generate</ToolbarButton>
+          <ToolbarButton onClick={onPublish} disabled={busy.publish || isPublished} tone="violet">{isPublished ? 'Published' : 'Publish'}</ToolbarButton>
+          <ToolbarButton onClick={onMarkLive} disabled={busy.match} tone="cyan">Mark Live</ToolbarButton>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-4 text-sm text-gray-400">
+          <span>{new Date(match.match_time).toLocaleString()}</span>
+          <div className="flex items-center gap-2">
+            <button className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-gray-300">
+              <MoreHorizontal size={16} />
+            </button>
+            <ToolbarButton onClick={onDelete} disabled={busy.delete} tone="rose">Delete</ToolbarButton>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function TabButton({
   active,
   onClick,
@@ -1174,6 +1500,64 @@ function InfoStrip({ label, value }: { label: string; value: string }) {
     <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
       <p className="text-[0.65rem] font-bold uppercase tracking-[0.18em] text-gray-500">{label}</p>
       <p className="mt-1 text-sm font-semibold text-white">{value}</p>
+    </div>
+  )
+}
+
+function ToolbarButton({
+  children,
+  onClick,
+  disabled,
+  tone,
+}: {
+  children: ReactNode
+  onClick?: () => void
+  disabled?: boolean
+  tone: 'slate' | 'emerald' | 'violet' | 'cyan' | 'rose' | 'amber'
+}) {
+  const toneClass = {
+    slate: 'border-white/10 bg-white/5 text-white hover:border-white/20',
+    emerald: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200 hover:border-emerald-300/50',
+    violet: 'border-violet-400/30 bg-violet-400/10 text-violet-100 hover:border-violet-300/50',
+    cyan: 'border-cyan-400/30 bg-cyan-400/10 text-cyan-100 hover:border-cyan-300/50',
+    rose: 'border-rose-400/30 bg-rose-400/10 text-rose-200 hover:border-rose-300/50',
+    amber: 'border-yellow-400/30 bg-yellow-400/10 text-yellow-100 hover:border-yellow-300/50',
+  }[tone]
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`rounded-xl border px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${toneClass}`}
+    >
+      {children}
+    </button>
+  )
+}
+
+function StepDot({ active, label }: { active: boolean; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-2">
+      <span className={`h-2.5 w-2.5 rounded-full ${active ? 'bg-green-300 shadow-[0_0_12px_rgba(74,222,128,0.85)]' : 'bg-white/20'}`} />
+      <span className={active ? 'text-white' : 'text-gray-500'}>{label}</span>
+    </span>
+  )
+}
+
+function ThumbnailPreview({ imageUrl, title, className = '' }: { imageUrl: string | null; title: string; className?: string }) {
+  return (
+    <div className={`overflow-hidden rounded-2xl border border-white/10 bg-gray-950/70 ${className}`}>
+      <div
+        className="h-44 w-full bg-cover bg-center"
+        style={{
+          backgroundImage: imageUrl
+            ? `linear-gradient(180deg, rgba(7,10,20,0.12), rgba(7,10,20,0.55)), url(${imageUrl})`
+            : 'linear-gradient(180deg, rgba(37,99,235,0.3), rgba(15,23,42,0.8))',
+        }}
+      />
+      <div className="border-t border-white/10 px-2 py-2 text-center">
+        <p className="line-clamp-2 text-[0.6rem] font-bold uppercase tracking-[0.14em] text-white/70">{title}</p>
+      </div>
     </div>
   )
 }
