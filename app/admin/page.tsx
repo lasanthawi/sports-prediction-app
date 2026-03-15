@@ -559,9 +559,9 @@ export default function AdminPage() {
 
                 return (
                   <div key={match.id} className="rounded-2xl border border-white/10 bg-gray-900/70 p-4 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
-                    <div className="grid gap-5 xl:grid-cols-[180px_minmax(0,1fr)_320px]">
+                    <div className="grid items-start gap-4 xl:grid-cols-[128px_minmax(0,1fr)_340px]">
                       <div className="flex justify-center xl:justify-start">
-                        <MatchCard match={match} interactive={false} className="!max-w-[10.5rem] !min-h-[18.5rem]" />
+                        <MatchCard match={match} interactive={false} className="!max-w-[7.5rem] !min-h-[13.5rem]" />
                       </div>
 
                       <div>
@@ -622,15 +622,15 @@ export default function AdminPage() {
                             </div>
                           </form>
                         ) : (
-                          <div className="space-y-4">
+                          <div className="space-y-3">
                             <div className="min-w-0">
                               <div className="flex flex-wrap items-center gap-3">
-                                <h3 className="text-xl font-black text-white">{match.team1} vs {match.team2}</h3>
+                                <h3 className="text-lg font-black text-white">{match.team1} vs {match.team2}</h3>
                                 <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[0.65rem] font-bold uppercase tracking-[0.18em] text-gray-300">
                                   {match.status}
                                 </span>
                               </div>
-                              <p className="mt-2 text-sm text-gray-400">
+                              <p className="mt-1 text-sm text-gray-400">
                                 {match.sport}
                                 {match.league ? ` · ${match.league}` : ''}
                                 {' · '}
@@ -647,7 +647,7 @@ export default function AdminPage() {
                               </div>
                             </div>
 
-                            <div className="grid gap-3 md:grid-cols-2">
+                            <div className="grid gap-2 md:grid-cols-2">
                               <InfoStrip label="Venue" value={match.venue || 'TBA'} />
                               <InfoStrip label="Votes" value={`${match.poll_team1_votes + match.poll_team2_votes}`} />
                               <InfoStrip label="Prediction Card" value={match.prediction_card_url ? 'Ready' : 'Not generated'} />
@@ -660,19 +660,19 @@ export default function AdminPage() {
                       </div>
 
                       {editingId === match.id ? null : (
-                        <div className="space-y-4">
-                          <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+                        <div className="space-y-3">
+                          <div className="rounded-xl border border-white/10 bg-black/20 p-3">
                             <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">State Controls</p>
-                            <div className="mt-3 grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
+                            <div className="mt-3 grid gap-2 grid-cols-3">
                               <button onClick={() => void updateMatch(match.id, { status: 'live' }, 'Match marked live')} disabled={jobState[`match-${match.id}`]} className="rounded-lg border border-yellow-400/40 px-3 py-2 text-sm text-yellow-300">Mark Live</button>
                               <button onClick={() => void updateMatch(match.id, { status: 'finished', winner: match.poll_team1_votes >= match.poll_team2_votes ? 1 : 2, result_summary: `${match.team1} ${match.poll_team1_votes} - ${match.poll_team2_votes} ${match.team2}` }, 'Match marked finished')} disabled={jobState[`match-${match.id}`]} className="rounded-lg border border-green-400/40 px-3 py-2 text-sm text-green-300">Finish</button>
                               <button onClick={() => void updateMatch(match.id, { status: 'cancelled' }, 'Match cancelled')} disabled={jobState[`match-${match.id}`]} className="rounded-lg border border-red-400/40 px-3 py-2 text-sm text-red-300">Cancel</button>
                             </div>
                           </div>
 
-                          <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+                          <div className="rounded-xl border border-white/10 bg-black/20 p-3">
                             <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Asset Actions</p>
-                            <div className="mt-3 grid gap-2">
+                            <div className="mt-3 grid gap-2 sm:grid-cols-2">
                               <ActionButton onClick={() => startEdit(match)} tone="border-blue-400/40 text-blue-300">
                                 <Edit3 size={16} className="mr-2 inline" /> Edit Match
                               </ActionButton>
