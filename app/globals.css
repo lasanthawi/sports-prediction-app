@@ -2,21 +2,175 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --arena-bg-top: #09091b;
+  --arena-bg-mid: #15153a;
+  --arena-bg-bottom: #1e1145;
+  --arena-neon: #5cff9b;
+  --arena-hot: #ff4fa3;
+  --arena-gold: #ffd84d;
+  --arena-panel: rgba(20, 24, 44, 0.82);
+}
+
 body {
-  background: linear-gradient(to bottom, #0f0f23, #1a1a3e);
+  background:
+    radial-gradient(circle at top, rgba(92, 255, 155, 0.14), transparent 24%),
+    radial-gradient(circle at 80% 20%, rgba(255, 79, 163, 0.14), transparent 22%),
+    linear-gradient(180deg, var(--arena-bg-top), var(--arena-bg-mid) 50%, var(--arena-bg-bottom));
   color: white;
   font-family: 'Orbitron', sans-serif;
   min-height: 100vh;
 }
 
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 28px 28px;
+  opacity: 0.35;
+}
+
 .text-glow {
-  text-shadow: 0 0 10px rgba(0, 255, 135, 0.5);
+  text-shadow: 0 0 10px rgba(92, 255, 155, 0.55);
 }
 
 .card-glow {
-  box-shadow: 0 0 20px rgba(0, 255, 135, 0.2);
+  box-shadow:
+    0 0 22px rgba(92, 255, 155, 0.16),
+    0 18px 55px rgba(0, 0, 0, 0.34);
 }
 
 .btn-game {
-  @apply bg-gradient-to-r from-green-400 to-pink-500 text-white font-bold py-3 px-6 rounded-lg transform transition hover:scale-105;
+  @apply rounded-lg px-6 py-3 font-bold text-white transition;
+  background: linear-gradient(90deg, var(--arena-neon), var(--arena-hot));
+  box-shadow: 0 10px 28px rgba(255, 79, 163, 0.25);
+}
+
+.btn-game:hover {
+  transform: translateY(-2px) scale(1.02);
+}
+
+.pack-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, rgba(255, 216, 77, 0.95) 0%, rgba(255, 195, 38, 0.95) 12%, rgba(8, 9, 19, 0.9) 12.2%, rgba(8, 9, 19, 0.82) 100%);
+  border: 2px solid rgba(255, 216, 77, 0.65);
+  box-shadow:
+    0 14px 40px rgba(0, 0, 0, 0.4),
+    0 0 25px rgba(255, 216, 77, 0.22);
+}
+
+.pack-ridge {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  top: 12px;
+  height: 56px;
+  border-radius: 16px;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(255, 214, 71, 0.95) 0,
+    rgba(255, 214, 71, 0.95) 10px,
+    rgba(230, 177, 0, 0.92) 10px,
+    rgba(230, 177, 0, 0.92) 18px
+  );
+  filter: drop-shadow(0 8px 8px rgba(0, 0, 0, 0.15));
+}
+
+.pack-shimmer {
+  position: absolute;
+  inset: -20%;
+  background: linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, 0.28) 50%, transparent 62%);
+  animation: shimmer-slide 6s linear infinite;
+  pointer-events: none;
+}
+
+.pack-float {
+  animation: pack-float 4.5s ease-in-out infinite;
+}
+
+.pack-enter {
+  animation: pack-enter 0.65s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.vote-burst {
+  animation: vote-burst 0.42s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.idle-pulse {
+  animation: idle-pulse 2.8s ease-in-out infinite;
+}
+
+.arena-scan {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent 0%, rgba(92, 255, 155, 0.06) 48%, transparent 100%);
+  animation: scanline 3.6s linear infinite;
+  mix-blend-mode: screen;
+}
+
+@keyframes shimmer-slide {
+  0% {
+    transform: translateX(-65%) rotate(12deg);
+  }
+  100% {
+    transform: translateX(75%) rotate(12deg);
+  }
+}
+
+@keyframes pack-float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes pack-enter {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes vote-burst {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes idle-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 rgba(92, 255, 155, 0);
+  }
+  50% {
+    box-shadow: 0 0 24px rgba(92, 255, 155, 0.22);
+  }
+}
+
+@keyframes scanline {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
 }

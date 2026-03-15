@@ -67,7 +67,7 @@ export default function Home() {
         />
       </div>
 
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-7xl">
         <h2 className="mb-6 text-3xl font-bold text-green-400">Live Matches</h2>
 
         {loading ? (
@@ -91,7 +91,7 @@ export default function Home() {
             </Link>
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid justify-items-center gap-8 md:grid-cols-2 xl:grid-cols-3">
             {matches.map((match) => (
               <MatchCard key={match.id} match={match as any} onVote={() => void fetchMatches()} />
             ))}

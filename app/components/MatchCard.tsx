@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Clock, TrendingUp, Users } from 'lucide-react'
+import { Clock3, Sparkles, Swords, TrendingUp, Users } from 'lucide-react'
 
 interface MatchCardProps {
   match: {
@@ -34,6 +34,7 @@ export default function MatchCard({ match, onVote }: MatchCardProps) {
   const [selectedTeam, setSelectedTeam] = useState<number | null>(null)
   const [timeLeft, setTimeLeft] = useState<CountdownState>({})
   const [voting, setVoting] = useState(false)
+  const [votedFlash, setVotedFlash] = useState(false)
 
   useEffect(() => {
     const updateCountdown = () => {
@@ -56,7 +57,6 @@ export default function MatchCard({ match, onVote }: MatchCardProps) {
 
     updateCountdown()
     const timer = setInterval(updateCountdown, 1000)
-
     return () => clearInterval(timer)
   }, [match.match_time])
 
@@ -64,6 +64,13 @@ export default function MatchCard({ match, onVote }: MatchCardProps) {
   const team1Percentage = totalVotes > 0 ? Math.round((match.poll_team1_votes / totalVotes) * 100) : 50
   const team2Percentage = totalVotes > 0 ? Math.round((match.poll_team2_votes / totalVotes) * 100) : 50
   const isVotingOpen = match.status === 'upcoming' && !timeLeft.expired
+  const titleText = match.status === 'finished' ? 'Result Locked In' : match.status === 'live' ? 'Live Clash' : 'Who Takes the Crown?'
+  const subText =
+    match.status === 'finished'
+      ? match.result_summary || 'The showdown is over.'
+      : match.status === 'live'
+        ? 'Predictions are sealed. The battle is live.'
+        : 'Pick your champion before kickoff.'
 
   async function handleVote(team: number) {
     if (!isVotingOpen || voting) {
@@ -85,6 +92,8 @@ export default function MatchCard({ match, onVote }: MatchCardProps) {
 
       setVoted(true)
       setSelectedTeam(team)
+      setVotedFlash(true)
+      setTimeout(() => setVotedFlash(false), 450)
       onVote?.()
     } catch (error: any) {
       console.error('Vote error:', error)
@@ -95,86 +104,97 @@ export default function MatchCard({ match, onVote }: MatchCardProps) {
   }
 
   return (
-    <div className="card-glow overflow-hidden rounded-xl bg-gray-800 transition-all hover:scale-[1.02]">
-      {match.card_asset_url ? (
-        <img
-          src={match.card_asset_url}
-          alt={`${match.team1} vs ${match.team2}`}
-          className="h-56 w-full object-cover"
+    <article className={`pack-card pack-enter pack-float mx-auto w-full max-w-[24rem] ${votedFlash ? 'vote-burst' : ''}`}>
+      <div className="pack-ridge" />
+      <div className="pack-shimmer" />
+      <div className="arena-scan" />
+
+      <div className="relative aspect-[3/5]">
+        <div
+          className="absolute inset-[4.6rem_0_5.4rem_0] bg-cover bg-center"
+          style={{
+            backgroundImage: match.card_asset_url
+              ? `linear-gradient(180deg, rgba(9, 10, 19, 0.12), rgba(9, 10, 19, 0.8)), url(${match.card_asset_url})`
+              : 'linear-gradient(180deg, rgba(255, 204, 0, 0.32), rgba(14, 16, 29, 0.88))',
+          }}
         />
-      ) : null}
 
-      <div className="p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <span className="rounded-full bg-green-400/20 px-3 py-1 text-xs font-bold text-green-400">
-            {match.sport.toUpperCase()}
-          </span>
-          {match.status === 'live' ? (
-            <span className="animate-pulse rounded-full bg-red-500 px-3 py-1 text-xs font-bold text-white">LIVE</span>
-          ) : null}
+        <div className="absolute inset-x-0 top-[4.8rem] bg-black/88 px-4 py-4 text-center shadow-[0_10px_24px_rgba(0,0,0,0.38)]">
+          <p className="text-[1.8rem] font-black uppercase tracking-[0.12em] text-yellow-300">{titleText}</p>
+          <p className="mt-2 bg-white px-3 py-2 text-sm font-bold uppercase tracking-[0.08em] text-gray-900">{subText}</p>
         </div>
 
-        <div className="mb-6 grid grid-cols-3 gap-4">
-          <div className="text-center">
-            <div className="mb-2 text-4xl">{match.team1_logo || 'T1'}</div>
-            <p className="text-sm font-bold">{match.team1}</p>
-          </div>
-          <div className="flex items-center justify-center">
-            <span className="text-3xl font-black text-yellow-400">VS</span>
-          </div>
-          <div className="text-center">
-            <div className="mb-2 text-4xl">{match.team2_logo || 'T2'}</div>
-            <p className="text-sm font-bold">{match.team2}</p>
-          </div>
-        </div>
-
-        {isVotingOpen ? (
-          <div className="mb-4 rounded-lg bg-gradient-to-r from-green-400/10 to-pink-500/10 p-4">
-            <div className="mb-2 flex items-center justify-center gap-2">
-              <Clock className="h-4 w-4 text-green-400" />
-              <span className="text-xs text-gray-400">Voting ends at kickoff</span>
+        <div className="absolute inset-x-0 top-[10.4rem] px-5">
+          <div className="rounded-[1.5rem] border border-white/15 bg-black/30 px-4 py-4 backdrop-blur-[2px]">
+            <div className="mb-4 flex items-center justify-between text-xs uppercase tracking-[0.16em] text-white/80">
+              <span className="rounded-full bg-green-400/20 px-3 py-1 font-bold text-green-300">{match.sport}</span>
+              <span className={`rounded-full px-3 py-1 font-bold ${match.status === 'live' ? 'bg-red-500 text-white idle-pulse' : 'bg-white/10 text-white/85'}`}>
+                {match.status}
+              </span>
             </div>
-            <div className="grid grid-cols-4 gap-2">
-              {['days', 'hours', 'minutes', 'seconds'].map((unit) => (
-                <div key={unit} className="text-center">
-                  <div className="text-2xl font-black text-yellow-400">
-                    {String(timeLeft[unit as keyof CountdownState] || 0).padStart(2, '0')}
-                  </div>
-                  <div className="text-xs uppercase text-gray-500">{unit}</div>
+
+            <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
+              <Competitor
+                name={match.team1}
+                logo={match.team1_logo}
+                selected={selectedTeam === 1}
+                percentage={team1Percentage}
+              />
+              <div className="pb-6 text-center">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 border-yellow-300 bg-black/70 text-yellow-300 shadow-[0_0_20px_rgba(255,216,77,0.28)]">
+                  <Swords size={26} />
                 </div>
-              ))}
+                <div className="mt-2 text-xs font-bold uppercase tracking-[0.18em] text-white/75">Duel</div>
+              </div>
+              <Competitor
+                name={match.team2}
+                logo={match.team2_logo}
+                selected={selectedTeam === 2}
+                percentage={team2Percentage}
+              />
             </div>
           </div>
-        ) : null}
+        </div>
 
-        {!isVotingOpen && match.status !== 'finished' ? (
-          <div className="mb-4 rounded-lg bg-red-500/20 py-4 text-center">
-            <span className="font-bold text-red-400">Voting closed</span>
-          </div>
-        ) : null}
+        <div className="absolute inset-x-0 bottom-[5.6rem] px-5">
+          {isVotingOpen ? (
+            <div className="mb-4 rounded-[1.4rem] border border-yellow-300/40 bg-black/68 px-4 py-3 text-center shadow-[0_0_18px_rgba(255,216,77,0.18)]">
+              <div className="mb-2 flex items-center justify-center gap-2 text-yellow-300">
+                <Clock3 size={15} />
+                <span className="text-xs font-bold uppercase tracking-[0.16em]">Countdown To Kickoff</span>
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {['days', 'hours', 'minutes', 'seconds'].map((unit) => (
+                  <div key={unit} className="rounded-2xl bg-white/8 px-2 py-2">
+                    <div className="text-xl font-black text-white">{String(timeLeft[unit as keyof CountdownState] || 0).padStart(2, '0')}</div>
+                    <div className="text-[0.58rem] uppercase tracking-[0.16em] text-white/60">{unit}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className={`mb-4 rounded-[1.3rem] px-4 py-3 text-center text-sm font-bold uppercase tracking-[0.14em] ${match.status === 'finished' ? 'bg-green-500/18 text-green-300' : 'bg-red-500/20 text-red-300'}`}>
+              {match.status === 'finished' ? match.result_summary || 'Result sealed' : 'Voting closed'}
+            </div>
+          )}
 
-        {match.status === 'finished' && match.result_summary ? (
-          <div className="mb-4 rounded-lg bg-green-500/10 px-4 py-3 text-sm text-green-300">
-            Result: {match.result_summary}
-          </div>
-        ) : null}
-
-        <div className="mb-4">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="flex items-center gap-1 text-xs text-gray-400">
-              <Users size={14} /> {totalVotes} predictions
+          <div className="mb-3 flex items-center justify-between text-xs uppercase tracking-[0.14em] text-white/70">
+            <span className="flex items-center gap-1">
+              <Users size={14} />
+              {totalVotes} total picks
             </span>
-            <span className="flex items-center gap-1 text-xs text-gray-400">
-              <TrendingUp size={14} /> Live poll
+            <span className="flex items-center gap-1">
+              <TrendingUp size={14} />
+              Hype meter
             </span>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             <VoteButton
               label={match.team1}
               percentage={team1Percentage}
-              accentClass="from-green-400/50 to-green-400/20"
-              textClass="text-green-400"
+              accent="from-emerald-300 via-green-400 to-lime-300"
+              glow="shadow-[0_0_18px_rgba(92,255,155,0.24)]"
               disabled={!isVotingOpen || voted || voting}
               selected={selectedTeam === 1}
               onClick={() => void handleVote(1)}
@@ -182,18 +202,54 @@ export default function MatchCard({ match, onVote }: MatchCardProps) {
             <VoteButton
               label={match.team2}
               percentage={team2Percentage}
-              accentClass="from-pink-500/50 to-pink-500/20"
-              textClass="text-pink-500"
+              accent="from-pink-300 via-fuchsia-400 to-rose-400"
+              glow="shadow-[0_0_18px_rgba(255,79,163,0.22)]"
               disabled={!isVotingOpen || voted || voting}
               selected={selectedTeam === 2}
               onClick={() => void handleVote(2)}
             />
           </div>
+
+          {voting ? <div className="mt-3 text-center text-xs font-bold uppercase tracking-[0.14em] text-yellow-300">Locking in your pick...</div> : null}
+          {voted ? (
+            <div className="mt-3 flex items-center justify-center gap-2 text-center text-xs font-bold uppercase tracking-[0.14em] text-green-300">
+              <Sparkles size={14} />
+              Prediction powered up
+            </div>
+          ) : null}
         </div>
 
-        {voting ? <div className="text-center text-sm text-yellow-400">Submitting vote...</div> : null}
-        {voted ? <div className="text-center text-sm text-green-400">Prediction recorded. Check back after the match.</div> : null}
+        <div className="absolute inset-x-0 bottom-0 bg-black/92 px-5 py-4 text-center">
+          <div className="flex items-center justify-between text-xs font-bold uppercase tracking-[0.22em] text-yellow-300">
+            <span>Season Pack</span>
+            <span>{match.status === 'finished' ? 'Result Card' : 'Prediction Pack'}</span>
+          </div>
+        </div>
       </div>
+    </article>
+  )
+}
+
+function Competitor({
+  name,
+  logo,
+  selected,
+  percentage,
+}: {
+  name: string
+  logo?: string
+  selected: boolean
+  percentage: number
+}) {
+  return (
+    <div className={`text-center ${selected ? 'scale-[1.04]' : ''}`}>
+      <div className={`mx-auto flex h-20 w-20 items-center justify-center rounded-[1.4rem] border-2 text-2xl font-black shadow-[0_8px_20px_rgba(0,0,0,0.28)] ${
+        selected ? 'border-yellow-300 bg-white/18 text-yellow-200' : 'border-white/15 bg-black/32 text-white'
+      }`}>
+        {logo || name.slice(0, 2).toUpperCase()}
+      </div>
+      <div className="mt-3 text-sm font-black uppercase tracking-[0.08em] text-white">{name}</div>
+      <div className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-yellow-300">{percentage}% backing</div>
     </div>
   )
 }
@@ -201,16 +257,16 @@ export default function MatchCard({ match, onVote }: MatchCardProps) {
 function VoteButton({
   label,
   percentage,
-  accentClass,
-  textClass,
+  accent,
+  glow,
   disabled,
   selected,
   onClick,
 }: {
   label: string
   percentage: number
-  accentClass: string
-  textClass: string
+  accent: string
+  glow: string
   disabled: boolean
   selected: boolean
   onClick: () => void
@@ -219,14 +275,20 @@ function VoteButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`relative w-full overflow-hidden rounded-lg p-3 transition-all ${
-        disabled ? 'cursor-not-allowed' : 'cursor-pointer hover:scale-[1.02]'
-      } ${selected ? 'ring-2 ring-green-400' : ''}`}
+      className={`group relative overflow-hidden rounded-[1.2rem] border px-4 py-4 text-left transition-all ${
+        disabled ? 'cursor-not-allowed opacity-70' : `hover:-translate-y-1 hover:scale-[1.01] ${glow}`
+      } ${selected ? 'border-yellow-300 bg-white/16' : 'border-white/15 bg-black/62'}`}
     >
-      <div className={`absolute inset-0 bg-gradient-to-r ${accentClass}`} style={{ width: `${percentage}%` }} />
+      <div className={`absolute inset-0 bg-gradient-to-r ${accent} opacity-[0.22] transition-opacity group-hover:opacity-[0.3]`} />
+      <div className="absolute bottom-0 left-0 top-0 rounded-r-full bg-white/20" style={{ width: `${percentage}%` }} />
       <div className="relative flex items-center justify-between">
-        <span className="font-bold">{label}</span>
-        <span className={`font-bold ${textClass}`}>{percentage}%</span>
+        <div>
+          <div className="text-lg font-black uppercase tracking-[0.08em] text-white">{label}</div>
+          <div className="text-[0.7rem] font-bold uppercase tracking-[0.18em] text-white/70">
+            {disabled ? 'Selection locked' : 'Tap to back this side'}
+          </div>
+        </div>
+        <div className="rounded-full bg-black/55 px-3 py-2 text-sm font-black text-yellow-300">{percentage}%</div>
       </div>
     </button>
   )
