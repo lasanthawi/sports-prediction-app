@@ -98,6 +98,16 @@ export async function ensureSchema() {
     )
   `
 
+  await sql`ALTER TABLE matches ADD COLUMN IF NOT EXISTS team1_captain TEXT`
+  await sql`ALTER TABLE matches ADD COLUMN IF NOT EXISTS team2_captain TEXT`
+  await sql`ALTER TABLE matches ADD COLUMN IF NOT EXISTS team1_palette TEXT`
+  await sql`ALTER TABLE matches ADD COLUMN IF NOT EXISTS team2_palette TEXT`
+  await sql`ALTER TABLE matches ADD COLUMN IF NOT EXISTS team1_flag_colors TEXT`
+  await sql`ALTER TABLE matches ADD COLUMN IF NOT EXISTS team2_flag_colors TEXT`
+  await sql`ALTER TABLE matches ADD COLUMN IF NOT EXISTS creative_direction TEXT`
+  await sql`ALTER TABLE matches ADD COLUMN IF NOT EXISTS rivalry_tagline TEXT`
+  await sql`ALTER TABLE matches ADD COLUMN IF NOT EXISTS art_style TEXT`
+
   await sql`
     CREATE TABLE IF NOT EXISTS generated_assets (
       id SERIAL PRIMARY KEY,
@@ -114,6 +124,26 @@ export async function ensureSchema() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       UNIQUE (match_id, asset_type, format)
     )
+  `
+
+  await sql`ALTER TABLE generated_assets ADD COLUMN IF NOT EXISTS asset_variant TEXT NOT NULL DEFAULT 'prediction'`
+  await sql`ALTER TABLE generated_assets ADD COLUMN IF NOT EXISTS mime_type TEXT NOT NULL DEFAULT 'image/svg+xml'`
+  await sql`ALTER TABLE generated_assets ADD COLUMN IF NOT EXISTS content_encoding TEXT NOT NULL DEFAULT 'utf8'`
+  await sql`ALTER TABLE generated_assets ADD COLUMN IF NOT EXISTS generation_status TEXT NOT NULL DEFAULT 'generated'`
+  await sql`ALTER TABLE generated_assets ADD COLUMN IF NOT EXISTS source_model TEXT`
+  await sql`ALTER TABLE generated_assets ADD COLUMN IF NOT EXISTS prompt_version TEXT`
+  await sql`ALTER TABLE generated_assets ADD COLUMN IF NOT EXISTS image_url TEXT`
+  await sql`ALTER TABLE generated_assets ADD COLUMN IF NOT EXISTS render_recipe_version TEXT`
+  await sql`ALTER TABLE generated_assets ADD COLUMN IF NOT EXISTS debug_prompt TEXT`
+  await sql`ALTER TABLE generated_assets ADD COLUMN IF NOT EXISTS source_asset_id INTEGER REFERENCES generated_assets(id) ON DELETE SET NULL`
+
+  await sql`
+    DROP INDEX IF EXISTS generated_assets_match_id_asset_type_format_key;
+  `
+
+  await sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS generated_assets_match_type_variant_format_idx
+    ON generated_assets (match_id, asset_type, asset_variant, format);
   `
 
   await sql`
@@ -138,10 +168,7 @@ export async function ensureSchema() {
     $$ LANGUAGE plpgsql;
   `
 
-  await sql`
-    DROP TRIGGER IF EXISTS set_users_updated_at ON users;
-  `
-
+  await sql`DROP TRIGGER IF EXISTS set_users_updated_at ON users`
   await sql`
     CREATE TRIGGER set_users_updated_at
     BEFORE UPDATE ON users
@@ -182,10 +209,7 @@ export async function ensureSchema() {
     `
   }
 
-  await sql`
-    DROP TRIGGER IF EXISTS set_matches_updated_at ON matches;
-  `
-
+  await sql`DROP TRIGGER IF EXISTS set_matches_updated_at ON matches`
   await sql`
     CREATE TRIGGER set_matches_updated_at
     BEFORE UPDATE ON matches
@@ -193,10 +217,7 @@ export async function ensureSchema() {
     EXECUTE FUNCTION set_updated_at();
   `
 
-  await sql`
-    DROP TRIGGER IF EXISTS set_generated_assets_updated_at ON generated_assets;
-  `
-
+  await sql`DROP TRIGGER IF EXISTS set_generated_assets_updated_at ON generated_assets`
   await sql`
     CREATE TRIGGER set_generated_assets_updated_at
     BEFORE UPDATE ON generated_assets

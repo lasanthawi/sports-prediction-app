@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { generateAssetsForMatches } from '@/lib/automation'
+import { MatchInput } from '@/lib/types'
 import { createMatch, listMatches, listVisibleMatches } from '@/lib/matches'
 
 export const dynamic = 'force-dynamic'
@@ -22,7 +23,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
+    const body = await request.json() as MatchInput
 
     if (!body.team1 || !body.team2 || !body.sport || !body.match_time) {
       return NextResponse.json({ error: 'team1, team2, sport, and match_time are required' }, { status: 400 })

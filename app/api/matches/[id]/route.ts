@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { generateAssetsForMatches } from '@/lib/automation'
+import { generateAssetsForMatches, regenerateAssetBundle } from '@/lib/automation'
+import { AssetVariant, MatchUpdateInput } from '@/lib/types'
 import { deleteMatch, getMatch, updateMatch } from '@/lib/matches'
 
 interface RouteContext {
@@ -15,7 +16,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       return NextResponse.json({ error: 'Invalid match id' }, { status: 400 })
     }
 
-    const body = await request.json()
+    const body = await request.json() as MatchUpdateInput
     const match = await updateMatch(id, body)
 
     if (!match) {
@@ -31,11 +32,22 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   }
 }
 
-export async function POST(_: Request, { params }: RouteContext) {
+export async function POST(request: Request, { params }: RouteContext) {
   try {
     const id = Number(params.id)
     if (!Number.isInteger(id)) {
       return NextResponse.json({ error: 'Invalid match id' }, { status: 400 })
+    }
+
+    let mode: 'artwork' | 'card' | 'full' = 'full'
+    let variant: AssetVariant | undefined
+
+    try {
+      const body = await request.json() as { mode?: 'artwork' | 'card' | 'full'; variant?: AssetVariant | 'all' }
+      mode = body.mode || 'full'
+      variant = body.variant && body.variant !== 'all' ? body.variant : undefined
+    } catch {
+      // Support empty-body POSTs from older admin flows.
     }
 
     const match = await getMatch(id)
@@ -43,9 +55,14 @@ export async function POST(_: Request, { params }: RouteContext) {
       return NextResponse.json({ error: 'Match not found' }, { status: 404 })
     }
 
+    if (variant) {
+      const regenerated = await regenerateAssetBundle(id, variant)
+      return NextResponse.json({ success: true, mode, variant, regenerated })
+    }
+
     await generateAssetsForMatches([match])
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, mode: mode || 'full', variant: 'all' })
   } catch (error: any) {
     console.error('Regenerate asset error:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })

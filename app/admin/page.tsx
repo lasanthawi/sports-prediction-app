@@ -19,8 +19,14 @@ interface MatchRecord {
   winner: number | null
   poll_team1_votes: number
   poll_team2_votes: number
-  card_asset_url?: string | null
   source: string
+  card_asset_url?: string | null
+  prediction_artwork_url?: string | null
+  prediction_card_url?: string | null
+  result_artwork_url?: string | null
+  result_card_url?: string | null
+  asset_generation_status?: string | null
+  rivalry_tagline?: string | null
 }
 
 interface AutomationRun {
@@ -38,6 +44,15 @@ const initialForm = {
   league: '',
   venue: '',
   match_time: '',
+  team1_captain: '',
+  team2_captain: '',
+  team1_palette: '',
+  team2_palette: '',
+  team1_flag_colors: '',
+  team2_flag_colors: '',
+  creative_direction: '',
+  rivalry_tagline: '',
+  art_style: '',
 }
 
 export default function AdminPage() {
@@ -63,7 +78,6 @@ export default function AdminPage() {
 
       const matchesPayload = await matchesRes.json()
       const runsPayload = await runsRes.json()
-
       setMatches(matchesPayload.matches || [])
       setRuns(runsPayload.runs || [])
     } catch (error) {
@@ -81,7 +95,6 @@ export default function AdminPage() {
     try {
       const res = await fetch(url, { method: 'POST' })
       const payload = await res.json()
-
       if (!res.ok) {
         throw new Error(payload.error || `Request failed for ${key}`)
       }
@@ -116,7 +129,7 @@ export default function AdminPage() {
       }
 
       setFormData(initialForm)
-      setMessage('Match created successfully')
+      setMessage('Match created and asset generation started')
       await refreshDashboard()
     } catch (error: any) {
       setMessage(error.message || 'Failed to create match')
@@ -135,7 +148,6 @@ export default function AdminPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
-
       const payload = await res.json()
       if (!res.ok) {
         throw new Error(payload.error || 'Failed to update match')
@@ -161,8 +173,8 @@ export default function AdminPage() {
             <div className="flex items-center gap-3">
               <Trophy className="h-10 w-10 text-yellow-400" />
               <div>
-                <h1 className="text-4xl font-black text-green-400">Admin Dashboard</h1>
-                <p className="text-sm text-gray-400">Create matches, manage results, and run the automation pipeline.</p>
+                <h1 className="text-4xl font-black text-green-400">Admin Studio</h1>
+                <p className="text-sm text-gray-400">Create premium matches with captains, palettes, and Gemini-ready art direction.</p>
               </div>
             </div>
           </div>
@@ -179,41 +191,11 @@ export default function AdminPage() {
         ) : null}
 
         <section className="grid gap-4 md:grid-cols-5">
-          <ActionCard
-            title="Initialize DB"
-            description="Creates the required tables the first time."
-            icon={<Database className="h-5 w-5" />}
-            onClick={() => void runJob('setup', '/api/admin/setup', 'Database tables are ready')}
-            busy={jobState.setup}
-          />
-          <ActionCard
-            title="Sync Feed"
-            description="Pulls fixtures and results from SPORTS_SYNC_FEED_URL."
-            icon={<RefreshCw className="h-5 w-5" />}
-            onClick={() => void runJob('sync', '/api/automation/sync', 'Feed sync completed')}
-            busy={jobState.sync}
-          />
-          <ActionCard
-            title="Generate Assets"
-            description="Creates SVG promo and result images for each match."
-            icon={<PlayCircle className="h-5 w-5" />}
-            onClick={() => void runJob('assets', '/api/automation/assets', 'Assets generated')}
-            busy={jobState.assets}
-          />
-          <ActionCard
-            title="Run Pipeline"
-            description="Sync, generate assets, and publish in one job."
-            icon={<Rocket className="h-5 w-5" />}
-            onClick={() => void runJob('pipeline', '/api/automation/run', 'Automation pipeline completed')}
-            busy={jobState.pipeline}
-          />
-          <ActionCard
-            title="Publish"
-            description="Pushes ready assets to PUBLISH_WEBHOOK_URL when configured."
-            icon={<Rocket className="h-5 w-5" />}
-            onClick={() => void runJob('publish', '/api/automation/publish', 'Publish job completed')}
-            busy={jobState.publish}
-          />
+          <ActionCard title="Initialize DB" description="Creates and migrates required tables." icon={<Database className="h-5 w-5" />} onClick={() => void runJob('setup', '/api/admin/setup', 'Database tables are ready')} busy={jobState.setup} />
+          <ActionCard title="Sync Feed" description="Pull fixtures and visual metadata from SPORTS_SYNC_FEED_URL." icon={<RefreshCw className="h-5 w-5" />} onClick={() => void runJob('sync', '/api/automation/sync', 'Feed sync completed')} busy={jobState.sync} />
+          <ActionCard title="Generate Assets" description="Generate artwork plus prediction/result card variants." icon={<PlayCircle className="h-5 w-5" />} onClick={() => void runJob('assets', '/api/automation/assets', 'Assets generated')} busy={jobState.assets} />
+          <ActionCard title="Run Pipeline" description="Sync, generate, and publish rendered cards in one flow." icon={<Rocket className="h-5 w-5" />} onClick={() => void runJob('pipeline', '/api/automation/run', 'Automation pipeline completed')} busy={jobState.pipeline} />
+          <ActionCard title="Publish" description="Send final rendered cards to your webhook." icon={<Rocket className="h-5 w-5" />} onClick={() => void runJob('publish', '/api/automation/publish', 'Publish job completed')} busy={jobState.publish} />
         </section>
 
         <div className="grid gap-8 xl:grid-cols-[1.15fr,0.85fr]">
@@ -224,51 +206,31 @@ export default function AdminPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
-              <Input
-                label="Team 1"
-                value={formData.team1}
-                onChange={(value) => setFormData((current) => ({ ...current, team1: value }))}
-                placeholder="Real Madrid"
-                required
-              />
-              <Input
-                label="Team 2"
-                value={formData.team2}
-                onChange={(value) => setFormData((current) => ({ ...current, team2: value }))}
-                placeholder="Barcelona"
-                required
-              />
-              <Input
-                label="Sport"
-                value={formData.sport}
-                onChange={(value) => setFormData((current) => ({ ...current, sport: value }))}
-                placeholder="Football"
-                required
-              />
-              <Input
-                label="League"
-                value={formData.league}
-                onChange={(value) => setFormData((current) => ({ ...current, league: value }))}
-                placeholder="La Liga"
-              />
-              <Input
-                label="Venue"
-                value={formData.venue}
-                onChange={(value) => setFormData((current) => ({ ...current, venue: value }))}
-                placeholder="Santiago Bernabeu"
-              />
-              <Input
-                label="Match Time"
-                value={formData.match_time}
-                onChange={(value) => setFormData((current) => ({ ...current, match_time: value }))}
-                type="datetime-local"
-                required
-              />
-              <button
-                type="submit"
-                disabled={submitting}
-                className="btn-game md:col-span-2 disabled:cursor-not-allowed disabled:opacity-60"
-              >
+              <Input label="Team 1" value={formData.team1} onChange={(value) => setFormData((current) => ({ ...current, team1: value }))} placeholder="Real Madrid" required />
+              <Input label="Team 2" value={formData.team2} onChange={(value) => setFormData((current) => ({ ...current, team2: value }))} placeholder="Barcelona" required />
+              <Input label="Sport" value={formData.sport} onChange={(value) => setFormData((current) => ({ ...current, sport: value }))} placeholder="Football" required />
+              <Input label="League" value={formData.league} onChange={(value) => setFormData((current) => ({ ...current, league: value }))} placeholder="La Liga" />
+              <Input label="Venue" value={formData.venue} onChange={(value) => setFormData((current) => ({ ...current, venue: value }))} placeholder="Santiago Bernabeu" />
+              <Input label="Match Time" value={formData.match_time} onChange={(value) => setFormData((current) => ({ ...current, match_time: value }))} type="datetime-local" required />
+              <Input label="Team 1 Captain" value={formData.team1_captain} onChange={(value) => setFormData((current) => ({ ...current, team1_captain: value }))} placeholder="Vinicius Jr." />
+              <Input label="Team 2 Captain" value={formData.team2_captain} onChange={(value) => setFormData((current) => ({ ...current, team2_captain: value }))} placeholder="Pedri" />
+              <Input label="Team 1 Palette" value={formData.team1_palette} onChange={(value) => setFormData((current) => ({ ...current, team1_palette: value }))} placeholder="#FFFFFF,#D4AF37,#1A1A1A" />
+              <Input label="Team 2 Palette" value={formData.team2_palette} onChange={(value) => setFormData((current) => ({ ...current, team2_palette: value }))} placeholder="#A50044,#004D98,#FDB913" />
+              <Input label="Team 1 Flag Colors" value={formData.team1_flag_colors} onChange={(value) => setFormData((current) => ({ ...current, team1_flag_colors: value }))} placeholder="#AA151B,#F1BF00" />
+              <Input label="Team 2 Flag Colors" value={formData.team2_flag_colors} onChange={(value) => setFormData((current) => ({ ...current, team2_flag_colors: value }))} placeholder="#AA151B,#F1BF00" />
+              <Input label="Rivalry Tagline" value={formData.rivalry_tagline} onChange={(value) => setFormData((current) => ({ ...current, rivalry_tagline: value }))} placeholder="One stadium. All the glory." />
+              <Input label="Art Style" value={formData.art_style} onChange={(value) => setFormData((current) => ({ ...current, art_style: value }))} placeholder="cinematic premium sports key art" />
+              <label className="block md:col-span-2">
+                <span className="mb-2 block text-sm font-bold text-gray-200">Creative Direction</span>
+                <textarea
+                  value={formData.creative_direction}
+                  onChange={(event) => setFormData((current) => ({ ...current, creative_direction: event.target.value }))}
+                  placeholder="Captain-focused composition, foil-lit stadium energy, safe negative space for the top banner and CTA zone"
+                  rows={3}
+                  className="w-full rounded-lg border border-green-400/30 bg-gray-900 px-4 py-3 outline-none transition focus:border-green-400"
+                />
+              </label>
+              <button type="submit" disabled={submitting} className="btn-game md:col-span-2 disabled:cursor-not-allowed disabled:opacity-60">
                 {submitting ? 'Creating...' : 'Create Match'}
               </button>
             </form>
@@ -280,18 +242,10 @@ export default function AdminPage() {
               <h2 className="text-2xl font-bold">Feed Setup</h2>
             </div>
             <div className="space-y-4 text-sm text-gray-300">
-              <p>For a safe first setup, set <code>SPORTS_SYNC_FEED_URL</code> to your deployed sample endpoint:</p>
+              <p>Set <code>SPORTS_SYNC_FEED_URL</code> to your deployed sample endpoint first:</p>
               <p className="rounded-lg bg-gray-900 px-3 py-2 font-mono text-xs text-green-300">https://your-app.vercel.app/api/feed/sample</p>
-              <p>
-                For real automation, point it to your own normalized JSON endpoint that returns an array of matches or an
-                object containing a <code>matches</code> array with <code>externalId</code>, <code>team1</code>, <code>team2</code>,{' '}
-                <code>sport</code>, <code>league</code>, <code>matchTime</code>, <code>status</code>, <code>winner</code>, and{' '}
-                <code>resultSummary</code>.
-              </p>
-              <p>
-                The remaining automation pieces are now covered: sync can ingest matches, asset generation runs on create
-                and sync, and the pipeline route can sync, generate, and publish in one step.
-              </p>
+              <p>Premium feed fields should include captain names, palettes, flag colors, creative direction, rivalry tagline, and art style so Gemini can compose a better portrait background.</p>
+              <p>The automation chain now supports sync, artwork generation, final card composition for prediction/result variants, and webhook publishing of the rendered cards.</p>
             </div>
           </section>
         </div>
@@ -311,18 +265,12 @@ export default function AdminPage() {
               {matches.map((match) => (
                 <div key={match.id} className="rounded-xl border border-white/10 bg-gray-900/70 p-4">
                   {match.card_asset_url ? (
-                    <img
-                      src={match.card_asset_url}
-                      alt={`${match.team1} vs ${match.team2}`}
-                      className="mb-4 h-40 w-full rounded-lg object-cover"
-                    />
+                    <img src={match.card_asset_url} alt={`${match.team1} vs ${match.team2}`} className="mb-4 h-72 w-full rounded-lg object-cover object-top" />
                   ) : null}
 
                   <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <h3 className="text-lg font-bold text-white">
-                        {match.team1} vs {match.team2}
-                      </h3>
+                    <div className="max-w-3xl">
+                      <h3 className="text-lg font-bold text-white">{match.team1} vs {match.team2}</h3>
                       <p className="text-sm text-gray-400">
                         {match.sport}
                         {match.league ? ` · ${match.league}` : ''}
@@ -333,40 +281,22 @@ export default function AdminPage() {
                         {match.source} · {match.status}
                         {match.result_summary ? ` · ${match.result_summary}` : ''}
                       </p>
+                      <p className="mt-2 text-xs text-yellow-300">Asset status: {match.asset_generation_status || 'pending'}</p>
+                      {match.rivalry_tagline ? <p className="mt-2 text-sm text-gray-300">{match.rivalry_tagline}</p> : null}
                     </div>
 
                     <div className="flex flex-wrap gap-2">
+                      <button onClick={() => void updateMatch(match.id, { status: 'live' }, 'Match marked live')} disabled={jobState[`match-${match.id}`]} className="rounded-lg border border-yellow-400/40 px-3 py-2 text-sm text-yellow-300">Mark Live</button>
                       <button
-                        onClick={() => void updateMatch(match.id, { status: 'live' }, 'Match marked live')}
-                        disabled={jobState[`match-${match.id}`]}
-                        className="rounded-lg border border-yellow-400/40 px-3 py-2 text-sm text-yellow-300"
-                      >
-                        Mark Live
-                      </button>
-                      <button
-                        onClick={() =>
-                          void updateMatch(
-                            match.id,
-                            {
-                              status: 'finished',
-                              winner: match.poll_team1_votes >= match.poll_team2_votes ? 1 : 2,
-                              result_summary: `${match.team1} ${match.poll_team1_votes} - ${match.poll_team2_votes} ${match.team2}`,
-                            },
-                            'Match marked finished'
-                          )
-                        }
+                        onClick={() => void updateMatch(match.id, { status: 'finished', winner: match.poll_team1_votes >= match.poll_team2_votes ? 1 : 2, result_summary: `${match.team1} ${match.poll_team1_votes} - ${match.poll_team2_votes} ${match.team2}` }, 'Match marked finished')}
                         disabled={jobState[`match-${match.id}`]}
                         className="rounded-lg border border-green-400/40 px-3 py-2 text-sm text-green-300"
                       >
                         Finish
                       </button>
-                      <button
-                        onClick={() => void updateMatch(match.id, { status: 'cancelled' }, 'Match cancelled')}
-                        disabled={jobState[`match-${match.id}`]}
-                        className="rounded-lg border border-red-400/40 px-3 py-2 text-sm text-red-300"
-                      >
-                        Cancel
-                      </button>
+                      <button onClick={() => void updateMatch(match.id, { status: 'cancelled' }, 'Match cancelled')} disabled={jobState[`match-${match.id}`]} className="rounded-lg border border-red-400/40 px-3 py-2 text-sm text-red-300">Cancel</button>
+                      {match.prediction_artwork_url ? <a href={match.prediction_artwork_url} target="_blank" className="rounded-lg border border-cyan-400/40 px-3 py-2 text-sm text-cyan-300">Preview Art</a> : null}
+                      {match.prediction_card_url ? <a href={match.prediction_card_url} target="_blank" className="rounded-lg border border-fuchsia-400/40 px-3 py-2 text-sm text-fuchsia-300">Preview Card</a> : null}
                     </div>
                   </div>
                 </div>
@@ -407,25 +337,9 @@ export default function AdminPage() {
   )
 }
 
-function ActionCard({
-  title,
-  description,
-  icon,
-  onClick,
-  busy,
-}: {
-  title: string
-  description: string
-  icon: ReactNode
-  onClick: () => void
-  busy?: boolean
-}) {
+function ActionCard({ title, description, icon, onClick, busy }: { title: string; description: string; icon: ReactNode; onClick: () => void; busy?: boolean }) {
   return (
-    <button
-      onClick={onClick}
-      disabled={busy}
-      className="rounded-2xl border border-green-400/20 bg-gray-800/80 p-5 text-left transition hover:border-green-400/40 hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
-    >
+    <button onClick={onClick} disabled={busy} className="rounded-2xl border border-green-400/20 bg-gray-800/80 p-5 text-left transition hover:border-green-400/40 hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60">
       <div className="mb-3 flex items-center gap-2 text-green-400">
         {icon}
         <span className="font-bold">{title}</span>
@@ -435,21 +349,7 @@ function ActionCard({
   )
 }
 
-function Input({
-  label,
-  value,
-  onChange,
-  placeholder,
-  type = 'text',
-  required = false,
-}: {
-  label: string
-  value: string
-  onChange: (value: string) => void
-  placeholder?: string
-  type?: string
-  required?: boolean
-}) {
+function Input({ label, value, onChange, placeholder, type = 'text', required = false }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; type?: string; required?: boolean }) {
   return (
     <label className="block">
       <span className="mb-2 block text-sm font-bold text-gray-200">{label}</span>

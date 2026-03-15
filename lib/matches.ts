@@ -6,11 +6,26 @@ function normalizeText(value: string | null | undefined) {
   return value?.trim() || null
 }
 
+function toAssetUrl(id?: number | null) {
+  return id ? `/api/assets/${id}` : null
+}
+
 function hydrateMatches(rows: MatchRecord[]) {
-  return rows.map((row) => ({
-    ...row,
-    card_asset_url: row.card_asset_id ? `/api/assets/${row.card_asset_id}` : null,
-  }))
+  return rows.map((row) => {
+    const predictionCardUrl = toAssetUrl(row.prediction_card_asset_id)
+    const resultCardUrl = toAssetUrl(row.result_card_asset_id)
+
+    return {
+      ...row,
+      prediction_artwork_url: toAssetUrl(row.prediction_artwork_asset_id),
+      prediction_card_url: predictionCardUrl,
+      result_artwork_url: toAssetUrl(row.result_artwork_asset_id),
+      result_card_url: resultCardUrl,
+      card_asset_url: row.status === 'finished' ? resultCardUrl : predictionCardUrl,
+      asset_generation_status:
+        (row.status === 'finished' ? row.result_asset_status : row.prediction_asset_status) || null,
+    }
+  })
 }
 
 export async function refreshDerivedMatchStatuses() {
@@ -24,27 +39,64 @@ export async function refreshDerivedMatchStatuses() {
   `
 }
 
+function matchSelectClause() {
+  return `
+    SELECT
+      matches.*,
+      prediction_art.id AS prediction_artwork_asset_id,
+      prediction_art.generation_status AS prediction_asset_status,
+      prediction_card.id AS prediction_card_asset_id,
+      result_art.id AS result_artwork_asset_id,
+      result_art.generation_status AS result_asset_status,
+      result_card.id AS result_card_asset_id
+    FROM matches
+    LEFT JOIN LATERAL (
+      SELECT id, generation_status
+      FROM generated_assets
+      WHERE match_id = matches.id
+        AND asset_type = 'artwork'
+        AND asset_variant = 'prediction'
+      ORDER BY id DESC
+      LIMIT 1
+    ) prediction_art ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT id
+      FROM generated_assets
+      WHERE match_id = matches.id
+        AND asset_type = 'card'
+        AND asset_variant = 'prediction'
+      ORDER BY id DESC
+      LIMIT 1
+    ) prediction_card ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT id, generation_status
+      FROM generated_assets
+      WHERE match_id = matches.id
+        AND asset_type = 'artwork'
+        AND asset_variant = 'result'
+      ORDER BY id DESC
+      LIMIT 1
+    ) result_art ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT id
+      FROM generated_assets
+      WHERE match_id = matches.id
+        AND asset_type = 'card'
+        AND asset_variant = 'result'
+      ORDER BY id DESC
+      LIMIT 1
+    ) result_card ON TRUE
+  `
+}
+
 export async function listMatches() {
   await ensureSchema()
   await refreshDerivedMatchStatuses()
-  const { rows } = await sql<MatchRecord>`
-    SELECT
-      matches.*,
-      asset.id AS card_asset_id,
-      asset.asset_type AS card_asset_type
-    FROM matches
-    LEFT JOIN LATERAL (
-      SELECT id, asset_type
-      FROM generated_assets
-      WHERE match_id = matches.id
-        AND asset_type = CASE WHEN matches.status = 'finished' THEN 'result' ELSE 'upcoming' END
-        AND format = 'svg'
-      ORDER BY id DESC
-      LIMIT 1
-    ) asset ON TRUE
-    ORDER BY match_time ASC, id DESC
+  const { rows } = await sql.query<MatchRecord>(`
+    ${matchSelectClause()}
+    ORDER BY match_time ASC, matches.id DESC
     LIMIT 50
-  `
+  `)
 
   return hydrateMatches(rows)
 }
@@ -52,25 +104,12 @@ export async function listMatches() {
 export async function listVisibleMatches() {
   await ensureSchema()
   await refreshDerivedMatchStatuses()
-  const { rows } = await sql<MatchRecord>`
-    SELECT
-      matches.*,
-      asset.id AS card_asset_id,
-      asset.asset_type AS card_asset_type
-    FROM matches
-    LEFT JOIN LATERAL (
-      SELECT id, asset_type
-      FROM generated_assets
-      WHERE match_id = matches.id
-        AND asset_type = CASE WHEN matches.status = 'finished' THEN 'result' ELSE 'upcoming' END
-        AND format = 'svg'
-      ORDER BY id DESC
-      LIMIT 1
-    ) asset ON TRUE
-    WHERE status IN ('upcoming', 'live')
-    ORDER BY match_time ASC, id DESC
+  const { rows } = await sql.query<MatchRecord>(`
+    ${matchSelectClause()}
+    WHERE matches.status IN ('upcoming', 'live')
+    ORDER BY match_time ASC, matches.id DESC
     LIMIT 20
-  `
+  `)
 
   return hydrateMatches(rows)
 }
@@ -92,6 +131,15 @@ export async function createMatch(input: MatchInput) {
       team2,
       team1_logo,
       team2_logo,
+      team1_captain,
+      team2_captain,
+      team1_palette,
+      team2_palette,
+      team1_flag_colors,
+      team2_flag_colors,
+      creative_direction,
+      rivalry_tagline,
+      art_style,
       match_time,
       venue,
       status,
@@ -107,6 +155,15 @@ export async function createMatch(input: MatchInput) {
       ${input.team2.trim()},
       ${normalizeText(input.team1_logo)},
       ${normalizeText(input.team2_logo)},
+      ${normalizeText(input.team1_captain)},
+      ${normalizeText(input.team2_captain)},
+      ${normalizeText(input.team1_palette)},
+      ${normalizeText(input.team2_palette)},
+      ${normalizeText(input.team1_flag_colors)},
+      ${normalizeText(input.team2_flag_colors)},
+      ${normalizeText(input.creative_direction)},
+      ${normalizeText(input.rivalry_tagline)},
+      ${normalizeText(input.art_style)},
       ${input.match_time},
       ${normalizeText(input.venue)},
       ${status},
@@ -131,23 +188,31 @@ export async function updateMatch(id: number, input: MatchUpdateInput) {
   }
 
   const current = existing.rows[0]
-  const nextStatus = input.status ?? current.status
-  const nextResultSummary =
-    input.result_summary === undefined ? current.result_summary : input.result_summary
-  const nextWinner = input.winner === undefined ? current.winner : input.winner
-  const nextTeam1Votes = input.poll_team1_votes ?? current.poll_team1_votes
-  const nextTeam2Votes = input.poll_team2_votes ?? current.poll_team2_votes
-  const nextMatchTime = input.match_time ?? current.match_time
-
   const { rows } = await sql<MatchRecord>`
     UPDATE matches
     SET
-      status = ${nextStatus},
-      result_summary = ${nextResultSummary},
-      winner = ${nextWinner},
-      poll_team1_votes = ${nextTeam1Votes},
-      poll_team2_votes = ${nextTeam2Votes},
-      match_time = ${nextMatchTime}
+      team1 = ${input.team1?.trim() || current.team1},
+      team2 = ${input.team2?.trim() || current.team2},
+      sport = ${input.sport?.trim() || current.sport},
+      league = ${input.league === undefined ? current.league : normalizeText(input.league)},
+      venue = ${input.venue === undefined ? current.venue : normalizeText(input.venue)},
+      team1_logo = ${input.team1_logo === undefined ? current.team1_logo : normalizeText(input.team1_logo)},
+      team2_logo = ${input.team2_logo === undefined ? current.team2_logo : normalizeText(input.team2_logo)},
+      team1_captain = ${input.team1_captain === undefined ? current.team1_captain : normalizeText(input.team1_captain)},
+      team2_captain = ${input.team2_captain === undefined ? current.team2_captain : normalizeText(input.team2_captain)},
+      team1_palette = ${input.team1_palette === undefined ? current.team1_palette : normalizeText(input.team1_palette)},
+      team2_palette = ${input.team2_palette === undefined ? current.team2_palette : normalizeText(input.team2_palette)},
+      team1_flag_colors = ${input.team1_flag_colors === undefined ? current.team1_flag_colors : normalizeText(input.team1_flag_colors)},
+      team2_flag_colors = ${input.team2_flag_colors === undefined ? current.team2_flag_colors : normalizeText(input.team2_flag_colors)},
+      creative_direction = ${input.creative_direction === undefined ? current.creative_direction : normalizeText(input.creative_direction)},
+      rivalry_tagline = ${input.rivalry_tagline === undefined ? current.rivalry_tagline : normalizeText(input.rivalry_tagline)},
+      art_style = ${input.art_style === undefined ? current.art_style : normalizeText(input.art_style)},
+      status = ${input.status ?? current.status},
+      result_summary = ${input.result_summary === undefined ? current.result_summary : input.result_summary},
+      winner = ${input.winner === undefined ? current.winner : input.winner},
+      poll_team1_votes = ${input.poll_team1_votes ?? current.poll_team1_votes},
+      poll_team2_votes = ${input.poll_team2_votes ?? current.poll_team2_votes},
+      match_time = ${input.match_time ?? current.match_time}
     WHERE id = ${id}
     RETURNING *
   `
@@ -157,7 +222,6 @@ export async function updateMatch(id: number, input: MatchUpdateInput) {
 
 export async function getMatch(id: number) {
   await ensureSchema()
-
   const { rows } = await sql<MatchRecord>`
     SELECT *
     FROM matches
@@ -169,7 +233,6 @@ export async function getMatch(id: number) {
 
 export async function deleteMatch(id: number) {
   await ensureSchema()
-
   const { rows } = await sql<MatchRecord>`
     DELETE FROM matches
     WHERE id = ${id}
@@ -181,7 +244,6 @@ export async function deleteMatch(id: number) {
 
 export async function upsertFeedMatches(feedMatches: FeedMatch[]) {
   await ensureSchema()
-
   const saved: MatchRecord[] = []
 
   for (const item of feedMatches) {
@@ -195,6 +257,15 @@ export async function upsertFeedMatches(feedMatches: FeedMatch[]) {
         team2,
         team1_logo,
         team2_logo,
+        team1_captain,
+        team2_captain,
+        team1_palette,
+        team2_palette,
+        team1_flag_colors,
+        team2_flag_colors,
+        creative_direction,
+        rivalry_tagline,
+        art_style,
         match_time,
         venue,
         status,
@@ -210,6 +281,15 @@ export async function upsertFeedMatches(feedMatches: FeedMatch[]) {
         ${item.team2},
         ${normalizeText(item.team1Logo)},
         ${normalizeText(item.team2Logo)},
+        ${normalizeText(item.team1Captain)},
+        ${normalizeText(item.team2Captain)},
+        ${normalizeText(item.team1Palette)},
+        ${normalizeText(item.team2Palette)},
+        ${normalizeText(item.team1FlagColors)},
+        ${normalizeText(item.team2FlagColors)},
+        ${normalizeText(item.creativeDirection)},
+        ${normalizeText(item.rivalryTagline)},
+        ${normalizeText(item.artStyle)},
         ${item.matchTime},
         ${normalizeText(item.venue)},
         ${item.status || 'upcoming'},
@@ -225,6 +305,15 @@ export async function upsertFeedMatches(feedMatches: FeedMatch[]) {
         team2 = EXCLUDED.team2,
         team1_logo = EXCLUDED.team1_logo,
         team2_logo = EXCLUDED.team2_logo,
+        team1_captain = EXCLUDED.team1_captain,
+        team2_captain = EXCLUDED.team2_captain,
+        team1_palette = EXCLUDED.team1_palette,
+        team2_palette = EXCLUDED.team2_palette,
+        team1_flag_colors = EXCLUDED.team1_flag_colors,
+        team2_flag_colors = EXCLUDED.team2_flag_colors,
+        creative_direction = EXCLUDED.creative_direction,
+        rivalry_tagline = EXCLUDED.rivalry_tagline,
+        art_style = EXCLUDED.art_style,
         match_time = EXCLUDED.match_time,
         venue = EXCLUDED.venue,
         status = EXCLUDED.status,

@@ -18,9 +18,14 @@ export async function GET(_: Request, { params }: RouteContext) {
     return NextResponse.json({ error: 'Asset not found' }, { status: 404 })
   }
 
-  return new NextResponse(asset.content, {
+  const body =
+    asset.content_encoding === 'base64'
+      ? Buffer.from(asset.content, 'base64')
+      : asset.content
+
+  return new NextResponse(body, {
     headers: {
-      'Content-Type': 'image/svg+xml; charset=utf-8',
+      'Content-Type': asset.mime_type,
       'Cache-Control': 'no-store',
     },
   })

@@ -7,7 +7,8 @@ Sports prediction app with:
 - automatic database bootstrapping
 - seeded admin and player accounts
 - optional fixture/result syncing from a JSON feed
-- automatic SVG image generation for previews and results
+- Gemini-powered portrait artwork generation with fallback artwork
+- final prediction and result card rendering layered over that artwork
 - optional publishing through a webhook
 
 ## Setup
@@ -51,3 +52,44 @@ The automation pipeline is split into three jobs:
 3. `POST /api/automation/publish`
 
 `vercel.json` includes matching cron jobs so the pipeline can run automatically after deployment.
+
+## Premium Match Card Metadata
+
+Manual match creation and feed sync both accept richer visual metadata:
+
+- `team1Captain`
+- `team2Captain`
+- `team1Palette`
+- `team2Palette`
+- `team1FlagColors`
+- `team2FlagColors`
+- `creativeDirection`
+- `rivalryTagline`
+- `artStyle`
+
+When present, the app can generate Gemini portrait hero artwork for both `prediction` and `result` variants, then compose the final booster-pack card with HTML/CSS/SVG overlays for button zones, labels, vote stats, and result framing.
+
+If Gemini fails or no key is configured, the app falls back to the built-in artwork renderer so cards still display and publish.
+
+## Feed Contract
+
+`SPORTS_SYNC_FEED_URL` may return either a JSON array or an object with a `matches` array.
+
+Core fields:
+
+- `externalId`
+- `team1`
+- `team2`
+- `sport`
+- `matchTime`
+
+Recommended fields:
+
+- `league`
+- `venue`
+- `status`
+- `winner`
+- `resultSummary`
+- the premium metadata listed above
+
+Use `/api/feed/sample` as the reference payload. It now includes captain, palette, flag-color, style, and tagline data so you can test the premium card pipeline safely.

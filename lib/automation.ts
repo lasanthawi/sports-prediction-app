@@ -1,9 +1,11 @@
 import { sql } from '@vercel/postgres'
 import { ensureSchema } from './db'
-import { refreshDerivedMatchStatuses, upsertFeedMatches } from './matches'
-import { AssetRecord, FeedMatch, MatchRecord } from './types'
+import { buildGeminiPrompt, generateGeminiPortraitArtwork, getPromptVersion } from './gemini'
+import { getMatch, refreshDerivedMatchStatuses, upsertFeedMatches } from './matches'
+import { AssetRecord, AssetVariant, FeedMatch, MatchRecord } from './types'
 
 const DEFAULT_WEBHOOK_TIMEOUT_MS = 10000
+const RENDER_RECIPE_VERSION = 'portrait-card-v1'
 
 function getBaseUrl() {
   return (
@@ -14,8 +16,8 @@ function getBaseUrl() {
   )
 }
 
-function getCaption(match: MatchRecord, assetType: string) {
-  if (assetType === 'result') {
+function getCaption(match: MatchRecord, variant: AssetVariant) {
+  if (variant === 'result') {
     return `${match.team1} vs ${match.team2} is final. ${match.result_summary || 'Result is in.'}`
   }
 
@@ -31,35 +33,261 @@ function escapeXml(input: string) {
     .replaceAll("'", '&apos;')
 }
 
-function buildMatchSvg(match: MatchRecord, assetType: 'upcoming' | 'result') {
-  const subtitle =
-    assetType === 'result'
-      ? match.result_summary || 'Full-time result'
-      : `${match.sport}${match.league ? ` · ${match.league}` : ''}`
-  const footer =
-    assetType === 'result'
-      ? `Community vote ${match.poll_team1_votes} - ${match.poll_team2_votes}`
-      : new Date(match.match_time).toLocaleString()
-  const accent = assetType === 'result' ? '#f472b6' : '#4ade80'
+function getAssetDataUrl(asset: AssetRecord) {
+  if (asset.content_encoding === 'base64') {
+    return `data:${asset.mime_type};base64,${asset.content}`
+  }
+
+  return `data:${asset.mime_type};utf8,${encodeURIComponent(asset.content)}`
+}
+
+function buildFallbackArtwork(match: MatchRecord, variant: AssetVariant) {
+  const accentA = match.team1_palette || '#58f4a7'
+  const accentB = match.team2_palette || '#ff5ca8'
+  const headline = variant === 'result' ? 'Final Showdown' : 'Prediction Arena'
+  const subline = variant === 'result' ? match.result_summary || 'Result card fallback art' : match.rivalry_tagline || 'Premium pre-match card fallback art'
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="1200" height="630" fill="#09090f"/>
-  <rect x="30" y="30" width="1140" height="570" rx="32" fill="url(#bg)" stroke="${accent}" stroke-width="2"/>
-  <text x="90" y="120" fill="${accent}" font-size="34" font-family="Arial, sans-serif" font-weight="700">Prediction Arena</text>
-  <text x="90" y="190" fill="#ffffff" font-size="58" font-family="Arial, sans-serif" font-weight="700">${escapeXml(match.team1)}</text>
-  <text x="90" y="280" fill="#fbbf24" font-size="38" font-family="Arial, sans-serif" font-weight="700">VS</text>
-  <text x="90" y="370" fill="#ffffff" font-size="58" font-family="Arial, sans-serif" font-weight="700">${escapeXml(match.team2)}</text>
-  <text x="90" y="460" fill="#d1d5db" font-size="28" font-family="Arial, sans-serif">${escapeXml(subtitle)}</text>
-  <text x="90" y="520" fill="#9ca3af" font-size="24" font-family="Arial, sans-serif">${escapeXml(footer)}</text>
-  <text x="90" y="565" fill="#9ca3af" font-size="20" font-family="Arial, sans-serif">Automated asset: ${assetType}</text>
+<svg width="1080" height="1920" viewBox="0 0 1080 1920" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1080" height="1920" fill="#0B1020"/>
+  <rect width="1080" height="1920" fill="url(#bg)"/>
+  <circle cx="230" cy="420" r="260" fill="${accentA}" fill-opacity="0.3"/>
+  <circle cx="860" cy="540" r="280" fill="${accentB}" fill-opacity="0.28"/>
+  <rect x="70" y="120" width="940" height="1680" rx="42" fill="rgba(0,0,0,0.24)" stroke="rgba(255,216,77,0.55)" stroke-width="4"/>
+  <text x="110" y="300" fill="#FFD84D" font-family="Arial, sans-serif" font-size="68" font-weight="700">${escapeXml(headline)}</text>
+  <text x="110" y="390" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="90" font-weight="800">${escapeXml(match.team1)}</text>
+  <text x="110" y="510" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="90" font-weight="800">${escapeXml(match.team2)}</text>
+  <text x="110" y="640" fill="#D1D5DB" font-family="Arial, sans-serif" font-size="36">${escapeXml(subline)}</text>
+  <text x="110" y="720" fill="#E5E7EB" font-family="Arial, sans-serif" font-size="32">${escapeXml(match.team1_captain || `${match.team1} captain`)}</text>
+  <text x="110" y="770" fill="#E5E7EB" font-family="Arial, sans-serif" font-size="32">${escapeXml(match.team2_captain || `${match.team2} captain`)}</text>
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#0f172a"/>
-      <stop offset="1" stop-color="#1f1147"/>
+    <linearGradient id="bg" x1="40" y1="60" x2="1040" y2="1860" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#142040"/>
+      <stop offset="0.52" stop-color="#1D124A"/>
+      <stop offset="1" stop-color="#090B15"/>
     </linearGradient>
   </defs>
 </svg>`
+}
+
+function buildRenderedCardSvg(match: MatchRecord, variant: AssetVariant, artwork: AssetRecord) {
+  const artworkUrl = getAssetDataUrl(artwork)
+  const isResult = variant === 'result'
+  const title = isResult ? 'Result Locked In' : 'Who Takes the Crown?'
+  const subline = isResult
+    ? match.result_summary || 'Final whistle. Glory claimed.'
+    : match.rivalry_tagline || 'Choose your side before kickoff.'
+  const accent = isResult ? '#FF67B4' : '#FFD84D'
+  const team1Pct = match.poll_team1_votes + match.poll_team2_votes > 0
+    ? Math.round((match.poll_team1_votes / (match.poll_team1_votes + match.poll_team2_votes)) * 100)
+    : 50
+  const team2Pct = 100 - team1Pct
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1080" height="1920" viewBox="0 0 1080 1920" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="goldBar" x1="40" y1="0" x2="1040" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F7C904"/>
+      <stop offset="0.5" stop-color="#FFE77A"/>
+      <stop offset="1" stop-color="#E8B100"/>
+    </linearGradient>
+    <linearGradient id="footerBar" x1="0" y1="0" x2="1080" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#05060F"/>
+      <stop offset="1" stop-color="#161A2F"/>
+    </linearGradient>
+  </defs>
+  <rect width="1080" height="1920" rx="48" fill="#070B16"/>
+  <rect x="32" y="28" width="1016" height="1864" rx="42" fill="#0A0D18" stroke="rgba(255,216,77,0.66)" stroke-width="4"/>
+  <rect x="68" y="48" width="944" height="78" rx="22" fill="url(#goldBar)"/>
+  <rect x="70" y="140" width="940" height="152" fill="rgba(0,0,0,0.86)"/>
+  <rect x="70" y="292" width="940" height="1208" fill="url(#heroMask)"/>
+  <image href="${artworkUrl}" x="70" y="292" width="940" height="1208" preserveAspectRatio="xMidYMid slice"/>
+  <rect x="70" y="292" width="940" height="1208" fill="url(#heroOverlay)"/>
+  <rect x="70" y="1500" width="940" height="238" rx="28" fill="rgba(5,7,16,0.88)" stroke="rgba(255,255,255,0.12)"/>
+  <rect x="70" y="1762" width="940" height="92" fill="url(#footerBar)"/>
+  <text x="540" y="226" fill="${accent}" text-anchor="middle" font-family="Arial, sans-serif" font-size="58" font-weight="800" letter-spacing="3">${escapeXml(title)}</text>
+  <rect x="114" y="248" width="852" height="64" rx="8" fill="rgba(255,255,255,0.94)"/>
+  <text x="540" y="290" fill="#101828" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="700">${escapeXml(subline)}</text>
+  <text x="120" y="1568" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="66" font-weight="800">${escapeXml(match.team1)}</text>
+  <text x="120" y="1648" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="66" font-weight="800">${escapeXml(match.team2)}</text>
+  <text x="860" y="1590" fill="#FFD84D" text-anchor="end" font-family="Arial, sans-serif" font-size="28" font-weight="700">${escapeXml(match.sport.toUpperCase())}</text>
+  <text x="860" y="1632" fill="#D1D5DB" text-anchor="end" font-family="Arial, sans-serif" font-size="24">${escapeXml(match.league || '')}</text>
+  <text x="120" y="1698" fill="#D1D5DB" font-family="Arial, sans-serif" font-size="28">${escapeXml(new Date(match.match_time).toLocaleString())}</text>
+  <rect x="120" y="1718" width="400" height="56" rx="28" fill="rgba(92,255,155,0.18)" stroke="rgba(92,255,155,0.46)"/>
+  <text x="320" y="1753" fill="#6BFFB1" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="700">${isResult ? 'Final community split' : 'Tap your champion'}</text>
+  <rect x="120" y="1798" width="376" height="110" rx="28" fill="rgba(92,255,155,0.18)" stroke="rgba(92,255,155,0.42)"/>
+  <rect x="584" y="1798" width="376" height="110" rx="28" fill="rgba(255,92,168,0.18)" stroke="rgba(255,92,168,0.42)"/>
+  <text x="152" y="1842" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="36" font-weight="800">${escapeXml(match.team1)}</text>
+  <text x="152" y="1884" fill="#6BFFB1" font-family="Arial, sans-serif" font-size="26" font-weight="700">${team1Pct}% backing</text>
+  <text x="616" y="1842" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="36" font-weight="800">${escapeXml(match.team2)}</text>
+  <text x="616" y="1884" fill="#FF76BD" font-family="Arial, sans-serif" font-size="26" font-weight="700">${team2Pct}% backing</text>
+  <text x="120" y="1820" fill="rgba(255,255,255,0.66)" font-family="Arial, sans-serif" font-size="16" font-weight="700">BOOSTER PACK</text>
+  <text x="540" y="1820" fill="#FFD84D" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="700">${isResult ? 'RESULT CARD' : 'PREDICTION CARD'}</text>
+  <text x="972" y="1820" fill="rgba(255,255,255,0.66)" text-anchor="end" font-family="Arial, sans-serif" font-size="16" font-weight="700">${escapeXml(match.status.toUpperCase())}</text>
+  <defs>
+    <linearGradient id="heroMask" x1="540" y1="292" x2="540" y2="1500" gradientUnits="userSpaceOnUse">
+      <stop stop-color="rgba(255,255,255,0)"/>
+      <stop offset="1" stop-color="rgba(255,255,255,0)"/>
+    </linearGradient>
+    <linearGradient id="heroOverlay" x1="540" y1="292" x2="540" y2="1500" gradientUnits="userSpaceOnUse">
+      <stop stop-color="rgba(7,11,22,0.16)"/>
+      <stop offset="0.55" stop-color="rgba(7,11,22,0.12)"/>
+      <stop offset="1" stop-color="rgba(7,11,22,0.72)"/>
+    </linearGradient>
+  </defs>
+</svg>`
+}
+
+async function upsertAsset(input: {
+  matchId: number
+  assetType: 'artwork' | 'card'
+  assetVariant: AssetVariant
+  format: string
+  mimeType: string
+  contentEncoding: 'utf8' | 'base64'
+  title: string
+  content: string
+  generationStatus: 'generated' | 'fallback' | 'queued' | 'failed'
+  sourceModel?: string | null
+  promptVersion?: string | null
+  imageUrl?: string | null
+  renderRecipeVersion?: string | null
+  debugPrompt?: string | null
+  sourceAssetId?: number | null
+  publicationCaption?: string | null
+}) {
+  const { rows } = await sql<AssetRecord>`
+    INSERT INTO generated_assets (
+      match_id,
+      asset_type,
+      asset_variant,
+      format,
+      mime_type,
+      content_encoding,
+      title,
+      content,
+      generation_status,
+      source_model,
+      prompt_version,
+      image_url,
+      render_recipe_version,
+      debug_prompt,
+      source_asset_id,
+      publication_caption,
+      published_status
+    )
+    VALUES (
+      ${input.matchId},
+      ${input.assetType},
+      ${input.assetVariant},
+      ${input.format},
+      ${input.mimeType},
+      ${input.contentEncoding},
+      ${input.title},
+      ${input.content},
+      ${input.generationStatus},
+      ${input.sourceModel || null},
+      ${input.promptVersion || null},
+      ${input.imageUrl || null},
+      ${input.renderRecipeVersion || null},
+      ${input.debugPrompt || null},
+      ${input.sourceAssetId || null},
+      ${input.publicationCaption || null},
+      'ready'
+    )
+    ON CONFLICT (match_id, asset_type, asset_variant, format)
+    DO UPDATE SET
+      mime_type = EXCLUDED.mime_type,
+      content_encoding = EXCLUDED.content_encoding,
+      title = EXCLUDED.title,
+      content = EXCLUDED.content,
+      generation_status = EXCLUDED.generation_status,
+      source_model = EXCLUDED.source_model,
+      prompt_version = EXCLUDED.prompt_version,
+      image_url = EXCLUDED.image_url,
+      render_recipe_version = EXCLUDED.render_recipe_version,
+      debug_prompt = EXCLUDED.debug_prompt,
+      source_asset_id = EXCLUDED.source_asset_id,
+      publication_caption = EXCLUDED.publication_caption,
+      published_status = CASE
+        WHEN generated_assets.published_status = 'published' THEN generated_assets.published_status
+        ELSE 'ready'
+      END
+    RETURNING *
+  `
+
+  return rows[0]
+}
+
+async function createArtworkAsset(match: MatchRecord, variant: AssetVariant) {
+  const gemini = await generateGeminiPortraitArtwork(match, variant)
+
+  if (gemini.ok) {
+    return upsertAsset({
+      matchId: match.id,
+      assetType: 'artwork',
+      assetVariant: variant,
+      format: gemini.format,
+      mimeType: gemini.mimeType,
+      contentEncoding: gemini.contentEncoding,
+      title: `${match.team1} vs ${match.team2} ${variant} artwork`,
+      content: gemini.content,
+      generationStatus: 'generated',
+      sourceModel: gemini.sourceModel,
+      promptVersion: gemini.promptVersion,
+      renderRecipeVersion: null,
+      debugPrompt: gemini.prompt,
+      publicationCaption: getCaption(match, variant),
+    })
+  }
+
+  const fallbackContent = buildFallbackArtwork(match, variant)
+  return upsertAsset({
+    matchId: match.id,
+    assetType: 'artwork',
+    assetVariant: variant,
+    format: 'svg',
+    mimeType: 'image/svg+xml',
+    contentEncoding: 'utf8',
+    title: `${match.team1} vs ${match.team2} ${variant} fallback artwork`,
+    content: fallbackContent,
+    generationStatus: 'fallback',
+    sourceModel: 'fallback-renderer',
+    promptVersion: getPromptVersion(),
+    debugPrompt: buildGeminiPrompt(match, variant),
+    publicationCaption: getCaption(match, variant),
+  })
+}
+
+async function createRenderedCardAsset(match: MatchRecord, variant: AssetVariant, artwork: AssetRecord) {
+  const content = buildRenderedCardSvg(match, variant, artwork)
+  return upsertAsset({
+    matchId: match.id,
+    assetType: 'card',
+    assetVariant: variant,
+    format: 'svg',
+    mimeType: 'image/svg+xml',
+    contentEncoding: 'utf8',
+    title: `${match.team1} vs ${match.team2} ${variant} card`,
+    content,
+    generationStatus: artwork.generation_status,
+    sourceModel: artwork.source_model,
+    promptVersion: artwork.prompt_version,
+    renderRecipeVersion: RENDER_RECIPE_VERSION,
+    sourceAssetId: artwork.id,
+    publicationCaption: getCaption(match, variant),
+  })
+}
+
+async function getMatchAssets(matchId: number) {
+  const { rows } = await sql<AssetRecord>`
+    SELECT *
+    FROM generated_assets
+    WHERE match_id = ${matchId}
+    ORDER BY id DESC
+  `
+
+  return rows
 }
 
 export async function logAutomationRun(jobName: string, status: string, summary: string, payload: unknown) {
@@ -106,6 +334,15 @@ export async function fetchFeedMatches() {
     venue: item.venue ? String(item.venue) : null,
     team1Logo: item.team1Logo ? String(item.team1Logo) : null,
     team2Logo: item.team2Logo ? String(item.team2Logo) : null,
+    team1Captain: item.team1Captain ? String(item.team1Captain) : null,
+    team2Captain: item.team2Captain ? String(item.team2Captain) : null,
+    team1Palette: item.team1Palette ? String(item.team1Palette) : null,
+    team2Palette: item.team2Palette ? String(item.team2Palette) : null,
+    team1FlagColors: item.team1FlagColors ? String(item.team1FlagColors) : null,
+    team2FlagColors: item.team2FlagColors ? String(item.team2FlagColors) : null,
+    creativeDirection: item.creativeDirection ? String(item.creativeDirection) : null,
+    rivalryTagline: item.rivalryTagline ? String(item.rivalryTagline) : null,
+    artStyle: item.artStyle ? String(item.artStyle) : null,
     status: (item.status as FeedMatch['status']) || 'upcoming',
     winner: typeof item.winner === 'number' ? item.winner : null,
     resultSummary: item.resultSummary ? String(item.resultSummary) : null,
@@ -117,79 +354,34 @@ export async function syncMatchesFromFeed() {
   const feedMatches = await fetchFeedMatches()
 
   if (!feedMatches.length) {
-    await logAutomationRun('sync_matches', 'skipped', 'No feed configured or feed returned no matches', {
-      count: 0,
-    })
-
-    return {
-      count: 0,
-      matches: [] as MatchRecord[],
-      skipped: true,
-    }
+    await logAutomationRun('sync_matches', 'skipped', 'No feed configured or feed returned no matches', { count: 0 })
+    return { count: 0, matches: [] as MatchRecord[], skipped: true }
   }
 
   const matches = await upsertFeedMatches(feedMatches)
   await refreshDerivedMatchStatuses()
   await generateAssetsForMatches(matches)
-  await logAutomationRun('sync_matches', 'success', `Synced ${matches.length} matches from feed`, {
-    count: matches.length,
-  })
+  await logAutomationRun('sync_matches', 'success', `Synced ${matches.length} matches from feed`, { count: matches.length })
 
-  return {
-    count: matches.length,
-    matches,
-    skipped: false,
-  }
+  return { count: matches.length, matches, skipped: false }
 }
 
 export async function generateAssetsForMatches(matches: MatchRecord[]) {
   await ensureSchema()
   const generated: AssetRecord[] = []
 
-  for (const match of matches) {
-    const assetType = match.status === 'finished' ? 'result' : 'upcoming'
-    const title = `${match.team1} vs ${match.team2} ${assetType === 'result' ? 'Result' : 'Preview'}`
-    const content = buildMatchSvg(match, assetType)
-    const caption = getCaption(match, assetType)
+  for (const incomingMatch of matches) {
+    const match = await getMatch(incomingMatch.id) || incomingMatch
+    const variants: AssetVariant[] = ['prediction', 'result']
 
-    const { rows } = await sql<AssetRecord>`
-      INSERT INTO generated_assets (
-        match_id,
-        asset_type,
-        format,
-        title,
-        content,
-        publication_caption,
-        published_status
-      )
-      VALUES (
-        ${match.id},
-        ${assetType},
-        'svg',
-        ${title},
-        ${content},
-        ${caption},
-        'ready'
-      )
-      ON CONFLICT (match_id, asset_type, format)
-      DO UPDATE SET
-        title = EXCLUDED.title,
-        content = EXCLUDED.content,
-        publication_caption = EXCLUDED.publication_caption,
-        published_status = CASE
-          WHEN generated_assets.published_status = 'published' THEN generated_assets.published_status
-          ELSE 'ready'
-        END
-      RETURNING *
-    `
-
-    generated.push(rows[0])
+    for (const variant of variants) {
+      const artwork = await createArtworkAsset(match, variant)
+      const card = await createRenderedCardAsset(match, variant, artwork)
+      generated.push(artwork, card)
+    }
   }
 
-  await logAutomationRun('generate_assets', 'success', `Generated ${generated.length} assets`, {
-    count: generated.length,
-  })
-
+  await logAutomationRun('generate_assets', 'success', `Generated ${generated.length} assets`, { count: generated.length })
   return generated
 }
 
@@ -199,26 +391,18 @@ export async function publishReadyAssets() {
     SELECT *
     FROM generated_assets
     WHERE published_status = 'ready'
+      AND asset_type = 'card'
     ORDER BY created_at ASC
     LIMIT 20
   `
 
   const webhookUrl = process.env.PUBLISH_WEBHOOK_URL
   if (!webhookUrl) {
-    await logAutomationRun('publish_assets', 'skipped', 'PUBLISH_WEBHOOK_URL is not configured', {
-      count: rows.length,
-    })
-
-    return {
-      published: 0,
-      queued: rows.length,
-      mode: 'queue-only',
-      assets: rows,
-    }
+    await logAutomationRun('publish_assets', 'skipped', 'PUBLISH_WEBHOOK_URL is not configured', { count: rows.length })
+    return { published: 0, queued: rows.length, mode: 'queue-only', assets: rows }
   }
 
   let published = 0
-
   for (const asset of rows) {
     const response = await fetch(webhookUrl, {
       method: 'POST',
@@ -227,8 +411,10 @@ export async function publishReadyAssets() {
         title: asset.title,
         caption: asset.publication_caption,
         format: asset.format,
+        mimeType: asset.mime_type,
         content: asset.content,
         assetUrl: `${getBaseUrl()}/api/assets/${asset.id}`,
+        assetVariant: asset.asset_variant,
       }),
       signal: AbortSignal.timeout(DEFAULT_WEBHOOK_TIMEOUT_MS),
     })
@@ -250,17 +436,8 @@ export async function publishReadyAssets() {
     }
   }
 
-  await logAutomationRun('publish_assets', 'success', `Processed ${rows.length} assets`, {
-    published,
-    queued: rows.length,
-  })
-
-  return {
-    published,
-    queued: rows.length,
-    mode: 'webhook',
-    assets: rows,
-  }
+  await logAutomationRun('publish_assets', 'success', `Processed ${rows.length} assets`, { published, queued: rows.length })
+  return { published, queued: rows.length, mode: 'webhook', assets: rows }
 }
 
 export async function runAutomationPipeline() {
@@ -275,11 +452,7 @@ export async function runAutomationPipeline() {
     published: publish.published,
   })
 
-  return {
-    sync,
-    assets: { count: assets.length },
-    publish,
-  }
+  return { sync, assets: { count: assets.length }, publish }
 }
 
 export async function listAutomationRuns(limit = 10) {
@@ -290,7 +463,6 @@ export async function listAutomationRuns(limit = 10) {
     ORDER BY started_at DESC, id DESC
     LIMIT ${limit}
   `
-
   return rows
 }
 
@@ -301,6 +473,26 @@ export async function getAsset(id: number) {
     FROM generated_assets
     WHERE id = ${id}
   `
-
   return rows[0] || null
+}
+
+export async function regenerateAssetBundle(matchId: number, variant?: AssetVariant) {
+  const match = await getMatch(matchId)
+  if (!match) {
+    return null
+  }
+
+  if (variant) {
+    const artwork = await createArtworkAsset(match, variant)
+    const card = await createRenderedCardAsset(match, variant, artwork)
+    return { artwork, card }
+  }
+
+  const assets = await generateAssetsForMatches([match])
+  return { assets }
+}
+
+export async function getAssetsForMatch(matchId: number) {
+  await ensureSchema()
+  return getMatchAssets(matchId)
 }
