@@ -1,39 +1,37 @@
 import { NextResponse } from 'next/server'
-import { sql } from '@vercel/postgres'
+import { createMatch, listMatches, listVisibleMatches } from '@/lib/matches'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const { rows } = await sql`
-      SELECT * FROM matches 
-      WHERE status IN ('upcoming', 'live')
-      ORDER BY match_time ASC
-      LIMIT 20
-    `
-    
-    return NextResponse.json({ matches: rows })
+    const { searchParams } = new URL(request.url)
+    const includeAll = searchParams.get('includeAll') === '1'
+    const matches = includeAll ? await listMatches() : await listVisibleMatches()
+    return NextResponse.json({ matches })
   } catch (error: any) {
     console.error('Database error:', error)
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'Failed to fetch matches',
-      matches: []
+      details: error.message,
+      matches: [],
     }, { status: 500 })
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const { team1, team2, match_time, sport } = await request.json()
-    
-    const { rows } = await sql`
-      INSERT INTO matches (team1, team2, match_time, sport, status, poll_team1_votes, poll_team2_votes)
-      VALUES (${team1}, ${team2}, ${match_time}, ${sport}, 'upcoming', 0, 0)
-      RETURNING *
-    `
-    
-    return NextResponse.json({ match: rows[0] })
+    const body = await request.json()
+
+    if (!body.team1 || !body.team2 || !body.sport || !body.match_time) {
+      return NextResponse.json({ error: 'team1, team2, sport, and match_time are required' }, { status: 400 })
+    }
+
+    const match = await createMatch(body)
+
+    return NextResponse.json({ match })
   } catch (error: any) {
+    console.error('Create match error:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

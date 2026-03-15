@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import { sql } from '@vercel/postgres'
+import { ensureSchema } from '@/lib/db'
 
 export async function POST(request: Request) {
   try {
+    await ensureSchema()
     const { matchId, team } = await request.json()
     
     // Check if match is still upcoming
@@ -33,6 +35,7 @@ export async function POST(request: Request) {
     
     return NextResponse.json({ success: true })
   } catch (error: any) {
+    console.error('Vote error:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

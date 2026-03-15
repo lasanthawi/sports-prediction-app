@@ -1,3 +1,102 @@
+<<<<<<< HEAD
+# Sports Prediction App
+
+Sports prediction app with:
+
+- manual match creation
+- live community voting
+- automatic database bootstrapping
+- optional fixture/result syncing from a JSON feed
+- automatic SVG image generation for previews and results
+- optional publishing through a webhook
+
+## Setup
+
+1. Install dependencies.
+2. Configure the environment variables from [.env.example](/C:/Users/deepa/Documents/GitHub/sports-prediction-app/.env.example).
+3. Run `yarn dev`.
+4. Open `/admin` and click `Initialize DB`.
+
+## Database
+
+The app auto-creates these tables the first time an admin/API route touches the database:
+
+- `matches`
+- `generated_assets`
+- `automation_runs`
+
+## Manual Match Management
+
+Use `/admin` to:
+
+- initialize the database
+- add matches
+- mark matches as live, finished, or cancelled
+- inspect recent automation runs
+
+## Automation Flow
+
+The automation pipeline is split into three jobs:
+
+1. `POST /api/automation/sync`
+   Pulls matches from `SPORTS_SYNC_FEED_URL` and upserts them into `matches`.
+2. `POST /api/automation/assets`
+   Generates SVG assets for each active or finished match.
+3. `POST /api/automation/publish`
+   Sends ready assets to `PUBLISH_WEBHOOK_URL`. If no webhook is configured, assets remain queued.
+
+`vercel.json` includes matching cron jobs so the pipeline can run automatically after deployment.
+
+## Feed Contract
+
+`SPORTS_SYNC_FEED_URL` should return either:
+
+```json
+[
+  {
+    "externalId": "fixture-123",
+    "source": "feed",
+    "sport": "Football",
+    "league": "Premier League",
+    "team1": "Arsenal",
+    "team2": "Chelsea",
+    "matchTime": "2026-03-20T17:30:00Z",
+    "status": "upcoming",
+    "venue": "Emirates Stadium"
+  }
+]
+```
+
+or:
+
+```json
+{
+  "matches": []
+}
+```
+
+For results, include:
+
+- `status: "finished"`
+- `winner: 1` or `2`
+- `resultSummary`
+
+## Publish Webhook Contract
+
+`PUBLISH_WEBHOOK_URL` receives:
+
+```json
+{
+  "title": "Arsenal vs Chelsea Preview",
+  "caption": "Arsenal vs Chelsea starts at ...",
+  "format": "svg",
+  "content": "<svg ...",
+  "assetUrl": "https://your-app.vercel.app/api/assets/12"
+}
+```
+
+Return any `2xx` status to mark the asset as published.
+=======
 # 🏆 Sports Prediction Arena
 
 AI-powered sports prediction platform with live polls, match flyers, and real-time results - built with Next.js, Vercel, Neon DB, and Gemini AI.
@@ -219,3 +318,4 @@ MIT
 ---
 
 **🎮 Play Now:** https://sports-prediction-app-zeta.vercel.app
+>>>>>>> 8db24d669de0e1b3043e5892cee75dfd733b3428

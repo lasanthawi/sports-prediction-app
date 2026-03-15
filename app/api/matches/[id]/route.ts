@@ -1,4 +1,34 @@
 import { NextResponse } from 'next/server'
+<<<<<<< HEAD
+import { updateMatch } from '@/lib/matches'
+
+interface RouteContext {
+  params: {
+    id: string
+  }
+}
+
+export async function PATCH(request: Request, { params }: RouteContext) {
+  try {
+    const id = Number(params.id)
+    if (!Number.isInteger(id)) {
+      return NextResponse.json({ error: 'Invalid match id' }, { status: 400 })
+    }
+
+    const body = await request.json()
+    const match = await updateMatch(id, body)
+
+    if (!match) {
+      return NextResponse.json({ error: 'Match not found' }, { status: 404 })
+    }
+
+    return NextResponse.json({ match })
+  } catch (error: any) {
+    console.error('Update match error:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+}
+=======
 import { sql } from '@vercel/postgres'
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
@@ -46,3 +76,4 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
+>>>>>>> 8db24d669de0e1b3043e5892cee75dfd733b3428
