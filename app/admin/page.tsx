@@ -118,7 +118,7 @@ export default function AdminPage() {
   const [matchPage, setMatchPage] = useState(1)
   const [runsPage, setRunsPage] = useState(1)
 
-  const matchesPerPage = 4
+  const matchesPerPage = 6
   const runsPerPage = 6
   const totalMatchPages = Math.max(1, Math.ceil(matches.length / matchesPerPage))
   const totalRunPages = Math.max(1, Math.ceil(runs.length / runsPerPage))
@@ -686,11 +686,16 @@ export default function AdminPage() {
             <p className="text-gray-400">No matches yet. Initialize the DB, then add one manually or sync from a feed.</p>
           ) : (
             <div className="space-y-6">
-              {visibleMatches.map((match) => (
-                <div key={match.id} className="rounded-2xl border border-white/10 bg-gray-900/70 p-5">
-                  <div className="grid gap-6 xl:grid-cols-[380px_1fr]">
-                    <div className="flex justify-center">
-                      <MatchCard match={match} interactive={false} />
+              <div className="grid gap-4 xl:grid-cols-2">
+              {visibleMatches.map((match) => {
+                const isPublished = match.publish_status === 'published'
+                const publishButtonLabel = isPublished ? 'Published' : 'Publish'
+
+                return (
+                <div key={match.id} className="rounded-2xl border border-white/10 bg-gray-900/70 p-4">
+                  <div className="grid gap-4 xl:grid-cols-[220px_1fr]">
+                    <div className="flex justify-center xl:justify-start">
+                      <MatchCard match={match} interactive={false} className="!max-w-[13.5rem] !min-h-[24rem]" />
                     </div>
 
                     <div>
@@ -751,7 +756,7 @@ export default function AdminPage() {
                           </div>
                         </form>
                       ) : (
-                        <div className="space-y-5">
+                        <div className="space-y-4">
                           <div className="flex flex-wrap items-start justify-between gap-4">
                             <div className="max-w-3xl">
                               <h3 className="text-xl font-black text-white">{match.team1} vs {match.team2}</h3>
@@ -780,7 +785,7 @@ export default function AdminPage() {
                             </div>
                           </div>
 
-                          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                          <div className="grid gap-3 md:grid-cols-2">
                             <ActionButton onClick={() => startEdit(match)} tone="border-blue-400/40 text-blue-300">
                               <Edit3 size={16} className="mr-2 inline" /> Edit Match
                             </ActionButton>
@@ -790,8 +795,8 @@ export default function AdminPage() {
                             <ActionButton onClick={() => void runMatchAction(match.id, 'full', 'all', 'Prediction and result cards regenerated')} disabled={jobState[`full-all-${match.id}`]} tone="border-yellow-400/40 text-yellow-300">
                               <WandSparkles size={16} className="mr-2 inline" /> Generate Full Card Set
                             </ActionButton>
-                            <ActionButton onClick={() => void runMatchAction(match.id, 'publish', 'all', 'Match assets published')} disabled={jobState[`publish-all-${match.id}`]} tone="border-emerald-400/40 text-emerald-300">
-                              <Send size={16} className="mr-2 inline" /> Publish
+                            <ActionButton onClick={() => void runMatchAction(match.id, 'publish', 'all', isPublished ? 'Match cards are already published' : 'Match assets published')} disabled={jobState[`publish-all-${match.id}`] || isPublished} tone={isPublished ? 'border-white/15 text-gray-400' : 'border-emerald-400/40 text-emerald-300'}>
+                              <Send size={16} className="mr-2 inline" /> {publishButtonLabel}
                             </ActionButton>
                             <ActionButton onClick={() => void removeMatch(match.id)} disabled={jobState[`delete-${match.id}`]} tone="border-red-400/40 text-red-300">
                               <Trash2 size={16} className="mr-2 inline" /> Delete
@@ -807,7 +812,8 @@ export default function AdminPage() {
                     </div>
                   </div>
                 </div>
-              ))}
+              )})}
+              </div>
               <PaginationControls
                 page={matchPage}
                 totalPages={totalMatchPages}

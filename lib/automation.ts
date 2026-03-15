@@ -407,6 +407,7 @@ export async function publishMatchAssets(matchId: number) {
     FROM generated_assets
     WHERE match_id = ${matchId}
       AND asset_type = 'card'
+      AND published_status = 'ready'
     ORDER BY asset_variant ASC, created_at DESC
   `
 
