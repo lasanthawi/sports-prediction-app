@@ -530,6 +530,188 @@ export default function AdminPage() {
         </section>
         ) : null}
 
+        {activeTab === 'matches' ? (
+        <section className="rounded-2xl border border-green-400/20 bg-gray-800/80 p-6">
+          <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-bold">Match Operations</h2>
+              <p className="mt-1 text-sm text-gray-400">
+                A cleaner workspace for reviewing match health, generation status, and publishing readiness.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3 text-sm">
+              <MiniStat label="Total" value={String(matches.length)} />
+              <MiniStat label="Live" value={String(liveMatches.length)} />
+              <MiniStat label="Upcoming" value={String(upcomingMatches.length)} />
+              <MiniStat label="Page" value={`${matchPage}/${totalMatchPages}`} />
+            </div>
+          </div>
+
+          {loading ? (
+            <p className="text-gray-400">Loading matches...</p>
+          ) : matches.length === 0 ? (
+            <p className="text-gray-400">No matches yet. Initialize the DB, then add one manually or sync from a feed.</p>
+          ) : (
+            <div className="space-y-4">
+              {visibleMatches.map((match) => {
+                const isPublished = match.publish_status === 'published'
+                const publishButtonLabel = isPublished ? 'Published' : 'Publish'
+
+                return (
+                  <div key={match.id} className="rounded-2xl border border-white/10 bg-gray-900/70 p-4 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+                    <div className="grid gap-5 xl:grid-cols-[180px_minmax(0,1fr)_320px]">
+                      <div className="flex justify-center xl:justify-start">
+                        <MatchCard match={match} interactive={false} className="!max-w-[10.5rem] !min-h-[18.5rem]" />
+                      </div>
+
+                      <div>
+                        {editingId === match.id ? (
+                          <form onSubmit={(event) => void saveEdit(event, match.id)} className="grid gap-4 md:grid-cols-2">
+                            <Field label="Team 1" value={editForm.team1} onChange={(value) => setEditForm((current) => ({ ...current, team1: value }))} />
+                            <Field label="Team 2" value={editForm.team2} onChange={(value) => setEditForm((current) => ({ ...current, team2: value }))} />
+                            <Field label="Sport" value={editForm.sport} onChange={(value) => setEditForm((current) => ({ ...current, sport: value }))} />
+                            <Field label="League" value={editForm.league} onChange={(value) => setEditForm((current) => ({ ...current, league: value }))} required={false} />
+                            <Field label="Venue" value={editForm.venue} onChange={(value) => setEditForm((current) => ({ ...current, venue: value }))} required={false} />
+                            <Field label="Match Time" value={editForm.match_time} onChange={(value) => setEditForm((current) => ({ ...current, match_time: value }))} type="datetime-local" />
+                            <Field label="Team 1 Captain" value={editForm.team1_captain} onChange={(value) => setEditForm((current) => ({ ...current, team1_captain: value }))} required={false} />
+                            <Field label="Team 2 Captain" value={editForm.team2_captain} onChange={(value) => setEditForm((current) => ({ ...current, team2_captain: value }))} required={false} />
+                            <Field label="Team 1 Palette" value={editForm.team1_palette} onChange={(value) => setEditForm((current) => ({ ...current, team1_palette: value }))} required={false} />
+                            <Field label="Team 2 Palette" value={editForm.team2_palette} onChange={(value) => setEditForm((current) => ({ ...current, team2_palette: value }))} required={false} />
+                            <Field label="Team 1 Flag Colors" value={editForm.team1_flag_colors} onChange={(value) => setEditForm((current) => ({ ...current, team1_flag_colors: value }))} required={false} />
+                            <Field label="Team 2 Flag Colors" value={editForm.team2_flag_colors} onChange={(value) => setEditForm((current) => ({ ...current, team2_flag_colors: value }))} required={false} />
+                            <Field label="Rivalry Tagline" value={editForm.rivalry_tagline} onChange={(value) => setEditForm((current) => ({ ...current, rivalry_tagline: value }))} required={false} />
+                            <Field label="Art Style" value={editForm.art_style} onChange={(value) => setEditForm((current) => ({ ...current, art_style: value }))} required={false} />
+                            <label className="block">
+                              <span className="mb-2 block text-sm font-bold text-gray-200">Status</span>
+                              <select
+                                value={editForm.status}
+                                onChange={(event) => setEditForm((current) => ({ ...current, status: event.target.value as MatchStatus }))}
+                                className="w-full rounded-lg border border-green-400/30 bg-gray-900 px-4 py-3 outline-none focus:border-green-400"
+                              >
+                                <option value="upcoming">upcoming</option>
+                                <option value="live">live</option>
+                                <option value="finished">finished</option>
+                                <option value="cancelled">cancelled</option>
+                              </select>
+                            </label>
+                            <Field label="Winner (1 or 2)" value={editForm.winner} onChange={(value) => setEditForm((current) => ({ ...current, winner: value }))} required={false} />
+                            <label className="block md:col-span-2">
+                              <span className="mb-2 block text-sm font-bold text-gray-200">Result Summary</span>
+                              <input
+                                value={editForm.result_summary}
+                                onChange={(event) => setEditForm((current) => ({ ...current, result_summary: event.target.value }))}
+                                className="w-full rounded-lg border border-green-400/30 bg-gray-900 px-4 py-3 outline-none focus:border-green-400"
+                              />
+                            </label>
+                            <label className="block md:col-span-2">
+                              <span className="mb-2 block text-sm font-bold text-gray-200">Creative Direction</span>
+                              <textarea
+                                value={editForm.creative_direction}
+                                onChange={(event) => setEditForm((current) => ({ ...current, creative_direction: event.target.value }))}
+                                rows={3}
+                                className="w-full rounded-lg border border-green-400/30 bg-gray-900 px-4 py-3 outline-none focus:border-green-400"
+                              />
+                            </label>
+                            <div className="flex gap-3 md:col-span-2">
+                              <button type="submit" disabled={jobState[`save-${match.id}`]} className="btn-game disabled:cursor-not-allowed disabled:opacity-60">
+                                Save Changes
+                              </button>
+                              <button type="button" onClick={stopEdit} className="rounded-lg border border-white/20 px-4 py-3 text-gray-300">
+                                Cancel
+                              </button>
+                            </div>
+                          </form>
+                        ) : (
+                          <div className="space-y-4">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-3">
+                                <h3 className="text-xl font-black text-white">{match.team1} vs {match.team2}</h3>
+                                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[0.65rem] font-bold uppercase tracking-[0.18em] text-gray-300">
+                                  {match.status}
+                                </span>
+                              </div>
+                              <p className="mt-2 text-sm text-gray-400">
+                                {match.sport}
+                                {match.league ? ` · ${match.league}` : ''}
+                                {' · '}
+                                {new Date(match.match_time).toLocaleString()}
+                              </p>
+                              <p className="mt-1 text-xs uppercase tracking-wide text-gray-500">
+                                {match.source}
+                                {match.result_summary ? ` · ${match.result_summary}` : ''}
+                              </p>
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                <StatusBadge label="Fetched" value={match.source === 'manual' ? 'manual' : 'synced'} tone={match.source === 'manual' ? 'slate' : 'cyan'} />
+                                <StatusBadge label="Generated" value={match.asset_generation_status || 'pending'} tone={assetTone(match.asset_generation_status)} />
+                                <StatusBadge label="Published" value={match.publish_status || 'draft'} tone={publishTone(match.publish_status)} />
+                              </div>
+                            </div>
+
+                            <div className="grid gap-3 md:grid-cols-2">
+                              <InfoStrip label="Venue" value={match.venue || 'TBA'} />
+                              <InfoStrip label="Votes" value={`${match.poll_team1_votes + match.poll_team2_votes}`} />
+                              <InfoStrip label="Prediction Card" value={match.prediction_card_url ? 'Ready' : 'Not generated'} />
+                              <InfoStrip label="Result Card" value={match.result_card_url ? 'Ready' : 'Not generated'} />
+                            </div>
+
+                            {match.rivalry_tagline ? <p className="text-sm text-gray-300">{match.rivalry_tagline}</p> : null}
+                          </div>
+                        )}
+                      </div>
+
+                      {editingId === match.id ? null : (
+                        <div className="space-y-4">
+                          <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+                            <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">State Controls</p>
+                            <div className="mt-3 grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
+                              <button onClick={() => void updateMatch(match.id, { status: 'live' }, 'Match marked live')} disabled={jobState[`match-${match.id}`]} className="rounded-lg border border-yellow-400/40 px-3 py-2 text-sm text-yellow-300">Mark Live</button>
+                              <button onClick={() => void updateMatch(match.id, { status: 'finished', winner: match.poll_team1_votes >= match.poll_team2_votes ? 1 : 2, result_summary: `${match.team1} ${match.poll_team1_votes} - ${match.poll_team2_votes} ${match.team2}` }, 'Match marked finished')} disabled={jobState[`match-${match.id}`]} className="rounded-lg border border-green-400/40 px-3 py-2 text-sm text-green-300">Finish</button>
+                              <button onClick={() => void updateMatch(match.id, { status: 'cancelled' }, 'Match cancelled')} disabled={jobState[`match-${match.id}`]} className="rounded-lg border border-red-400/40 px-3 py-2 text-sm text-red-300">Cancel</button>
+                            </div>
+                          </div>
+
+                          <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+                            <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Asset Actions</p>
+                            <div className="mt-3 grid gap-2">
+                              <ActionButton onClick={() => startEdit(match)} tone="border-blue-400/40 text-blue-300">
+                                <Edit3 size={16} className="mr-2 inline" /> Edit Match
+                              </ActionButton>
+                              <ActionButton onClick={() => void runMatchAction(match.id, 'artwork', 'prediction', 'Individual artwork generation started')} disabled={jobState[`artwork-prediction-${match.id}`]} tone="border-purple-400/40 text-purple-300">
+                                <ImageIcon size={16} className="mr-2 inline" /> Generate Image
+                              </ActionButton>
+                              <ActionButton onClick={() => void runMatchAction(match.id, 'full', 'all', 'Prediction and result cards regenerated')} disabled={jobState[`full-all-${match.id}`]} tone="border-yellow-400/40 text-yellow-300">
+                                <WandSparkles size={16} className="mr-2 inline" /> Generate Full Card Set
+                              </ActionButton>
+                              <ActionButton onClick={() => void runMatchAction(match.id, 'publish', 'all', isPublished ? 'Match cards are already published' : 'Match assets published')} disabled={jobState[`publish-all-${match.id}`] || isPublished} tone={isPublished ? 'border-white/15 text-gray-400' : 'border-emerald-400/40 text-emerald-300'}>
+                                <Send size={16} className="mr-2 inline" /> {publishButtonLabel}
+                              </ActionButton>
+                              {match.prediction_card_url ? (
+                                <a href={match.prediction_card_url} target="_blank" className="rounded-lg border border-fuchsia-400/40 px-4 py-3 text-fuchsia-300">
+                                  Open Prediction Card
+                                </a>
+                              ) : null}
+                              <ActionButton onClick={() => void removeMatch(match.id)} disabled={jobState[`delete-${match.id}`]} tone="border-red-400/40 text-red-300">
+                                <Trash2 size={16} className="mr-2 inline" /> Delete
+                              </ActionButton>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+              <PaginationControls
+                page={matchPage}
+                totalPages={totalMatchPages}
+                onPrevious={() => setMatchPage((current) => Math.max(1, current - 1))}
+                onNext={() => setMatchPage((current) => Math.min(totalMatchPages, current + 1))}
+              />
+            </div>
+          )}
+        </section>
+        ) : null}
+
         {activeTab === 'automation' ? (
         <section className="grid gap-4 md:grid-cols-5">
           <ActionCard title="Initialize DB" description="Creates and migrates required tables." icon={<Database className="h-5 w-5" />} onClick={() => void runJob('setup', '/api/admin/setup', 'Database tables are ready')} busy={jobState.setup} />
@@ -670,7 +852,7 @@ export default function AdminPage() {
         </div>
         ) : null}
 
-        {activeTab === 'matches' ? (
+        {false ? (
         <section className="rounded-2xl border border-green-400/20 bg-gray-800/80 p-6">
           <div className="mb-5 flex items-center justify-between gap-4">
             <h2 className="text-2xl font-bold">Matches</h2>
@@ -974,6 +1156,24 @@ function PulseRow({ label, value }: { label: string; value: string }) {
     <div className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-gray-900/45 px-4 py-3">
       <span className="text-xs uppercase tracking-[0.18em] text-gray-500">{label}</span>
       <span className="text-right font-semibold text-white">{value}</span>
+    </div>
+  )
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-gray-900/55 px-4 py-3 text-center">
+      <p className="text-[0.65rem] font-bold uppercase tracking-[0.18em] text-gray-500">{label}</p>
+      <p className="mt-1 text-lg font-black text-white">{value}</p>
+    </div>
+  )
+}
+
+function InfoStrip({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+      <p className="text-[0.65rem] font-bold uppercase tracking-[0.18em] text-gray-500">{label}</p>
+      <p className="mt-1 text-sm font-semibold text-white">{value}</p>
     </div>
   )
 }
