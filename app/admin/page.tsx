@@ -589,7 +589,7 @@ export default function AdminPage() {
                   <PulseRow label="Live match count" value={`${liveMatches.length}`} />
                   <PulseRow label="Asset backlog" value={`${pendingAssets.length} cards needing attention`} />
                   <PulseRow label="Top-voted battle" value={spotlightMatches[0] ? `${spotlightMatches[0].team1} vs ${spotlightMatches[0].team2}` : 'No votes yet'} />
-                  <PulseRow label="Latest automation run" value={runs[0] ? `${runs[0].job_name} · ${runs[0].status}` : 'No automation run yet'} />
+                  <PulseRow label="Latest automation run" value={runs[0] ? `${runs[0].job_name} Â· ${runs[0].status}` : 'No automation run yet'} />
                 </div>
               </div>
             </section>
@@ -610,9 +610,9 @@ export default function AdminPage() {
                   {spotlightMatches.map((match) => (
                     <div key={match.id} className="rounded-xl border border-white/10 bg-gray-900/50 p-4">
                       <p className="font-bold text-white">{match.team1} vs {match.team2}</p>
-                      <p className="text-sm text-gray-400">{match.sport}{match.league ? ` · ${match.league}` : ''}</p>
+                      <p className="text-sm text-gray-400">{match.sport}{match.league ? ` Â· ${match.league}` : ''}</p>
                       <p className="mt-2 text-xs uppercase tracking-[0.18em] text-yellow-300">
-                        {match.poll_team1_votes + match.poll_team2_votes} votes · {match.asset_generation_status || 'pending'}
+                        {match.poll_team1_votes + match.poll_team2_votes} votes Â· {match.asset_generation_status || 'pending'}
                       </p>
                     </div>
                   ))}
@@ -814,66 +814,69 @@ export default function AdminPage() {
           </div>
 
           {feedQueue.length === 0 ? (
-            <p className="text-gray-400">No staged feed items yet. Click `Sync Feed` to fetch upcoming matches from the configured provider.</p>
+            <p className="text-gray-400">No staged feed items yet. Click Sync Feed to fetch upcoming matches from the configured provider.</p>
           ) : (
-            <div className="space-y-4">
-              {feedQueue.slice(0, 8).map((item) => (
-                <div key={item.id} className="rounded-xl border border-white/10 bg-gray-900/70 p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div>
-                      <p className="text-lg font-bold text-white">{item.team1} vs {item.team2}</p>
-                      <p className="text-sm text-gray-400">
-                        {item.sport}
-                        {item.league ? ` · ${item.league}` : ''}
-                        {item.venue ? ` · ${item.venue}` : ''}
-                      </p>
-                      <p className="mt-2 text-xs uppercase tracking-[0.18em] text-gray-500">
-                        {item.provider} · {item.source} · {new Date(item.match_time).toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <StatusBadge label="Fetch" value={item.sync_status} tone={feedFetchTone(item.sync_status)} />
-                      <StatusBadge label="Provider" value={item.provider} tone="cyan" />
-                    </div>
-                  </div>
+            <div className="overflow-hidden rounded-2xl border border-white/10 bg-gray-900/60">
+              <div className="hidden grid-cols-[minmax(0,1.8fr)_1fr_1fr_0.9fr_1.7fr] gap-4 border-b border-white/10 bg-white/[0.04] px-5 py-4 text-[0.68rem] font-bold uppercase tracking-[0.2em] text-gray-500 lg:grid">
+                <div>Match</div>
+                <div>Kickoff</div>
+                <div>Feed Source</div>
+                <div>Queue State</div>
+                <div>Actions</div>
+              </div>
 
-                  <div className="mt-4 grid gap-3 md:grid-cols-4">
-                    <ActionButton
-                      onClick={() => void handleFeedQueueAction(item.id, 'import', 'Feed item imported to matches')}
-                      disabled={item.sync_status !== 'queued' || jobState[`feed-import-${item.id}`]}
-                      tone="border-blue-400/40 text-blue-300"
-                    >
-                      Import Match
-                    </ActionButton>
-                    <ActionButton
-                      onClick={() => void handleFeedQueueAction(item.id, 'generate', 'Feed item imported and asset generation started')}
-                      disabled={item.sync_status !== 'queued' || jobState[`feed-generate-${item.id}`]}
-                      tone="border-purple-400/40 text-purple-300"
-                    >
-                      Import + Generate
-                    </ActionButton>
-                    <ActionButton
-                      onClick={() => void handleFeedQueueAction(item.id, 'publish', 'Feed item imported, generated, and published')}
-                      disabled={item.sync_status !== 'queued' || jobState[`feed-publish-${item.id}`]}
-                      tone="border-emerald-400/40 text-emerald-300"
-                    >
-                      Publish Now
-                    </ActionButton>
-                    <ActionButton
-                      onClick={() => void handleFeedQueueAction(item.id, 'dismiss', 'Feed item dismissed')}
-                      disabled={item.sync_status !== 'queued' || jobState[`feed-dismiss-${item.id}`]}
-                      tone="border-red-400/40 text-red-300"
-                    >
-                      Dismiss
-                    </ActionButton>
+              <div className="divide-y divide-white/10">
+                {feedQueue.slice(0, 10).map((item) => (
+                  <div key={item.id} className="px-4 py-4 lg:px-5">
+                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1.8fr)_1fr_1fr_0.9fr_1.7fr] lg:items-center">
+                      <div className="min-w-0">
+                        <p className="text-base font-bold text-white">{item.team1} vs {item.team2}</p>
+                        <p className="mt-1 text-sm text-gray-400">
+                          {item.sport}
+                          {item.league ? ` - ${item.league}` : ''}
+                          {item.venue ? ` - ${item.venue}` : ''}
+                        </p>
+                        <p className="mt-2 text-xs uppercase tracking-[0.18em] text-gray-500">
+                          queue #{item.id}{item.imported_match_id ? ` - imported as #${item.imported_match_id}` : ''}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-sm font-semibold text-white">{new Date(item.match_time).toLocaleDateString()}</p>
+                        <p className="mt-1 text-sm text-gray-400">{new Date(item.match_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                      </div>
+
+                      <div>
+                        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-200">{item.provider}</p>
+                        <p className="mt-1 text-sm text-gray-400">{item.source}</p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <StatusBadge label="Fetch" value={item.sync_status} tone={feedFetchTone(item.sync_status)} />
+                      </div>
+
+                      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                        <ToolbarButton onClick={() => void handleFeedQueueAction(item.id, 'import', 'Feed item imported to matches')} disabled={item.sync_status !== 'queued' || jobState[`feed-import-${item.id}`]} tone="slate">
+                          Import
+                        </ToolbarButton>
+                        <ToolbarButton onClick={() => void handleFeedQueueAction(item.id, 'generate', 'Feed item imported and asset generation started')} disabled={item.sync_status !== 'queued' || jobState[`feed-generate-${item.id}`]} tone="violet">
+                          Generate
+                        </ToolbarButton>
+                        <ToolbarButton onClick={() => void handleFeedQueueAction(item.id, 'publish', 'Feed item imported, generated, and published')} disabled={item.sync_status !== 'queued' || jobState[`feed-publish-${item.id}`]} tone="emerald">
+                          Publish
+                        </ToolbarButton>
+                        <ToolbarButton onClick={() => void handleFeedQueueAction(item.id, 'dismiss', 'Feed item dismissed')} disabled={item.sync_status !== 'queued' || jobState[`feed-dismiss-${item.id}`]} tone="rose">
+                          Dismiss
+                        </ToolbarButton>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
         </section>
         ) : null}
-
         {activeTab === 'create' ? (
         <div className="grid gap-8 xl:grid-cols-[1.1fr,0.9fr]">
           <section className="card-glow rounded-2xl border border-green-400/20 bg-gray-800/80 p-6">
@@ -1020,13 +1023,13 @@ export default function AdminPage() {
                               <h3 className="text-xl font-black text-white">{match.team1} vs {match.team2}</h3>
                               <p className="text-sm text-gray-400">
                                 {match.sport}
-                                {match.league ? ` · ${match.league}` : ''}
-                                {' · '}
+                                {match.league ? ` Â· ${match.league}` : ''}
+                                {' Â· '}
                                 {new Date(match.match_time).toLocaleString()}
                               </p>
                               <p className="mt-1 text-xs uppercase tracking-wide text-gray-500">
-                                {match.source} · {match.status}
-                                {match.result_summary ? ` · ${match.result_summary}` : ''}
+                                {match.source} Â· {match.status}
+                                {match.result_summary ? ` Â· ${match.result_summary}` : ''}
                               </p>
                               <div className="mt-3 flex flex-wrap gap-2">
                                 <StatusBadge label="Fetched" value={match.source === 'manual' ? 'manual' : 'synced'} tone={match.source === 'manual' ? 'slate' : 'cyan'} />
@@ -1245,7 +1248,7 @@ function FeaturedMatchRow({
             <div>
               <h3 className="text-3xl font-black tracking-tight text-white">{match.team1} vs {match.team2}</h3>
               <p className="mt-1 text-base text-gray-300">
-                {match.league || match.sport} {match.venue ? `• ${match.venue}` : ''}
+                {match.league || match.sport} {match.venue ? `â€¢ ${match.venue}` : ''}
               </p>
               <p className="mt-3 text-sm text-gray-400">{new Date(match.match_time).toLocaleString()}</p>
             </div>
@@ -1341,7 +1344,7 @@ function CompactMatchCard({
           <div>
             <h4 className="text-xl font-bold text-white">{match.team1} vs {match.team2}</h4>
             <p className="mt-1 text-sm text-gray-400">
-              {match.league || match.sport} {match.venue ? `• ${match.venue}` : ''}
+              {match.league || match.sport} {match.venue ? `â€¢ ${match.venue}` : ''}
             </p>
           </div>
           <button className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-gray-300">
