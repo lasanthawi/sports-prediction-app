@@ -30,6 +30,75 @@ function hydrateMatches(rows: MatchRecord[]) {
   })
 }
 
+function normalizeMatchKeyPart(value: string | null | undefined) {
+  return value?.trim().toLowerCase().replace(/\s+/g, ' ') || ''
+}
+
+function visibleMatchKey(match: ReturnType<typeof hydrateMatches>[number]) {
+  if (match.external_id) {
+    return `external:${match.external_id}`
+  }
+
+  return [
+    normalizeMatchKeyPart(match.sport),
+    normalizeMatchKeyPart(match.league),
+    normalizeMatchKeyPart(match.team1),
+    normalizeMatchKeyPart(match.team2),
+    normalizeMatchKeyPart(match.venue),
+    new Date(match.match_time).toISOString(),
+  ].join('|')
+}
+
+function visibleMatchRank(match: ReturnType<typeof hydrateMatches>[number]) {
+  const publishRank =
+    match.publish_status === 'published'
+      ? 3
+      : match.publish_status === 'ready'
+        ? 2
+        : 0
+  const assetRank =
+    match.asset_generation_status === 'generated'
+      ? 2
+      : match.asset_generation_status === 'fallback'
+        ? 1
+        : 0
+
+  return publishRank * 10 + assetRank
+}
+
+function dedupeVisibleMatches(matches: ReturnType<typeof hydrateMatches>) {
+  const picked = new Map<string, ReturnType<typeof hydrateMatches>[number]>()
+
+  for (const match of matches) {
+    const key = visibleMatchKey(match)
+    const existing = picked.get(key)
+
+    if (!existing) {
+      picked.set(key, match)
+      continue
+    }
+
+    const currentRank = visibleMatchRank(match)
+    const existingRank = visibleMatchRank(existing)
+
+    if (currentRank > existingRank) {
+      picked.set(key, match)
+      continue
+    }
+
+    if (currentRank === existingRank) {
+      const currentUpdated = new Date(match.updated_at).getTime()
+      const existingUpdated = new Date(existing.updated_at).getTime()
+
+      if (currentUpdated > existingUpdated || (currentUpdated === existingUpdated && match.id > existing.id)) {
+        picked.set(key, match)
+      }
+    }
+  }
+
+  return Array.from(picked.values())
+}
+
 export async function refreshDerivedMatchStatuses() {
   await ensureSchema()
 
@@ -112,10 +181,10 @@ export async function listVisibleMatches() {
     ${matchSelectClause()}
     WHERE matches.status IN ('upcoming', 'live')
     ORDER BY match_time ASC, matches.id DESC
-    LIMIT 20
+    LIMIT 60
   `)
 
-  return hydrateMatches(rows)
+  return dedupeVisibleMatches(hydrateMatches(rows)).slice(0, 20)
 }
 
 export async function createMatch(input: MatchInput) {
