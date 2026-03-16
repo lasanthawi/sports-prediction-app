@@ -591,7 +591,7 @@ export default function AdminPage() {
                   <PulseRow label="Live match count" value={`${liveMatches.length}`} />
                   <PulseRow label="Asset backlog" value={`${pendingAssets.length} cards needing attention`} />
                   <PulseRow label="Top-voted battle" value={spotlightMatches[0] ? `${spotlightMatches[0].team1} vs ${spotlightMatches[0].team2}` : 'No votes yet'} />
-                  <PulseRow label="Latest automation run" value={runs[0] ? `${runs[0].job_name} Â· ${runs[0].status}` : 'No automation run yet'} />
+                  <PulseRow label="Latest automation run" value={runs[0] ? `${runs[0].job_name} Ã‚Â· ${runs[0].status}` : 'No automation run yet'} />
                 </div>
               </div>
             </section>
@@ -612,9 +612,9 @@ export default function AdminPage() {
                   {spotlightMatches.map((match) => (
                     <div key={match.id} className="rounded-xl border border-white/10 bg-gray-900/50 p-4">
                       <p className="font-bold text-white">{match.team1} vs {match.team2}</p>
-                      <p className="text-sm text-gray-400">{match.sport}{match.league ? ` Â· ${match.league}` : ''}</p>
+                      <p className="text-sm text-gray-400">{match.sport}{match.league ? ` Ã‚Â· ${match.league}` : ''}</p>
                       <p className="mt-2 text-xs uppercase tracking-[0.18em] text-yellow-300">
-                        {match.poll_team1_votes + match.poll_team2_votes} votes Â· {match.asset_generation_status || 'pending'}
+                        {match.poll_team1_votes + match.poll_team2_votes} votes Ã‚Â· {match.asset_generation_status || 'pending'}
                       </p>
                     </div>
                   ))}
@@ -1025,13 +1025,13 @@ export default function AdminPage() {
                               <h3 className="text-xl font-black text-white">{match.team1} vs {match.team2}</h3>
                               <p className="text-sm text-gray-400">
                                 {match.sport}
-                                {match.league ? ` Â· ${match.league}` : ''}
-                                {' Â· '}
+                                {match.league ? ` Ã‚Â· ${match.league}` : ''}
+                                {' Ã‚Â· '}
                                 {new Date(match.match_time).toLocaleString()}
                               </p>
                               <p className="mt-1 text-xs uppercase tracking-wide text-gray-500">
-                                {match.source} Â· {match.status}
-                                {match.result_summary ? ` Â· ${match.result_summary}` : ''}
+                                {match.source} Ã‚Â· {match.status}
+                                {match.result_summary ? ` Ã‚Â· ${match.result_summary}` : ''}
                               </p>
                               <div className="mt-3 flex flex-wrap gap-2">
                                 <StatusBadge label="Fetched" value={match.source === 'manual' ? 'manual' : 'synced'} tone={match.source === 'manual' ? 'slate' : 'cyan'} />
@@ -1237,26 +1237,24 @@ function FeaturedMatchRow({
   const imageUrl = match.prediction_artwork_url || match.prediction_card_url || match.result_artwork_url || match.result_card_url || null
 
   return (
-    <div className="grid gap-0 xl:grid-cols-[180px_minmax(0,1fr)] xl:items-stretch">
-      <div className="flex border-b border-white/10 p-4 xl:border-b-0 xl:border-r">
-        <ThumbnailPreview imageUrl={imageUrl} title={`${match.team1} vs ${match.team2}`} className="!h-full !w-full !max-w-none !rounded-xl" />
+    <div className="grid gap-0 xl:grid-cols-[320px_minmax(0,1fr)] xl:items-stretch">
+      <div className="flex border-b border-white/10 p-0 xl:border-b-0 xl:border-r">
+        <ThumbnailPreview imageUrl={imageUrl} title={`${match.team1} vs ${match.team2}`} className="!h-full !w-full !max-w-none !rounded-none xl:!rounded-l-2xl xl:!rounded-r-none" />
       </div>
       <div className="p-4">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <button onClick={onSelect} className="mt-1 rounded-lg border border-white/10 bg-white/5 p-2 text-gray-300 transition hover:border-white/20 hover:text-white">
-              {selected ? <CheckCircle2 size={16} className="text-green-300" /> : <Square size={16} />}
-            </button>
-            <div>
-              <h3 className="text-3xl font-black tracking-tight text-white">{match.team1} vs {match.team2}</h3>
-              <p className="mt-1 text-base text-gray-300">
-                {match.league || match.sport} {match.venue ? `â€¢ ${match.venue}` : ''}
-              </p>
-              <p className="mt-3 text-sm text-gray-400">{new Date(match.match_time).toLocaleString()}</p>
-            </div>
+          <div>
+            <h3 className="text-3xl font-black tracking-tight text-white">{match.team1} vs {match.team2}</h3>
+            <p className="mt-1 text-base text-gray-300">
+                {match.league || match.sport} {match.venue ? ` - ${match.venue}` : ''}
+            </p>
+            <p className="mt-3 text-sm text-gray-400">{new Date(match.match_time).toLocaleString()}</p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-start justify-end gap-2">
+            <button onClick={onSelect} className="rounded-lg border border-white/10 bg-white/5 p-2 text-gray-300 transition hover:border-white/20 hover:text-white">
+              {selected ? <CheckCircle2 size={16} className="text-green-300" /> : <Square size={16} />}
+            </button>
             <StatusBadge label="Fetched" value={match.source === 'manual' ? 'manual' : 'synced'} tone={match.source === 'manual' ? 'slate' : 'cyan'} />
             <StatusBadge label="Generated" value={match.asset_generation_status || 'pending'} tone={assetTone(match.asset_generation_status)} />
             <StatusBadge label="Published" value={match.publish_status || 'draft'} tone={publishTone(match.publish_status)} />
@@ -1333,12 +1331,9 @@ function CompactMatchCard({
   const imageUrl = match.prediction_artwork_url || match.prediction_card_url || match.result_artwork_url || match.result_card_url || null
 
   return (
-    <div className="grid gap-4 md:grid-cols-[150px_minmax(0,1fr)] md:items-stretch">
-      <div className="flex h-full items-stretch gap-3">
-        <button onClick={onSelect} className="self-start rounded-lg border border-white/10 bg-white/5 p-2 text-gray-300 transition hover:border-white/20 hover:text-white">
-          {selected ? <CheckCircle2 size={16} className="text-green-300" /> : <Square size={16} />}
-        </button>
-        <ThumbnailPreview imageUrl={imageUrl} title={`${match.team1} vs ${match.team2}`} className="!h-full !w-[7.5rem]" />
+    <div className="grid gap-4 md:grid-cols-[190px_minmax(0,1fr)] md:items-stretch">
+      <div className="flex h-full items-stretch">
+        <ThumbnailPreview imageUrl={imageUrl} title={`${match.team1} vs ${match.team2}`} className="!h-full !w-full !rounded-none md:!rounded-l-2xl md:!rounded-r-none" />
       </div>
 
       <div className="min-w-0">
@@ -1346,12 +1341,17 @@ function CompactMatchCard({
           <div>
             <h4 className="text-xl font-bold text-white">{match.team1} vs {match.team2}</h4>
             <p className="mt-1 text-sm text-gray-400">
-              {match.league || match.sport} {match.venue ? `â€¢ ${match.venue}` : ''}
+              {match.league || match.sport} {match.venue ? ` - ${match.venue}` : ''}
             </p>
           </div>
-          <button className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-gray-300">
-            Newest <ChevronDown size={15} className="ml-2 inline" />
-          </button>
+          <div className="flex items-start gap-2">
+            <button onClick={onSelect} className="rounded-lg border border-white/10 bg-white/5 p-2 text-gray-300 transition hover:border-white/20 hover:text-white">
+              {selected ? <CheckCircle2 size={16} className="text-green-300" /> : <Square size={16} />}
+            </button>
+            <button className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-gray-300">
+              Newest <ChevronDown size={15} className="ml-2 inline" />
+            </button>
+          </div>
         </div>
 
         <div className="mt-3 flex flex-wrap gap-2">
@@ -1380,7 +1380,6 @@ function CompactMatchCard({
     </div>
   )
 }
-
 function TabButton({
   active,
   onClick,
