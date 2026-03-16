@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState, type Dispatch, type FormEvent, type ReactNode, type SetStateAction } from 'react'
-import { ArrowLeft, CheckCircle2, ChevronDown, Database, Edit3, Image as ImageIcon, MoreHorizontal, PlayCircle, Plus, RefreshCw, Rocket, Search, Send, Square, Trash2, Trophy, WandSparkles } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, ChevronDown, Database, Edit3, Image as ImageIcon, MoreHorizontal, PlayCircle, Plus, RefreshCw, Rocket, Search, Send, Square, Trash2, WandSparkles } from 'lucide-react'
 import MatchCard from '@/app/components/MatchCard'
 
 type MatchStatus = 'upcoming' | 'live' | 'finished' | 'cancelled'
@@ -103,6 +103,8 @@ const emptyEditForm = {
   rivalry_tagline: '',
   art_style: '',
 }
+
+const BRAND_IMAGE = 'https://i.ibb.co/qLsG4ByG/70325951-97a2-4fb3-ad27-a3c7ba251676.png'
 
 export default function AdminPage() {
   const [matches, setMatches] = useState<MatchRecord[]>([])
@@ -492,12 +494,12 @@ export default function AdminPage() {
             <Link href="/" className="mb-4 inline-flex items-center gap-2 text-green-400 hover:text-green-300">
               <ArrowLeft size={18} /> Back to Arena
             </Link>
-            <div className="flex items-center gap-3">
-              <Trophy className="h-10 w-10 text-yellow-400" />
-              <div>
-                <h1 className="text-4xl font-black text-green-400">Admin Studio</h1>
-                <p className="text-sm text-gray-400">Create, edit, generate, and publish premium match cards from one place.</p>
-              </div>
+              <div className="flex items-center gap-3">
+                <img src={BRAND_IMAGE} alt="Prediction Arena logo" className="h-12 w-12 object-contain" />
+                <div>
+                  <h1 className="text-4xl font-black text-green-400">Admin Studio</h1>
+                  <p className="text-sm text-gray-400">Create, edit, generate, and publish premium match cards from one place.</p>
+                </div>
             </div>
           </div>
 

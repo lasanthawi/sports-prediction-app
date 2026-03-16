@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState, type ReactNode } from 'react'
-import { ArrowRight, Bell, CalendarDays, ChevronLeft, ChevronRight, LogIn, Sparkles, Swords, Target, Trophy, Waves } from 'lucide-react'
+import { ArrowRight, Bell, CalendarDays, ChevronLeft, ChevronRight, LogIn, Sparkles, Swords, Target, Waves } from 'lucide-react'
 import MatchCard from './components/MatchCard'
 
 interface MatchRecord {
@@ -120,12 +120,13 @@ export default function Home() {
 
           <div className="mx-auto max-w-5xl text-center">
             <div className="mb-5 flex justify-center">
-              <div className="rounded-[2rem] border border-white/10 bg-black/20 p-3 shadow-[0_0_35px_rgba(255,216,77,0.18)] backdrop-blur-sm">
-                <img src={BRAND_IMAGE} alt="Prediction Arena logo" className="h-24 w-24 object-contain md:h-32 md:w-32" />
-              </div>
+              <img
+                src={BRAND_IMAGE}
+                alt="Prediction Arena logo"
+                className="h-32 w-32 object-contain drop-shadow-[0_0_28px_rgba(255,216,77,0.35)] md:h-40 md:w-40"
+              />
             </div>
             <div className="mb-4 inline-flex items-center gap-3 rounded-full border border-white/10 bg-black/25 px-5 py-2 text-sm font-bold uppercase tracking-[0.24em] text-white/80 backdrop-blur-sm">
-              <Trophy className="h-5 w-5 text-yellow-400" />
               Prediction Arena
             </div>
             <h1 className="text-glow bg-gradient-to-r from-green-300 via-yellow-300 to-pink-300 bg-clip-text text-5xl font-black uppercase tracking-[0.04em] text-transparent md:text-7xl">
