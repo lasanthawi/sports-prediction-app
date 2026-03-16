@@ -12,6 +12,39 @@ export function getPromptVersion() {
   return PROMPT_VERSION
 }
 
+function getSportPoseDirection(sport: string, variant: 'prediction' | 'result') {
+  const normalizedSport = sport.trim().toLowerCase()
+  const resultMood = variant === 'result'
+
+  if (normalizedSport.includes('football') || normalizedSport.includes('soccer')) {
+    return resultMood
+      ? 'Show a decisive football moment with one star celebrating after a match-winning strike while the other reacts under the stadium lights.'
+      : 'Show two football stars sprinting or pressing toward each other with explosive footwork, shoulder tension, and a real match-day duel posture.'
+  }
+
+  if (normalizedSport.includes('basketball')) {
+    return resultMood
+      ? 'Show a dominant basketball finish with one star roaring after a huge play while the rival is caught in dramatic defensive tension.'
+      : 'Show two basketball stars in contrasting live-game poses such as a rim attack versus a defensive slide, or a crossover drive versus a contest.'
+  }
+
+  if (normalizedSport.includes('cricket')) {
+    return resultMood
+      ? 'Show a high-stakes cricket result moment with one captain celebrating after a decisive shot or wicket while the rival absorbs the pressure.'
+      : 'Show a dramatic cricket faceoff with one captain in a batting power pose and the other in a bowling or fielding attack pose under floodlights.'
+  }
+
+  if (normalizedSport.includes('tennis')) {
+    return resultMood
+      ? 'Show one tennis star celebrating a decisive point while the opponent resets in visible frustration across a cinematic court.'
+      : 'Show a tense tennis rally faceoff with contrasting serves, returns, or baseline attack poses.'
+  }
+
+  return resultMood
+    ? 'Show a decisive endgame sports moment with one captain celebrating and the rival in dramatic tension.'
+    : 'Show two elite athletes in clearly different competitive action poses that suit the sport and feel like a live rivalry battle.'
+}
+
 export function buildGeminiPrompt(match: MatchRecord, variant: 'prediction' | 'result') {
   const team1Palette = safe(match.team1_palette, 'team one authentic colors')
   const team2Palette = safe(match.team2_palette, 'team two authentic colors')
@@ -24,6 +57,7 @@ export function buildGeminiPrompt(match: MatchRecord, variant: 'prediction' | 'r
     match.creative_direction,
     'realistic stadium battle scene with both captains in dynamic action, dramatic split lighting, storm energy, smoke, sparks, and clean negative space for overlay UI'
   )
+  const poseDirection = getSportPoseDirection(match.sport, variant)
 
   const variantBrief =
     variant === 'result'
@@ -36,6 +70,7 @@ export function buildGeminiPrompt(match: MatchRecord, variant: 'prediction' | 'r
     `Creative direction: ${creativeDirection}.`,
     `Match: ${match.team1} versus ${match.team2}. Sport: ${match.sport}. League: ${safe(match.league, 'major competition')}. Venue: ${safe(match.venue, 'stadium atmosphere')}.`,
     `Feature the captains prominently: ${captain1} for ${match.team1}; ${captain2} for ${match.team2}. Make them feel like real elite athletes in action, not illustrated icons or silhouettes.`,
+    `Pose direction: ${poseDirection}. Avoid mirrored or repetitive character posing.`,
     `Integrate ${match.team1} palette (${team1Palette}) and flag colors (${team1Flag}) on one side of the composition; integrate ${match.team2} palette (${team2Palette}) and flag colors (${team2Flag}) on the other side.`,
     `Rivalry angle: ${safe(match.rivalry_tagline, `${match.team1} and ${match.team2} in a high-stakes showdown`)}.`,
     variantBrief,

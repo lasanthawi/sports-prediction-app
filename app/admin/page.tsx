@@ -828,7 +828,7 @@ export default function AdminPage() {
             <p className="text-gray-400">No staged feed items yet. Click Sync Feed to fetch upcoming matches from the configured provider.</p>
           ) : (
             <div className="overflow-hidden rounded-2xl border border-white/10 bg-gray-900/60">
-              <div className="hidden grid-cols-[minmax(0,1.8fr)_1fr_1fr_0.9fr_1.7fr] gap-4 border-b border-white/10 bg-white/[0.04] px-5 py-4 text-[0.68rem] font-bold uppercase tracking-[0.2em] text-gray-500 lg:grid">
+              <div className="hidden grid-cols-[minmax(0,1.8fr)_1fr_1fr_0.9fr_2fr] gap-4 border-b border-white/10 bg-white/[0.04] px-5 py-4 text-[0.68rem] font-bold uppercase tracking-[0.2em] text-gray-500 lg:grid">
                 <div>Match</div>
                 <div>Kickoff</div>
                 <div>Feed Source</div>
@@ -849,7 +849,7 @@ export default function AdminPage() {
 
                     return (
                   <div key={item.id} className="px-4 py-4 lg:px-5">
-                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1.8fr)_1fr_1fr_0.9fr_1.7fr] lg:items-center">
+                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1.8fr)_1fr_1fr_0.9fr_2fr] lg:items-center">
                       <div className="min-w-0">
                         <p className="text-base font-bold text-white">{item.team1} vs {item.team2}</p>
                         <p className="mt-1 text-sm text-gray-400">
@@ -882,7 +882,7 @@ export default function AdminPage() {
                         ) : null}
                       </div>
 
-                      <div className="grid max-w-[16rem] gap-2 sm:grid-cols-2">
+                      <div className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1 lg:justify-end">
                         <ToolbarButton compact onClick={() => void handleFeedQueueAction(item.id, 'import', 'Feed item imported to matches')} disabled={item.sync_status !== 'queued' || jobState[`feed-import-${item.id}`]} tone="slate">
                           {item.sync_status === 'imported' ? 'Imported' : 'Import'}
                         </ToolbarButton>
@@ -1566,7 +1566,7 @@ function ToolbarButton({
       onClick={onClick}
       disabled={disabled}
       className={`inline-flex items-center justify-center whitespace-nowrap rounded-xl border font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${
-        compact ? 'min-w-[6rem] px-3 py-2 text-xs' : 'min-w-[7.25rem] px-4 py-3 text-sm'
+        compact ? 'min-w-[5.6rem] px-2.5 py-2 text-[0.72rem]' : 'min-w-[7.25rem] px-4 py-3 text-sm'
       } ${toneClass}`}
     >
       {children}

@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowRight, Bell, CalendarDays, ChevronLeft, ChevronRight, LogIn, Sparkles, Swords, Target, Waves } from 'lucide-react'
 import MatchCard from './components/MatchCard'
 
@@ -29,10 +30,13 @@ const COSMIC_BACKGROUND = 'https://img.freepik.com/free-photo/cosmic-lightning-s
 const BRAND_IMAGE = 'https://i.ibb.co/qLsG4ByG/70325951-97a2-4fb3-ad27-a3c7ba251676.png'
 
 export default function Home() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [matches, setMatches] = useState<MatchRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [votingMode, setVotingMode] = useState(false)
+  const [activeMatchId, setActiveMatchId] = useState<number | null>(null)
   const [desktopSlide, setDesktopSlide] = useState(0)
   const [desktopCardsPerView, setDesktopCardsPerView] = useState(3)
 
@@ -89,11 +93,13 @@ export default function Home() {
     }
   }
 
-  const liveMatches = matches.filter((match) => match.status === 'live')
-  const upcomingMatches = matches.filter((match) => match.status === 'upcoming')
+  const orderedMatches = useMemo(() => sortMatchesForArena(matches), [matches])
+  const liveMatches = orderedMatches.filter((match) => match.status === 'live')
+  const upcomingMatches = orderedMatches.filter((match) => match.status === 'upcoming')
   const finishedMatches = matches.filter((match) => match.status === 'finished')
-  const featuredMatches = [...liveMatches, ...upcomingMatches].slice(0, 4)
-  const mobileVotingMatches = [...liveMatches, ...upcomingMatches].slice(0, 8)
+  const votingMatches = orderedMatches.filter((match) => match.status !== 'cancelled')
+  const featuredMatches = votingMatches.filter((match) => match.status !== 'finished').slice(0, 8)
+  const mobileVotingMatches = votingMatches.slice(0, 8)
   const totalVotes = matches.reduce((sum, match) => sum + match.poll_team1_votes + match.poll_team2_votes, 0)
   const spotlightResult = [...finishedMatches].sort((a, b) => (b.poll_team1_votes + b.poll_team2_votes) - (a.poll_team1_votes + a.poll_team2_votes))[0]
   const maxDesktopSlide = Math.max(0, featuredMatches.length - desktopCardsPerView)
@@ -101,6 +107,42 @@ export default function Home() {
   useEffect(() => {
     setDesktopSlide((current) => Math.min(current, maxDesktopSlide))
   }, [maxDesktopSlide])
+
+  useEffect(() => {
+    if (loading) {
+      return
+    }
+
+    const matchParam = searchParams.get('match')
+    if (!matchParam) {
+      return
+    }
+
+    const targetId = Number(matchParam)
+    if (!Number.isFinite(targetId)) {
+      return
+    }
+
+    const targetMatch = votingMatches.find((match) => match.id === targetId)
+    if (!targetMatch) {
+      return
+    }
+
+    setActiveMatchId(targetId)
+    setVotingMode(true)
+  }, [loading, searchParams, votingMatches])
+
+  function openMatchViewer(matchId: number) {
+    setActiveMatchId(matchId)
+    setVotingMode(true)
+    router.push(`/?match=${matchId}`, { scroll: false })
+  }
+
+  function closeVotingMode() {
+    setVotingMode(false)
+    setActiveMatchId(null)
+    router.replace('/', { scroll: false })
+  }
 
   return (
     <main
@@ -123,6 +165,7 @@ export default function Home() {
         error={error}
         votingMode={votingMode}
         setVotingMode={setVotingMode}
+        onOpenMatch={openMatchViewer}
         onRefresh={fetchMatches}
       />
 
@@ -225,7 +268,12 @@ export default function Home() {
                           key={match.id}
                           className={desktopCardsPerView === 3 ? 'min-w-[calc((100%-4rem)/3)]' : 'min-w-[calc((100%-2rem)/2)]'}
                         >
-                          <MatchCard match={match} onVote={() => void fetchMatches()} className="mx-auto" />
+                          <MatchCard
+                            match={match}
+                            onVote={() => void fetchMatches()}
+                            className="mx-auto"
+                            footerSlot={<CardLinkBar matchId={match.id} onOpen={() => openMatchViewer(match.id)} />}
+                          />
                         </div>
                       ))}
                     </div>
@@ -321,6 +369,15 @@ export default function Home() {
           </div>
         </footer>
       </div>
+
+      {votingMode ? (
+        <ArenaVotingOverlay
+          matches={votingMatches}
+          activeMatchId={activeMatchId}
+          onClose={closeVotingMode}
+          onVote={fetchMatches}
+        />
+      ) : null}
     </main>
   )
 }
@@ -334,6 +391,7 @@ function MobileArenaApp({
   error,
   votingMode,
   setVotingMode,
+  onOpenMatch,
   onRefresh,
 }: {
   matches: MatchRecord[]
@@ -344,6 +402,7 @@ function MobileArenaApp({
   error: string
   votingMode: boolean
   setVotingMode: (value: boolean) => void
+  onOpenMatch: (matchId: number) => void
   onRefresh: () => Promise<void>
 }) {
   return (
@@ -434,6 +493,7 @@ function MobileArenaApp({
                     match={match}
                     onVote={() => void onRefresh()}
                     className="!min-h-[24rem] !max-w-none"
+                    footerSlot={<CardLinkBar matchId={match.id} onOpen={() => onOpenMatch(match.id)} />}
                   />
                 </div>
               ))}
@@ -455,26 +515,69 @@ function MobileArenaApp({
         </div>
       </section>
 
-      {votingMode ? (
-        <MobileVotingOverlay matches={matches} onClose={() => setVotingMode(false)} onVote={onRefresh} />
-      ) : null}
     </div>
   )
 }
 
-function MobileVotingOverlay({
+function ArenaVotingOverlay({
   matches,
+  activeMatchId,
   onClose,
   onVote,
 }: {
   matches: MatchRecord[]
+  activeMatchId: number | null
   onClose: () => void
   onVote: () => Promise<void>
 }) {
   const voteMatches = matches.length > 0 ? matches : []
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [touchStart, setTouchStart] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (!voteMatches.length) {
+      setCurrentIndex(0)
+      return
+    }
+
+    if (activeMatchId == null) {
+      setCurrentIndex(0)
+      return
+    }
+
+    const nextIndex = voteMatches.findIndex((match) => match.id === activeMatchId)
+    if (nextIndex >= 0) {
+      setCurrentIndex(nextIndex)
+    }
+  }, [activeMatchId, voteMatches])
+
+  const activeMatch = voteMatches[currentIndex] || null
+
+  function goToPrevious() {
+    setCurrentIndex((current) => Math.max(0, current - 1))
+  }
+
+  function goToNext() {
+    setCurrentIndex((current) => Math.min(voteMatches.length - 1, current + 1))
+  }
+
+  function handleTouchEnd(endX: number) {
+    if (touchStart == null) {
+      return
+    }
+
+    const distance = endX - touchStart
+    if (distance > 50) {
+      goToPrevious()
+    } else if (distance < -50) {
+      goToNext()
+    }
+
+    setTouchStart(null)
+  }
 
   return (
-    <div className="fixed inset-0 z-50 md:hidden">
+    <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,8,20,0.92),rgba(10,8,27,0.97)),url('https://img.freepik.com/free-photo/cosmic-lightning-storm-space-background_23-2151955881.jpg?semt=ais_hybrid&w=740&q=80')] bg-cover bg-center" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(34,211,238,0.16),transparent_26%),radial-gradient(circle_at_85%_15%,rgba(244,114,182,0.18),transparent_24%)]" />
 
@@ -499,26 +602,77 @@ function MobileVotingOverlay({
         ) : (
           <>
             <div className="mb-3 flex items-center justify-between px-1 text-xs uppercase tracking-[0.24em] text-white/50">
-              <span>Slide for next battle</span>
-              <span className="inline-flex items-center gap-1">
-                <ChevronLeft size={14} />
-                <ChevronRight size={14} />
-              </span>
+              <span>Swipe or use arrows to change battles</span>
+              <span>{currentIndex + 1} / {voteMatches.length}</span>
             </div>
-            <div className="no-scrollbar flex flex-1 snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-hidden pb-2">
-              {voteMatches.map((match) => (
-                <div key={match.id} className="flex h-full w-[calc(100vw-2rem)] shrink-0 snap-center items-center justify-center">
+            <div className="flex flex-1 items-center justify-center gap-3 md:gap-6">
+              <button
+                onClick={goToPrevious}
+                disabled={currentIndex === 0}
+                className="glass-button hidden !rounded-2xl !px-4 !py-4 disabled:opacity-40 md:inline-flex"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <div
+                className="flex h-full w-full items-center justify-center"
+                onTouchStart={(event) => setTouchStart(event.changedTouches[0]?.clientX ?? null)}
+                onTouchEnd={(event) => handleTouchEnd(event.changedTouches[0]?.clientX ?? 0)}
+              >
+                {activeMatch ? (
                   <MatchCard
-                    match={match}
+                    match={activeMatch}
                     onVote={() => void onVote()}
-                    className="!h-[calc(100dvh-8.75rem)] !min-h-0 !w-full !max-w-[min(100%,26rem)]"
+                    className="!h-[calc(100dvh-8.75rem)] !min-h-0 !w-full !max-w-[min(100%,28rem)] md:!max-w-[30rem]"
+                    footerSlot={<CardLinkBar matchId={activeMatch.id} onOpen={() => undefined} linked />}
                   />
-                </div>
-              ))}
+                ) : null}
+              </div>
+              <button
+                onClick={goToNext}
+                disabled={currentIndex >= voteMatches.length - 1}
+                className="glass-button hidden !rounded-2xl !px-4 !py-4 disabled:opacity-40 md:inline-flex"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+            <div className="mt-4 flex items-center justify-center gap-2 md:hidden">
+              <button onClick={goToPrevious} disabled={currentIndex === 0} className="glass-button !rounded-2xl !px-4 !py-3 disabled:opacity-40">
+                <ChevronLeft size={18} />
+              </button>
+              <button onClick={goToNext} disabled={currentIndex >= voteMatches.length - 1} className="glass-button !rounded-2xl !px-4 !py-3 disabled:opacity-40">
+                <ChevronRight size={18} />
+              </button>
             </div>
           </>
         )}
       </div>
+    </div>
+  )
+}
+
+function CardLinkBar({
+  matchId,
+  onOpen,
+  linked = false,
+}: {
+  matchId: number
+  onOpen: () => void
+  linked?: boolean
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <button
+        onClick={onOpen}
+        className="rounded-[1rem] border border-cyan-300/35 bg-cyan-400/10 px-3 py-3 text-center text-[0.72rem] font-bold uppercase tracking-[0.18em] text-cyan-100 transition hover:border-cyan-200/50 hover:text-white"
+      >
+        Enter Voting
+      </button>
+      <Link
+        href={`/?match=${matchId}`}
+        className="rounded-[1rem] border border-white/15 bg-black/25 px-3 py-3 text-center text-[0.72rem] font-bold uppercase tracking-[0.18em] text-white/85 transition hover:border-white/30 hover:text-white"
+      >
+        {linked ? 'Direct URL' : 'Open Link'}
+      </Link>
     </div>
   )
 }
@@ -582,8 +736,8 @@ function UpcomingRow({ match }: { match: MatchRecord }) {
           <p className="text-lg font-bold text-white">{match.team1} vs {match.team2}</p>
           <p className="text-sm text-white/60">
             {match.sport}
-            {match.league ? ` · ${match.league}` : ''}
-            {match.venue ? ` · ${match.venue}` : ''}
+            {match.league ? ` - ${match.league}` : ''}
+            {match.venue ? ` - ${match.venue}` : ''}
           </p>
         </div>
         <div className="text-right text-sm text-white/65">
@@ -604,7 +758,7 @@ function ResultRow({ match }: { match: MatchRecord }) {
           <p className="text-lg font-bold text-white">{match.team1} vs {match.team2}</p>
           <p className="mt-1 text-sm text-white/60">
             {match.sport}
-            {match.league ? ` · ${match.league}` : ''}
+            {match.league ? ` - ${match.league}` : ''}
           </p>
           <p className="mt-3 text-base font-semibold text-green-300">{match.result_summary || 'Final result recorded'}</p>
         </div>
@@ -652,4 +806,29 @@ function EmptyState() {
       </Link>
     </div>
   )
+}
+
+function sortMatchesForArena(list: MatchRecord[]) {
+  const statusWeight = (match: MatchRecord) => {
+    if (match.status === 'live') return 0
+    if (match.status === 'upcoming') return 1
+    if (match.status === 'finished') return 2
+    return 3
+  }
+
+  return [...list].sort((a, b) => {
+    const weightDifference = statusWeight(a) - statusWeight(b)
+    if (weightDifference !== 0) {
+      return weightDifference
+    }
+
+    const aTime = new Date(a.match_time).getTime()
+    const bTime = new Date(b.match_time).getTime()
+
+    if (a.status === 'finished' && b.status === 'finished') {
+      return bTime - aTime
+    }
+
+    return aTime - bTime
+  })
 }
