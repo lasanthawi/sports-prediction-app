@@ -857,17 +857,17 @@ export default function AdminPage() {
                         <StatusBadge label="Fetch" value={item.sync_status} tone={feedFetchTone(item.sync_status)} />
                       </div>
 
-                      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                        <ToolbarButton onClick={() => void handleFeedQueueAction(item.id, 'import', 'Feed item imported to matches')} disabled={item.sync_status !== 'queued' || jobState[`feed-import-${item.id}`]} tone="slate">
+                      <div className="grid max-w-[16rem] gap-2 sm:grid-cols-2">
+                        <ToolbarButton compact onClick={() => void handleFeedQueueAction(item.id, 'import', 'Feed item imported to matches')} disabled={item.sync_status !== 'queued' || jobState[`feed-import-${item.id}`]} tone="slate">
                           Import
                         </ToolbarButton>
-                        <ToolbarButton onClick={() => void handleFeedQueueAction(item.id, 'generate', 'Feed item imported and asset generation started')} disabled={item.sync_status !== 'queued' || jobState[`feed-generate-${item.id}`]} tone="violet">
+                        <ToolbarButton compact onClick={() => void handleFeedQueueAction(item.id, 'generate', 'Feed item imported and asset generation started')} disabled={item.sync_status !== 'queued' || jobState[`feed-generate-${item.id}`]} tone="violet">
                           Generate
                         </ToolbarButton>
-                        <ToolbarButton onClick={() => void handleFeedQueueAction(item.id, 'publish', 'Feed item imported, generated, and published')} disabled={item.sync_status !== 'queued' || jobState[`feed-publish-${item.id}`]} tone="emerald">
+                        <ToolbarButton compact onClick={() => void handleFeedQueueAction(item.id, 'publish', 'Feed item imported, generated, and published')} disabled={item.sync_status !== 'queued' || jobState[`feed-publish-${item.id}`]} tone="emerald">
                           Publish
                         </ToolbarButton>
-                        <ToolbarButton onClick={() => void handleFeedQueueAction(item.id, 'dismiss', 'Feed item dismissed')} disabled={item.sync_status !== 'queued' || jobState[`feed-dismiss-${item.id}`]} tone="rose">
+                        <ToolbarButton compact onClick={() => void handleFeedQueueAction(item.id, 'dismiss', 'Feed item dismissed')} disabled={item.sync_status !== 'queued' || jobState[`feed-dismiss-${item.id}`]} tone="rose">
                           Dismiss
                         </ToolbarButton>
                       </div>
@@ -1513,11 +1513,13 @@ function ToolbarButton({
   onClick,
   disabled,
   tone,
+  compact = false,
 }: {
   children: ReactNode
   onClick?: () => void
   disabled?: boolean
   tone: 'slate' | 'emerald' | 'violet' | 'cyan' | 'rose' | 'amber'
+  compact?: boolean
 }) {
   const toneClass = {
     slate: 'border-white/10 bg-white/5 text-white hover:border-white/20',
@@ -1529,15 +1531,17 @@ function ToolbarButton({
   }[tone]
 
     return (
-      <button
-        onClick={onClick}
-        disabled={disabled}
-        className={`inline-flex min-w-[7.25rem] items-center justify-center whitespace-nowrap rounded-xl border px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${toneClass}`}
-      >
-        {children}
-      </button>
-    )
-  }
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`inline-flex items-center justify-center whitespace-nowrap rounded-xl border font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${
+        compact ? 'min-w-[6rem] px-3 py-2 text-xs' : 'min-w-[7.25rem] px-4 py-3 text-sm'
+      } ${toneClass}`}
+    >
+      {children}
+    </button>
+  )
+}
 
 function StepDot({ active, label }: { active: boolean; label: string }) {
   return (
