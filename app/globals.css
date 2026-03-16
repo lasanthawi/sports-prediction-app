@@ -175,23 +175,6 @@ body {
   pointer-events: none;
 }
 
-.poster-vs {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 5.75rem;
-  height: 5.75rem;
-  border-radius: 9999px;
-  background: radial-gradient(circle, rgba(255, 220, 110, 0.95), rgba(255, 170, 0, 0.72));
-  color: #fffdf6;
-  font-size: 2rem;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  box-shadow:
-    0 0 30px rgba(255, 184, 0, 0.55),
-    0 0 55px rgba(255, 200, 64, 0.24);
-}
-
 .poster-red {
   background:
     linear-gradient(90deg, rgba(190, 18, 60, 0.86), rgba(127, 29, 29, 0.66)),

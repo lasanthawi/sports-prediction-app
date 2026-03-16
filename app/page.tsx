@@ -33,6 +33,8 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [votingMode, setVotingMode] = useState(false)
+  const [desktopSlide, setDesktopSlide] = useState(0)
+  const [desktopCardsPerView, setDesktopCardsPerView] = useState(3)
 
   useEffect(() => {
     void fetchMatches()
@@ -52,6 +54,21 @@ export default function Home() {
       document.documentElement.style.overflow = previousHtmlOverflow
     }
   }, [votingMode])
+
+  useEffect(() => {
+    const updateDesktopCardsPerView = () => {
+      if (window.innerWidth >= 1280) {
+        setDesktopCardsPerView(3)
+        return
+      }
+
+      setDesktopCardsPerView(2)
+    }
+
+    updateDesktopCardsPerView()
+    window.addEventListener('resize', updateDesktopCardsPerView)
+    return () => window.removeEventListener('resize', updateDesktopCardsPerView)
+  }, [])
 
   async function fetchMatches() {
     try {
@@ -79,6 +96,11 @@ export default function Home() {
   const mobileVotingMatches = [...liveMatches, ...upcomingMatches].slice(0, 8)
   const totalVotes = matches.reduce((sum, match) => sum + match.poll_team1_votes + match.poll_team2_votes, 0)
   const spotlightResult = [...finishedMatches].sort((a, b) => (b.poll_team1_votes + b.poll_team2_votes) - (a.poll_team1_votes + a.poll_team2_votes))[0]
+  const maxDesktopSlide = Math.max(0, featuredMatches.length - desktopCardsPerView)
+
+  useEffect(() => {
+    setDesktopSlide((current) => Math.min(current, maxDesktopSlide))
+  }, [maxDesktopSlide])
 
   return (
     <main
@@ -170,10 +192,44 @@ export default function Home() {
               {featuredMatches.length === 0 ? (
                 <EmptyState />
               ) : (
-                <div className="grid justify-items-center gap-8 md:grid-cols-2 xl:grid-cols-3">
-                  {featuredMatches.map((match) => (
-                    <MatchCard key={match.id} match={match} onVote={() => void fetchMatches()} />
-                  ))}
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between gap-4">
+                    <p className="text-sm uppercase tracking-[0.2em] text-white/60">
+                      Slide through live and upcoming battle cards
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => setDesktopSlide((current) => Math.max(0, current - 1))}
+                        disabled={desktopSlide === 0}
+                        className="glass-button !rounded-2xl !px-4 !py-3 disabled:opacity-40"
+                      >
+                        <ChevronLeft size={18} />
+                      </button>
+                      <button
+                        onClick={() => setDesktopSlide((current) => Math.min(maxDesktopSlide, current + 1))}
+                        disabled={desktopSlide >= maxDesktopSlide}
+                        className="glass-button !rounded-2xl !px-4 !py-3 disabled:opacity-40"
+                      >
+                        <ChevronRight size={18} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="overflow-hidden">
+                    <div
+                      className="flex gap-8 transition-transform duration-500 ease-out"
+                      style={{ transform: `translateX(-${desktopSlide * (100 / desktopCardsPerView)}%)` }}
+                    >
+                      {featuredMatches.map((match) => (
+                        <div
+                          key={match.id}
+                          className={desktopCardsPerView === 3 ? 'min-w-[calc((100%-4rem)/3)]' : 'min-w-[calc((100%-2rem)/2)]'}
+                        >
+                          <MatchCard match={match} onVote={() => void fetchMatches()} className="mx-auto" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
             </section>

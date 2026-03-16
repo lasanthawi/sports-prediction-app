@@ -185,6 +185,11 @@ export interface FeedQueueRecord {
   winner: number | null
   sync_status: FeedQueueStatus
   imported_match_id: number | null
+  imported_match_status?: MatchStatus | null
+  prediction_asset_status?: AssetGenerationStatus | null
+  prediction_publish_status?: string | null
+  result_asset_status?: AssetGenerationStatus | null
+  result_publish_status?: string | null
   payload: unknown
   last_seen_at: string
   created_at: string

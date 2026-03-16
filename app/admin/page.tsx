@@ -26,8 +26,12 @@ interface MatchRecord {
   card_asset_url?: string | null
   prediction_artwork_url?: string | null
   prediction_card_url?: string | null
+  prediction_asset_status?: string | null
+  prediction_publish_status?: string | null
   result_artwork_url?: string | null
   result_card_url?: string | null
+  result_asset_status?: string | null
+  result_publish_status?: string | null
   asset_generation_status?: string | null
   publish_status?: string | null
   team1_captain?: string | null
@@ -63,6 +67,11 @@ interface FeedQueueItem {
   status: MatchStatus
   sync_status: 'queued' | 'imported' | 'dismissed'
   imported_match_id: number | null
+  imported_match_status?: MatchStatus | null
+  prediction_asset_status?: string | null
+  prediction_publish_status?: string | null
+  result_asset_status?: string | null
+  result_publish_status?: string | null
 }
 
 const initialForm = {
@@ -829,6 +838,16 @@ export default function AdminPage() {
 
               <div className="divide-y divide-white/10">
                 {feedQueue.slice(0, 10).map((item) => (
+                  (() => {
+                    const queueAssetStatus = item.status === 'finished'
+                      ? item.result_asset_status || null
+                      : item.prediction_asset_status || null
+                    const queuePublishStatus = item.status === 'finished'
+                      ? item.result_publish_status || 'draft'
+                      : item.prediction_publish_status || 'draft'
+                    const queuePublished = queuePublishStatus === 'published'
+
+                    return (
                   <div key={item.id} className="px-4 py-4 lg:px-5">
                     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.8fr)_1fr_1fr_0.9fr_1.7fr] lg:items-center">
                       <div className="min-w-0">
@@ -855,17 +874,23 @@ export default function AdminPage() {
 
                       <div className="flex flex-wrap gap-2">
                         <StatusBadge label="Fetch" value={item.sync_status} tone={feedFetchTone(item.sync_status)} />
+                        {item.imported_match_id ? (
+                          <>
+                            <StatusBadge label="Generated" value={queueAssetStatus || 'pending'} tone={assetTone(queueAssetStatus)} />
+                            <StatusBadge label="Published" value={queuePublishStatus || 'draft'} tone={publishTone(queuePublishStatus)} />
+                          </>
+                        ) : null}
                       </div>
 
                       <div className="grid max-w-[16rem] gap-2 sm:grid-cols-2">
                         <ToolbarButton compact onClick={() => void handleFeedQueueAction(item.id, 'import', 'Feed item imported to matches')} disabled={item.sync_status !== 'queued' || jobState[`feed-import-${item.id}`]} tone="slate">
-                          Import
+                          {item.sync_status === 'imported' ? 'Imported' : 'Import'}
                         </ToolbarButton>
                         <ToolbarButton compact onClick={() => void handleFeedQueueAction(item.id, 'generate', 'Feed item imported and asset generation started')} disabled={item.sync_status !== 'queued' || jobState[`feed-generate-${item.id}`]} tone="violet">
-                          Generate
+                          {queueAssetStatus && queueAssetStatus !== 'pending' ? 'Generated' : 'Generate'}
                         </ToolbarButton>
-                        <ToolbarButton compact onClick={() => void handleFeedQueueAction(item.id, 'publish', 'Feed item imported, generated, and published')} disabled={item.sync_status !== 'queued' || jobState[`feed-publish-${item.id}`]} tone="emerald">
-                          Publish
+                        <ToolbarButton compact onClick={() => void handleFeedQueueAction(item.id, 'publish', 'Feed item imported, generated, and published')} disabled={item.sync_status !== 'queued' || jobState[`feed-publish-${item.id}`] || queuePublished} tone="emerald">
+                          {queuePublished ? 'Published' : queuePublishStatus === 'ready' ? 'Publish Ready' : 'Publish'}
                         </ToolbarButton>
                         <ToolbarButton compact onClick={() => void handleFeedQueueAction(item.id, 'dismiss', 'Feed item dismissed')} disabled={item.sync_status !== 'queued' || jobState[`feed-dismiss-${item.id}`]} tone="rose">
                           Dismiss
@@ -873,6 +898,8 @@ export default function AdminPage() {
                       </div>
                     </div>
                   </div>
+                    )
+                  })()
                 ))}
               </div>
             </div>
@@ -1233,7 +1260,9 @@ function FeaturedMatchRow({
   onDelete: () => void
   busy: Record<string, boolean>
 }) {
-  const isPublished = match.publish_status === 'published'
+  const currentAssetStatus = activeAssetStatus(match)
+  const currentPublishStatus = activePublishStatus(match)
+  const isPublished = currentPublishStatus === 'published'
   const imageUrl = match.prediction_artwork_url || match.prediction_card_url || match.result_artwork_url || match.result_card_url || null
 
   return (
@@ -1256,8 +1285,8 @@ function FeaturedMatchRow({
               {selected ? <CheckCircle2 size={16} className="text-green-300" /> : <Square size={16} />}
             </button>
             <StatusBadge label="Fetched" value={match.source === 'manual' ? 'manual' : 'synced'} tone={match.source === 'manual' ? 'slate' : 'cyan'} />
-            <StatusBadge label="Generated" value={match.asset_generation_status || 'pending'} tone={assetTone(match.asset_generation_status)} />
-            <StatusBadge label="Published" value={match.publish_status || 'draft'} tone={publishTone(match.publish_status)} />
+            <StatusBadge label="Generated" value={currentAssetStatus || 'pending'} tone={assetTone(currentAssetStatus)} />
+            <StatusBadge label="Published" value={currentPublishStatus || 'draft'} tone={publishTone(currentPublishStatus)} />
           </div>
         </div>
 
@@ -1273,8 +1302,8 @@ function FeaturedMatchRow({
             <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
               <div className="flex flex-wrap items-center gap-4 text-sm text-gray-300">
                 <span className="font-semibold text-white">Pipeline</span>
-                <StepDot active={!!match.asset_generation_status && match.asset_generation_status !== 'pending'} label="Assets" />
-                <StepDot active={!!match.publish_status && match.publish_status !== 'draft'} label="Published" />
+                <StepDot active={!!currentAssetStatus && currentAssetStatus !== 'pending'} label="Assets" />
+                <StepDot active={!!currentPublishStatus && currentPublishStatus !== 'draft'} label="Published" />
                 <StepDot active={match.status === 'live'} label="Live" />
                 <StepDot active={match.status === 'finished'} label="Finished" />
               </div>
@@ -1283,8 +1312,8 @@ function FeaturedMatchRow({
 
             <div className="grid gap-3 md:grid-cols-4">
               <ToolbarButton onClick={onEdit} tone="slate">Edit</ToolbarButton>
-              <ToolbarButton onClick={onGenerateImage} disabled={busy.image} tone="violet">Generate</ToolbarButton>
-              <ToolbarButton onClick={onPublish} disabled={busy.publish || isPublished} tone="violet">{isPublished ? 'Published' : 'Publish'}</ToolbarButton>
+              <ToolbarButton onClick={onGenerateImage} disabled={busy.image} tone="violet">{currentAssetStatus && currentAssetStatus !== 'pending' ? 'Regenerate' : 'Generate'}</ToolbarButton>
+              <ToolbarButton onClick={onPublish} disabled={busy.publish || isPublished} tone="violet">{isPublished ? 'Published' : currentPublishStatus === 'ready' ? 'Publish Ready' : 'Publish'}</ToolbarButton>
               <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-gray-300">
                 {match.prediction_card_url ? <a href={match.prediction_card_url} target="_blank" className="text-cyan-200 hover:text-white">Open card</a> : 'No card yet'}
               </div>
@@ -1327,7 +1356,9 @@ function CompactMatchCard({
   onDelete: () => void
   busy: Record<string, boolean>
 }) {
-  const isPublished = match.publish_status === 'published'
+  const currentAssetStatus = activeAssetStatus(match)
+  const currentPublishStatus = activePublishStatus(match)
+  const isPublished = currentPublishStatus === 'published'
   const imageUrl = match.prediction_artwork_url || match.prediction_card_url || match.result_artwork_url || match.result_card_url || null
 
   return (
@@ -1355,15 +1386,15 @@ function CompactMatchCard({
         </div>
 
         <div className="mt-3 flex flex-wrap gap-2">
-          <StatusBadge label="Generated" value={match.asset_generation_status || 'pending'} tone={assetTone(match.asset_generation_status)} />
-          <StatusBadge label="Published" value={match.publish_status || 'draft'} tone={publishTone(match.publish_status)} />
+          <StatusBadge label="Generated" value={currentAssetStatus || 'pending'} tone={assetTone(currentAssetStatus)} />
+          <StatusBadge label="Published" value={currentPublishStatus || 'draft'} tone={publishTone(currentPublishStatus)} />
           <StatusBadge label="Status" value={match.status} tone={match.status === 'live' ? 'green' : match.status === 'finished' ? 'slate' : 'cyan'} />
         </div>
 
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           <ToolbarButton onClick={onEdit} tone="slate">Edit</ToolbarButton>
-          <ToolbarButton onClick={onGenerate} disabled={busy.image} tone="violet">Generate</ToolbarButton>
-          <ToolbarButton onClick={onPublish} disabled={busy.publish || isPublished} tone="violet">{isPublished ? 'Published' : 'Publish'}</ToolbarButton>
+          <ToolbarButton onClick={onGenerate} disabled={busy.image} tone="violet">{currentAssetStatus && currentAssetStatus !== 'pending' ? 'Regenerate' : 'Generate'}</ToolbarButton>
+          <ToolbarButton onClick={onPublish} disabled={busy.publish || isPublished} tone="violet">{isPublished ? 'Published' : currentPublishStatus === 'ready' ? 'Publish Ready' : 'Publish'}</ToolbarButton>
           <ToolbarButton onClick={onMarkLive} disabled={busy.match} tone="cyan">Mark Live</ToolbarButton>
         </div>
 
@@ -1624,6 +1655,22 @@ function publishTone(value?: string | null): 'green' | 'yellow' | 'red' | 'cyan'
   }
 
   return 'slate'
+}
+
+function activeAssetStatus(match: Pick<MatchRecord, 'status' | 'prediction_asset_status' | 'result_asset_status' | 'asset_generation_status'>) {
+  if (match.status === 'finished') {
+    return match.result_asset_status || match.asset_generation_status || null
+  }
+
+  return match.prediction_asset_status || match.asset_generation_status || null
+}
+
+function activePublishStatus(match: Pick<MatchRecord, 'status' | 'prediction_publish_status' | 'result_publish_status' | 'publish_status'>) {
+  if (match.status === 'finished') {
+    return match.result_publish_status || match.publish_status || 'draft'
+  }
+
+  return match.prediction_publish_status || match.publish_status || 'draft'
 }
 
 function feedFetchTone(value: FeedQueueItem['sync_status']): 'green' | 'yellow' | 'red' | 'cyan' | 'slate' {

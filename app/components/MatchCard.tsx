@@ -136,11 +136,7 @@ export default function MatchCard({ match, onVote, interactive = true, footerSlo
           <p className="mt-3 text-[1rem] font-semibold text-white/90 drop-shadow-[0_4px_12px_rgba(0,0,0,0.45)]">{question}</p>
         </div>
 
-        <div className="my-6 flex items-center justify-center">
-          <div className="poster-vs">VS</div>
-        </div>
-
-        <div className="space-y-3">
+        <div className="mt-6 space-y-3">
           <div className="text-center text-[1.15rem] font-black uppercase tracking-[0.16em] text-white">
             {match.status === 'finished' ? 'Final Verdict' : 'Who Will Win?'}
           </div>

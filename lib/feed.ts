@@ -305,16 +305,60 @@ export async function stageFeedMatches(feedMatches: FeedMatch[], provider = 'fee
 export async function listFeedQueue() {
   await ensureSchema()
   const { rows } = await sql<FeedQueueRecord>`
-    SELECT *
+    SELECT
+      feed_sync_items.*,
+      matches.status AS imported_match_status,
+      prediction_art.generation_status AS prediction_asset_status,
+      prediction_card.published_status AS prediction_publish_status,
+      result_art.generation_status AS result_asset_status,
+      result_card.published_status AS result_publish_status
     FROM feed_sync_items
+    LEFT JOIN matches
+      ON matches.id = feed_sync_items.imported_match_id
+    LEFT JOIN LATERAL (
+      SELECT generation_status
+      FROM generated_assets
+      WHERE match_id = feed_sync_items.imported_match_id
+        AND asset_type = 'artwork'
+        AND asset_variant = 'prediction'
+      ORDER BY id DESC
+      LIMIT 1
+    ) prediction_art ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT published_status
+      FROM generated_assets
+      WHERE match_id = feed_sync_items.imported_match_id
+        AND asset_type = 'card'
+        AND asset_variant = 'prediction'
+      ORDER BY id DESC
+      LIMIT 1
+    ) prediction_card ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT generation_status
+      FROM generated_assets
+      WHERE match_id = feed_sync_items.imported_match_id
+        AND asset_type = 'artwork'
+        AND asset_variant = 'result'
+      ORDER BY id DESC
+      LIMIT 1
+    ) result_art ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT published_status
+      FROM generated_assets
+      WHERE match_id = feed_sync_items.imported_match_id
+        AND asset_type = 'card'
+        AND asset_variant = 'result'
+      ORDER BY id DESC
+      LIMIT 1
+    ) result_card ON TRUE
     ORDER BY
-      CASE sync_status
+      CASE feed_sync_items.sync_status
         WHEN 'queued' THEN 0
         WHEN 'imported' THEN 1
         ELSE 2
       END,
-      match_time ASC,
-      id DESC
+      feed_sync_items.match_time ASC,
+      feed_sync_items.id DESC
     LIMIT 50
   `
 
