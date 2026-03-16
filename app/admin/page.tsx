@@ -1235,9 +1235,9 @@ function FeaturedMatchRow({
   const imageUrl = match.prediction_artwork_url || match.prediction_card_url || match.result_artwork_url || match.result_card_url || null
 
   return (
-    <div className="grid gap-0 xl:grid-cols-[180px_minmax(0,1fr)]">
-      <div className="border-b border-white/10 p-4 xl:border-b-0 xl:border-r">
-        <ThumbnailPreview imageUrl={imageUrl} title={`${match.team1} vs ${match.team2}`} className="!w-full !max-w-none !rounded-xl" />
+    <div className="grid gap-0 xl:grid-cols-[180px_minmax(0,1fr)] xl:items-stretch">
+      <div className="flex border-b border-white/10 p-4 xl:border-b-0 xl:border-r">
+        <ThumbnailPreview imageUrl={imageUrl} title={`${match.team1} vs ${match.team2}`} className="!h-full !w-full !max-w-none !rounded-xl" />
       </div>
       <div className="p-4">
         <div className="flex flex-wrap items-start justify-between gap-4">
@@ -1331,12 +1331,12 @@ function CompactMatchCard({
   const imageUrl = match.prediction_artwork_url || match.prediction_card_url || match.result_artwork_url || match.result_card_url || null
 
   return (
-    <div className="grid gap-4 md:grid-cols-[150px_minmax(0,1fr)]">
-      <div className="flex items-start gap-3">
-        <button onClick={onSelect} className="rounded-lg border border-white/10 bg-white/5 p-2 text-gray-300 transition hover:border-white/20 hover:text-white">
+    <div className="grid gap-4 md:grid-cols-[150px_minmax(0,1fr)] md:items-stretch">
+      <div className="flex h-full items-stretch gap-3">
+        <button onClick={onSelect} className="self-start rounded-lg border border-white/10 bg-white/5 p-2 text-gray-300 transition hover:border-white/20 hover:text-white">
           {selected ? <CheckCircle2 size={16} className="text-green-300" /> : <Square size={16} />}
         </button>
-        <ThumbnailPreview imageUrl={imageUrl} title={`${match.team1} vs ${match.team2}`} className="!w-[7.5rem]" />
+        <ThumbnailPreview imageUrl={imageUrl} title={`${match.team1} vs ${match.team2}`} className="!h-full !w-[7.5rem]" />
       </div>
 
       <div className="min-w-0">
@@ -1549,9 +1549,9 @@ function StepDot({ active, label }: { active: boolean; label: string }) {
 
 function ThumbnailPreview({ imageUrl, title, className = '' }: { imageUrl: string | null; title: string; className?: string }) {
   return (
-    <div className={`overflow-hidden rounded-2xl border border-white/10 bg-gray-950/70 ${className}`}>
+    <div className={`flex h-full min-h-[11.5rem] flex-col overflow-hidden rounded-2xl border border-white/10 bg-gray-950/70 ${className}`}>
       <div
-        className="h-44 w-full bg-cover bg-center"
+        className="min-h-[9.5rem] w-full flex-1 bg-cover bg-center"
         style={{
           backgroundImage: imageUrl
             ? `linear-gradient(180deg, rgba(7,10,20,0.12), rgba(7,10,20,0.55)), url(${imageUrl})`
