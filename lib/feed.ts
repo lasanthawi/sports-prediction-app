@@ -6,6 +6,35 @@ import { FeedMatch, FeedQueueRecord, MatchStatus } from './types'
 const DEFAULT_SPORTSDB_API_KEY = '123'
 const DEFAULT_SPORTSDB_LEAGUE_IDS = ['4328', '4335', '4387']
 
+function slugify(value: string | null | undefined) {
+  return (value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+function buildStableExternalId(item: Record<string, unknown>, index: number) {
+  const explicitId = item.externalId || item.id
+  if (explicitId) {
+    return String(explicitId)
+  }
+
+  const team1 = String(item.team1 || item.homeTeam || '')
+  const team2 = String(item.team2 || item.awayTeam || '')
+  const league = String(item.league || '')
+  const matchTime = String(item.matchTime || item.match_time || item.startsAt || '')
+
+  return [
+    'custom',
+    slugify(league),
+    slugify(team1),
+    slugify(team2),
+    slugify(matchTime) || String(index),
+  ]
+    .filter(Boolean)
+    .join('-')
+}
+
 function normalizeText(value: string | null | undefined) {
   return value?.trim() || null
 }
@@ -101,7 +130,7 @@ export async function fetchConfiguredFeedMatches() {
     }
 
     return rawItems.map((item: Record<string, unknown>, index: number): FeedMatch => ({
-      externalId: String(item.externalId || item.id || `feed-${index}`),
+      externalId: buildStableExternalId(item, index),
       source: String(item.source || 'feed'),
       sport: String(item.sport || 'Football'),
       league: item.league ? String(item.league) : null,

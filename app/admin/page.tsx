@@ -1529,16 +1529,16 @@ function ToolbarButton({
     amber: 'border-yellow-400/30 bg-yellow-400/10 text-yellow-100 hover:border-yellow-300/50',
   }[tone]
 
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={`rounded-xl border px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${toneClass}`}
-    >
-      {children}
-    </button>
-  )
-}
+    return (
+      <button
+        onClick={onClick}
+        disabled={disabled}
+        className={`inline-flex min-w-[7.25rem] items-center justify-center whitespace-nowrap rounded-xl border px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${toneClass}`}
+      >
+        {children}
+      </button>
+    )
+  }
 
 function StepDot({ active, label }: { active: boolean; label: string }) {
   return (

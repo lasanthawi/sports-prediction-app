@@ -3,12 +3,12 @@ import { NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const now = Date.now()
+  const year = new Date().getUTCFullYear()
 
   return NextResponse.json({
     matches: [
       {
-        externalId: `sample-${Math.floor(now / 1000)}-1`,
+        externalId: 'sample-arsenal-chelsea-premier-league',
         source: 'sample-feed',
         sport: 'Football',
         league: 'Premier League',
@@ -23,12 +23,12 @@ export async function GET() {
         creativeDirection: 'High-energy stadium poster with electric trails and premium foil shadows',
         rivalryTagline: 'London pride. One crown.',
         artStyle: 'cinematic premium sports key art',
-        matchTime: new Date(now + 6 * 60 * 60 * 1000).toISOString(),
+        matchTime: new Date(Date.UTC(year, 8, 14, 18, 30, 0)).toISOString(),
         venue: 'Emirates Stadium',
         status: 'upcoming',
       },
       {
-        externalId: `sample-${Math.floor(now / 1000)}-2`,
+        externalId: 'sample-mi-csk-ipl',
         source: 'sample-feed',
         sport: 'Cricket',
         league: 'IPL',
@@ -43,12 +43,12 @@ export async function GET() {
         creativeDirection: 'Dramatic floodlit duel with sparks, dust, and trophy-race energy',
         rivalryTagline: 'Legends collide under the lights.',
         artStyle: 'hyper-real premium trading card illustration',
-        matchTime: new Date(now + 24 * 60 * 60 * 1000).toISOString(),
+        matchTime: new Date(Date.UTC(year, 3, 17, 7, 20, 0)).toISOString(),
         venue: 'Wankhede Stadium',
         status: 'upcoming',
       },
       {
-        externalId: `sample-${Math.floor(now / 1000)}-3`,
+        externalId: 'sample-lakers-celtics-nba-final',
         source: 'sample-feed',
         sport: 'Basketball',
         league: 'NBA',
@@ -63,7 +63,7 @@ export async function GET() {
         creativeDirection: 'Playoff poster energy with spotlighted captains and metallic confetti haze',
         rivalryTagline: 'History never sleeps.',
         artStyle: 'epic posterized arena illustration',
-        matchTime: new Date(now - 2 * 60 * 60 * 1000).toISOString(),
+        matchTime: new Date(Date.UTC(year, 2, 15, 6, 35, 0)).toISOString(),
         venue: 'TD Garden',
         status: 'finished',
         winner: 2,
