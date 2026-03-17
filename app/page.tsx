@@ -226,7 +226,7 @@ export default function Home() {
                 <EmptyState />
               ) : (
                 <div className="space-y-6">
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="flex shrink-0 items-center justify-between gap-4 pb-5 mb-[5rem] md:mb-[7rem]">
                     <p className="text-sm uppercase tracking-[0.2em] text-white/60">
                       Slide through live and upcoming battle cards
                     </p>
@@ -253,7 +253,7 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <div className="flex min-h-0 w-full items-center justify-center gap-4 md:gap-6">
+                  <div className="flex min-h-0 w-full items-center justify-center gap-4 pb-[5rem] md:pb-[7rem] md:gap-6">
                     <button
                       type="button"
                       onClick={() => setDesktopSlide((current) => (current - 1 + featuredMatches.length) % featuredMatches.length)}
@@ -276,7 +276,7 @@ export default function Home() {
                       }}
                       onVote={() => void fetchMatches()}
                       className="flex-1"
-                      stageHeightClass="h-[34rem] lg:h-[38rem] xl:h-[41rem]"
+                      stageHeightClass="h-[30rem] lg:h-[34rem] xl:h-[37rem]"
                       centerWidthClass="w-[min(23.5rem,27vw)] lg:w-[min(25.5rem,28vw)] xl:w-[min(26.5rem,27vw)]"
                       sideWidthClass="w-[20rem] lg:w-[22rem] xl:w-[23rem]"
                     />
@@ -662,6 +662,8 @@ function ArenaVotingOverlay({
                   stageHeightClass="h-[70dvh] min-h-[30rem] md:h-[76dvh]"
                   centerWidthClass="w-[min(24rem,90vw)] md:w-[min(28rem,38vw)] xl:w-[min(30rem,30vw)]"
                   sideWidthClass="w-[19.5rem] lg:w-[21.5rem] xl:w-[22.5rem]"
+                  outerSideWidthClass="w-[14rem] xl:w-[15.5rem]"
+                  showOuterSideCards
                 />
               </div>
               <button
@@ -881,6 +883,8 @@ function MatchCarouselStage({
   stageHeightClass,
   centerWidthClass,
   sideWidthClass,
+  outerSideWidthClass = 'w-[14rem]',
+  showOuterSideCards = false,
 }: {
   matches: MatchRecord[]
   currentIndex: number
@@ -892,6 +896,8 @@ function MatchCarouselStage({
   stageHeightClass: string
   centerWidthClass: string
   sideWidthClass: string
+  outerSideWidthClass?: string
+  showOuterSideCards?: boolean
 }) {
   if (matches.length === 0) {
     return null
@@ -900,7 +906,7 @@ function MatchCarouselStage({
   return (
     <div className={`relative mx-auto w-full max-w-[1280px] overflow-visible ${stageHeightClass} ${className}`}>
       {matches.map((match, index) => {
-        const position = getCarouselPosition(index, currentIndex, matches.length)
+        const position = getCarouselPosition(index, currentIndex, matches.length, showOuterSideCards)
         if (position === 'hidden') {
           return null
         }
@@ -909,13 +915,24 @@ function MatchCarouselStage({
         const anchorClass = position === 'current'
           ? 'left-1/2 -translate-x-1/2'
           : position === 'prev'
-            ? 'left-[22%] -translate-x-1/2 lg:left-[20.5%] xl:left-[19.5%]'
-            : 'left-[78%] -translate-x-1/2 lg:left-[79.5%] xl:left-[80.5%]'
+            ? showOuterSideCards
+              ? 'left-[28%] -translate-x-1/2 lg:left-[27%] xl:left-[26%]'
+              : 'left-[18%] -translate-x-1/2 lg:left-[17%] xl:left-[16%]'
+            : position === 'next'
+              ? showOuterSideCards
+                ? 'left-[72%] -translate-x-1/2 lg:left-[73%] xl:left-[74%]'
+                : 'left-[82%] -translate-x-1/2 lg:left-[83%] xl:left-[84%]'
+              : position === 'prev-outer'
+                ? 'left-[8.5%] -translate-x-1/2'
+                : 'left-[91.5%] -translate-x-1/2'
+        const sideOpacity = showOuterSideCards ? 'opacity-100' : 'opacity-70'
         const wrapperClass = position === 'current'
           ? `z-30 ${centerWidthClass} opacity-100 scale-100`
           : position === 'prev'
-            ? `z-20 ${sideWidthClass} hidden md:block scale-[0.84] opacity-55`
-            : `z-20 ${sideWidthClass} hidden md:block scale-[0.84] opacity-55`
+            ? `z-20 ${sideWidthClass} hidden md:block scale-[0.84] ${sideOpacity}`
+            : position === 'next'
+              ? `z-20 ${sideWidthClass} hidden md:block scale-[0.84] ${sideOpacity}`
+              : `z-10 ${outerSideWidthClass} hidden xl:block scale-[0.68] opacity-[0.15]`
 
         const handleSelect = () => {
           if (position === 'prev') {
@@ -949,7 +966,12 @@ function MatchCarouselStage({
   )
 }
 
-function getCarouselPosition(index: number, currentIndex: number, total: number): 'prev' | 'current' | 'next' | 'hidden' {
+function getCarouselPosition(
+  index: number,
+  currentIndex: number,
+  total: number,
+  includeOuterSides: boolean,
+): 'prev' | 'current' | 'next' | 'prev-outer' | 'next-outer' | 'hidden' {
   if (total <= 0) {
     return 'hidden'
   }
@@ -964,6 +986,14 @@ function getCarouselPosition(index: number, currentIndex: number, total: number)
 
   if (total > 1 && index === (currentIndex + 1) % total) {
     return 'next'
+  }
+
+  if (includeOuterSides && total > 3 && index === (currentIndex - 2 + total) % total) {
+    return 'prev-outer'
+  }
+
+  if (includeOuterSides && total > 3 && index === (currentIndex + 2) % total) {
+    return 'next-outer'
   }
 
   return 'hidden'
