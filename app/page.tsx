@@ -677,11 +677,11 @@ function ArenaVotingOverlay({
                 {voteMatches.map((match) => (
                   <div
                     key={match.id}
-                    className="flex h-full shrink-0 items-center justify-center px-1"
+                    className="flex h-full shrink-0 items-center justify-center px-2"
                     style={{ width: `${100 / voteMatches.length}%` }}
                   >
-                    <div className="flex h-full w-auto max-w-full items-center justify-center">
-                      <div className="aspect-[9/16] h-full max-w-full overflow-hidden rounded-xl shadow-xl">
+                    <div className="w-full max-w-[23.5rem]">
+                      <div className="aspect-[9/16] w-full overflow-hidden rounded-xl shadow-xl">
                         <MatchCard
                           match={match}
                           onVote={() => void onVote()}
