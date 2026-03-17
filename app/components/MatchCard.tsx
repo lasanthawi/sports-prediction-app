@@ -28,6 +28,8 @@ interface MatchCardProps {
   interactive?: boolean
   footerSlot?: ReactNode
   className?: string
+  /** When true, uses a tight layout for small grids (e.g. mobile 2x2) so text and vote buttons fit without truncation or cut-off */
+  compact?: boolean
 }
 
 interface CountdownState {
@@ -38,7 +40,7 @@ interface CountdownState {
   seconds?: number
 }
 
-export default function MatchCard({ match, onVote, onCardClick, interactive = true, footerSlot, className = '' }: MatchCardProps) {
+export default function MatchCard({ match, onVote, onCardClick, interactive = true, footerSlot, className = '', compact = false }: MatchCardProps) {
   const [voted, setVoted] = useState(false)
   const [selectedTeam, setSelectedTeam] = useState<number | null>(null)
   const [timeLeft, setTimeLeft] = useState<CountdownState>({})
@@ -141,26 +143,28 @@ export default function MatchCard({ match, onVote, onCardClick, interactive = tr
       />
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.48)_0%,rgba(2,6,23,0.12)_24%,rgba(2,6,23,0.01)_50%,rgba(2,6,23,0.08)_72%,rgba(2,6,23,0.56)_100%)]" />
 
-      <div className="relative flex h-full flex-col justify-between p-4 md:p-5">
-        <div className="space-y-2">
+      <div className={`relative flex h-full flex-col justify-between ${compact ? 'p-2' : 'p-4 md:p-5'}`}>
+        <div className={compact ? 'space-y-0.5' : 'space-y-2'}>
           <div className="text-center">
-            <p className="text-[0.58rem] font-bold uppercase tracking-[0.34em] text-white/74">{headline}</p>
-            <h3 className="mt-1 text-[1.4rem] font-black uppercase leading-[0.92] tracking-[0.035em] text-white drop-shadow-[0_6px_14px_rgba(0,0,0,0.45)] md:text-[1.65rem]">
+            <p className={`font-bold uppercase tracking-[0.2em] text-white/74 ${compact ? 'text-[0.48rem]' : 'text-[0.58rem] tracking-[0.34em]'}`}>{headline}</p>
+            <h3 className={`font-black uppercase leading-tight text-white drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)] ${compact ? 'mt-0.5 line-clamp-2 text-[0.65rem] tracking-tight' : 'mt-1 text-[1.4rem] leading-[0.92] tracking-[0.035em] md:text-[1.65rem]'}`}>
               {versusTitle}
             </h3>
           </div>
 
-          <div className="mx-auto min-h-[2.2rem] max-w-[78%] px-2 text-center">
-            <p className="text-[0.74rem] font-semibold leading-snug text-white/82 drop-shadow-[0_4px_12px_rgba(0,0,0,0.45)]">
-              {question}
-            </p>
-          </div>
+          {!compact && (
+            <div className="mx-auto min-h-[2.2rem] max-w-[78%] px-2 text-center">
+              <p className="text-[0.74rem] font-semibold leading-snug text-white/82 drop-shadow-[0_4px_12px_rgba(0,0,0,0.45)]">
+                {question}
+              </p>
+            </div>
+          )}
         </div>
 
-        <div className="flex-1" />
+        <div className="flex-1 min-h-0" />
 
-        <div className="space-y-1.5">
-          <div className="grid gap-2">
+        <div className={compact ? 'space-y-1' : 'space-y-1.5'}>
+          <div className={`grid ${compact ? 'gap-1' : 'gap-2'}`}>
             <SideButton
               tone="red"
               team={match.team1}
@@ -170,6 +174,7 @@ export default function MatchCard({ match, onVote, onCardClick, interactive = tr
               selected={selectedTeam === 1}
               interactive={interactive}
               onClick={() => void handleVote(1)}
+              compact={compact}
             />
             <SideButton
               tone="blue"
@@ -180,53 +185,62 @@ export default function MatchCard({ match, onVote, onCardClick, interactive = tr
               selected={selectedTeam === 2}
               interactive={interactive}
               onClick={() => void handleVote(2)}
+              compact={compact}
             />
           </div>
 
-          <div className="rounded-[1rem] border border-white/10 bg-black/18 px-4 py-2 backdrop-blur-[4px]">
-            <div className="flex items-center justify-center gap-2 text-[0.58rem] font-bold uppercase tracking-[0.18em] text-white/66">
-              <MapPin size={12} />
-              <span>{match.venue || 'Venue TBA'}</span>
+          <div className={`rounded-lg border border-white/10 bg-black/18 backdrop-blur-[4px] ${compact ? 'px-2 py-1' : 'rounded-[1rem] px-4 py-2'}`}>
+            <div className={`flex items-center justify-center gap-1 text-white/66 ${compact ? 'text-[0.5rem]' : 'text-[0.58rem] font-bold uppercase tracking-[0.18em]'}`}>
+              <MapPin size={compact ? 10 : 12} />
+              <span className="truncate">{match.venue || 'Venue TBA'}</span>
             </div>
-            <div className="mt-1 text-center text-[0.88rem] font-black text-[#ffe495]">{formatMatchTime(match.match_time)}</div>
-            {match.status === 'upcoming' ? (
-              <div className="mt-1 flex items-center justify-center gap-2 text-[0.58rem] font-bold uppercase tracking-[0.16em] text-white/80">
-                <Clock3 size={12} />
-                <span>{formatCountdown(timeLeft)}</span>
-              </div>
-            ) : match.status === 'finished' ? (
-              <div className="mt-1 text-center text-[0.58rem] font-bold uppercase tracking-[0.18em] text-green-300">
-                Voting closed. Result in.
-              </div>
-            ) : !interactive ? (
-              <div className="mt-1 text-center text-[0.58rem] font-bold uppercase tracking-[0.18em] text-white/60">
-                Admin preview mode
-              </div>
-            ) : (
-              <div className="mt-1 text-center text-[0.58rem] font-bold uppercase tracking-[0.18em] text-red-300">
-                Voting closed
-              </div>
+            <div className={`text-center text-[#ffe495] ${compact ? 'text-[0.6rem] font-bold' : 'mt-1 text-[0.88rem] font-black'}`}>{formatMatchTime(match.match_time)}</div>
+            {!compact && (
+              <>
+                {match.status === 'upcoming' ? (
+                  <div className="mt-1 flex items-center justify-center gap-2 text-[0.58rem] font-bold uppercase tracking-[0.16em] text-white/80">
+                    <Clock3 size={12} />
+                    <span>{formatCountdown(timeLeft)}</span>
+                  </div>
+                ) : match.status === 'finished' ? (
+                  <div className="mt-1 text-center text-[0.58rem] font-bold uppercase tracking-[0.18em] text-green-300">
+                    Voting closed. Result in.
+                  </div>
+                ) : !interactive ? (
+                  <div className="mt-1 text-center text-[0.58rem] font-bold uppercase tracking-[0.18em] text-white/60">
+                    Admin preview mode
+                  </div>
+                ) : (
+                  <div className="mt-1 text-center text-[0.58rem] font-bold uppercase tracking-[0.18em] text-red-300">
+                    Voting closed
+                  </div>
+                )}
+                <div className="mt-2 flex items-center justify-between border-t border-white/10 pt-2 text-[0.56rem] uppercase tracking-[0.16em] text-white/72">
+                  <span className="flex items-center gap-1.5">
+                    <TrendingUp size={12} />
+                    {totalVotes} picks
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Zap size={12} />
+                    {match.status}
+                  </span>
+                </div>
+                {footerSlot ? <div className="mt-2">{footerSlot}</div> : null}
+              </>
             )}
-            <div className="mt-2 flex items-center justify-between border-t border-white/10 pt-2 text-[0.56rem] uppercase tracking-[0.16em] text-white/72">
-              <span className="flex items-center gap-1.5">
-                <TrendingUp size={12} />
-                {totalVotes} picks
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Zap size={12} />
-                {match.status}
-              </span>
-            </div>
-            {footerSlot ? <div className="mt-2">{footerSlot}</div> : null}
           </div>
 
-          {voting ? <div className="text-center text-[0.58rem] font-bold uppercase tracking-[0.18em] text-yellow-300">Locking your prediction...</div> : null}
-          {voted ? (
-            <div className="flex items-center justify-center gap-2 text-center text-[0.58rem] font-bold uppercase tracking-[0.18em] text-green-300">
-              <Sparkles size={12} />
-              Prediction powered up
-            </div>
-          ) : null}
+          {!compact && (
+            <>
+              {voting ? <div className="text-center text-[0.58rem] font-bold uppercase tracking-[0.18em] text-yellow-300">Locking your prediction...</div> : null}
+              {voted ? (
+                <div className="flex items-center justify-center gap-2 text-center text-[0.58rem] font-bold uppercase tracking-[0.18em] text-green-300">
+                  <Sparkles size={12} />
+                  Prediction powered up
+                </div>
+              ) : null}
+            </>
+          )}
         </div>
       </div>
     </article>
@@ -242,6 +256,7 @@ function SideButton({
   selected,
   interactive,
   onClick,
+  compact = false,
 }: {
   tone: 'red' | 'blue'
   team: string
@@ -251,6 +266,7 @@ function SideButton({
   selected: boolean
   interactive: boolean
   onClick: () => void
+  compact?: boolean
 }) {
   const [showImage, setShowImage] = useState(isRenderableImageUrl(logo))
   const toneClass =
@@ -269,11 +285,11 @@ function SideButton({
         onClick()
       }}
       disabled={!interactive || disabled}
-      className={`relative overflow-hidden rounded-[1rem] border bg-black/28 px-3 py-2 text-left transition ${toneClass} ${interactive && !disabled ? 'hover:-translate-y-1 hover:scale-[1.01]' : 'cursor-default'} ${selected ? 'ring-2 ring-yellow-300' : ''}`}
+      className={`relative overflow-hidden border bg-black/28 text-left transition ${toneClass} ${compact ? 'rounded-lg px-1.5 py-1' : 'rounded-[1rem] px-3 py-2'} ${interactive && !disabled ? 'hover:-translate-y-1 hover:scale-[1.01]' : 'cursor-default'} ${selected ? 'ring-2 ring-yellow-300' : ''}`}
     >
       <div className="absolute inset-0 bg-gradient-to-r from-white/10 via-transparent to-white/5" />
-      <div className="relative flex items-center gap-2.5">
-        <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-white/30 bg-black/24 text-center text-[0.68rem] font-black text-white">
+      <div className={`relative flex items-center ${compact ? 'gap-1.5' : 'gap-2.5'}`}>
+        <div className={`flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/30 bg-black/24 text-center font-black text-white ${compact ? 'h-6 w-6 text-[0.5rem]' : 'h-10 w-10 text-[0.68rem]'}`}>
           {showImage ? (
             <img
               src={logo || ''}
@@ -285,12 +301,12 @@ function SideButton({
             initials(team)
           )}
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="text-[0.54rem] font-bold uppercase tracking-[0.18em] text-white/76">{interactive ? 'Vote' : 'Preview'}</div>
-          <div className="line-clamp-2 text-[0.82rem] font-black uppercase leading-tight text-white">{team}</div>
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <div className={`font-bold uppercase text-white/76 ${compact ? 'text-[0.44rem] tracking-wider' : 'text-[0.54rem] tracking-[0.18em]'}`}>{interactive ? 'Vote' : 'Preview'}</div>
+          <div className={`line-clamp-1 font-black uppercase leading-tight text-white ${compact ? 'text-[0.58rem]' : 'text-[0.82rem]'}`}>{team}</div>
         </div>
-        <div className="flex shrink-0 items-center justify-center rounded-xl border border-white/25 bg-gradient-to-b from-white/12 to-black/50 px-3.5 py-2 shadow-[0_0_14px_rgba(255,255,255,0.1),inset_0_1px_0_rgba(255,255,255,0.08)]">
-          <span className="text-[1.5rem] font-black tabular-nums leading-none text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.6)]">{percentage}%</span>
+        <div className={`flex shrink-0 items-center justify-center rounded-lg border border-white/25 bg-gradient-to-b from-white/12 to-black/50 shadow-[0_0_14px_rgba(255,255,255,0.1),inset_0_1px_0_rgba(255,255,255,0.08)] ${compact ? 'px-1.5 py-0.5' : 'rounded-xl px-3.5 py-2'}`}>
+          <span className={`font-black tabular-nums leading-none text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.6)] ${compact ? 'text-[0.9rem]' : 'text-[1.5rem]'}`}>{percentage}%</span>
         </div>
       </div>
     </button>

@@ -1,8 +1,8 @@
 import { sql } from '@vercel/postgres'
 import { ensureSchema } from './db'
-import { fetchConfiguredFeedMatches, stageFeedMatches } from './feed'
+import { fetchConfiguredFeedMatches, importFeedQueueItem, listFeedQueue, stageFeedMatches } from './feed'
 import { buildGeminiPrompt, generateGeminiPortraitArtwork, getPromptVersion } from './gemini'
-import { getMatch } from './matches'
+import { getMatch, refreshDerivedMatchStatuses } from './matches'
 import { AssetRecord, AssetVariant, MatchRecord } from './types'
 
 const DEFAULT_WEBHOOK_TIMEOUT_MS = 10000
@@ -513,19 +513,57 @@ export async function publishMatchAssets(matchId: number) {
   return publishAssets(rows, 'webhook')
 }
 
-export async function runAutomationPipeline() {
+/** Import the next queued feed item (earliest match_time), generate assets, and publish its cards. One match per call. */
+export async function importNextQueuedMatchAndPublish() {
   await ensureSchema()
-  const sync = await syncMatchesFromFeed()
-  const assets = [] as AssetRecord[]
-  const publish = await publishReadyAssets()
+  const queue = await listFeedQueue()
+  const next = queue.find((item) => item.sync_status === 'queued')
+  if (!next) {
+    await logAutomationRun('import_and_publish', 'skipped', 'No queued feed items', {})
+    return { imported: null, generated: 0, published: 0 }
+  }
 
-  await logAutomationRun('run_pipeline', 'success', 'Ran sync, asset generation, and publish pipeline', {
-    synced: sync.count,
-    generated: assets.length,
-    published: publish.published,
+  const match = await importFeedQueueItem(next.id)
+  if (!match) {
+    await logAutomationRun('import_and_publish', 'error', 'Import failed', { feedItemId: next.id })
+    return { imported: null, generated: 0, published: 0 }
+  }
+
+  const fullMatch = await getMatch(match.id) || match
+  const generated = await generateAssetsForMatches([fullMatch])
+  const publishResult = await publishMatchAssets(fullMatch.id)
+
+  await logAutomationRun('import_and_publish', 'success', `Imported, generated, and published match ${fullMatch.id}`, {
+    matchId: fullMatch.id,
+    generated: generated.length,
+    published: publishResult.published,
   })
 
-  return { sync, assets: { count: assets.length }, publish }
+  return { imported: fullMatch, generated: generated.length, published: publishResult.published }
+}
+
+/** Full pipeline: sync feed (queue new matches earliest first), refresh statuses (upcoming→live, live→finished), then import one match, generate assets, publish. */
+export async function runAutomationPipeline() {
+  await ensureSchema()
+  await refreshDerivedMatchStatuses()
+
+  const sync = await syncMatchesFromFeed()
+  const importResult = await importNextQueuedMatchAndPublish()
+  const publishRest = await publishReadyAssets()
+
+  await logAutomationRun('run_pipeline', 'success', 'Ran sync, status refresh, import-one, generate, publish', {
+    synced: sync.count,
+    importedMatchId: importResult.imported?.id ?? null,
+    generated: importResult.generated,
+    published: importResult.published + publishRest.published,
+  })
+
+  return {
+    sync,
+    statusRefreshed: true,
+    importResult,
+    publish: { ...publishRest, published: importResult.published + publishRest.published },
+  }
 }
 
 export async function listAutomationRuns(limit = 10) {

@@ -61,7 +61,7 @@ export default function Home() {
 
   async function fetchMatches() {
     try {
-      const res = await fetch('/api/matches', { cache: 'no-store' })
+      const res = await fetch('/api/matches?includeAll=1', { cache: 'no-store' })
       const payload = await res.json()
 
       if (!res.ok) {
@@ -83,8 +83,12 @@ export default function Home() {
   const upcomingMatches = orderedMatches.filter((match) => match.status === 'upcoming')
   const finishedMatches = matches.filter((match) => match.status === 'finished')
   const votingMatches = orderedMatches.filter((match) => match.status !== 'cancelled')
-  const featuredMatches = votingMatches.filter((match) => match.status !== 'finished').slice(0, 8)
-  const mobileVotingMatches = votingMatches.slice(0, 8)
+  const nonFinishedMatches = votingMatches.filter((match) => match.status !== 'finished')
+  const sliderMatches = nonFinishedMatches.length >= 10
+    ? nonFinishedMatches.slice(0, 8)
+    : [...nonFinishedMatches, ...finishedMatches].slice(0, 8)
+  const featuredMatches = sliderMatches
+  const mobileVotingMatches = sliderMatches.slice(0, 8)
   const totalVotes = matches.reduce((sum, match) => sum + match.poll_team1_votes + match.poll_team2_votes, 0)
   const spotlightResult = [...finishedMatches].sort((a, b) => (b.poll_team1_votes + b.poll_team2_votes) - (a.poll_team1_votes + a.poll_team2_votes))[0]
   const maxDesktopSlide = Math.max(0, featuredMatches.length - 1)
@@ -112,14 +116,14 @@ export default function Home() {
       return
     }
 
-    const targetMatch = votingMatches.find((match) => match.id === targetId)
+    const targetMatch = sliderMatches.find((match) => match.id === targetId)
     if (!targetMatch) {
       return
     }
 
     setActiveMatchId(targetId)
     setVotingMode(true)
-  }, [loading, searchParams, votingMatches])
+  }, [loading, searchParams, sliderMatches])
 
   function openMatchViewer(matchId: number) {
     setActiveMatchId(matchId)
@@ -339,14 +343,7 @@ export default function Home() {
                 title="Results Board"
                 copy="A snapshot of the latest finished battles so visitors can see which side won and how the arena voted."
               />
-              <div className="grid gap-4 lg:grid-cols-2">
-                {finishedMatches.slice(0, 6).map((match) => (
-                  <ResultRow key={match.id} match={match} />
-                ))}
-                {finishedMatches.length === 0 ? (
-                  <div className="glass-panel p-6 text-sm text-white/60">No results yet. Finished matches will show up here with final scorelines and vote history.</div>
-                ) : null}
-              </div>
+              <ResultsBoardSlider matches={finishedMatches} />
             </section>
 
             <section className="mb-16 grid gap-6 xl:grid-cols-[1fr,320px]">
@@ -388,7 +385,7 @@ export default function Home() {
 
       {votingMode ? (
         <ArenaVotingOverlay
-          matches={votingMatches}
+          matches={sliderMatches}
           activeMatchId={activeMatchId}
           onClose={closeVotingMode}
           onVote={fetchMatches}
@@ -422,7 +419,7 @@ function MobileArenaApp({
   onRefresh: () => Promise<void>
 }) {
   return (
-    <div className="relative md:hidden">
+    <div className="relative min-w-0 md:hidden">
       <section className="mobile-arena-shell">
         <div className="mobile-arena-topbar">
           <div className="flex items-start gap-3">
@@ -493,23 +490,19 @@ function MobileArenaApp({
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3 overflow-hidden">
+            <div className="grid min-w-0 grid-cols-2 gap-2 overflow-hidden">
               {matches.slice(0, 4).map((match) => (
-                <div key={match.id} className="rounded-[1.75rem] border border-white/10 bg-black/20 p-2 backdrop-blur-md">
-                  <div className="mb-2 flex items-center justify-between gap-2 px-1">
-                    <p className="truncate text-sm font-black text-white">{match.team1} vs {match.team2}</p>
-                    <span className="shrink-0 rounded-full border border-green-300/20 bg-green-300/10 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-green-200">
-                      {match.status}
-                    </span>
-                  </div>
-                  <div className="aspect-[9/16] w-full">
-                    <MatchCard
-                      match={match}
-                      onVote={() => void onRefresh()}
-                      onCardClick={() => onOpenMatch(match.id)}
-                      className="!h-full !min-h-0 !max-w-none"
-                    />
-                  </div>
+                <div
+                  key={match.id}
+                  className="min-w-0 overflow-hidden rounded-xl shadow-[0_6px_24px_rgba(0,0,0,0.35)] ring-1 ring-white/10 aspect-[9/16]"
+                >
+                  <MatchCard
+                    match={match}
+                    onVote={() => void onRefresh()}
+                    onCardClick={() => onOpenMatch(match.id)}
+                    compact
+                    className="!h-full !min-h-0 !w-full !max-w-none !rounded-xl"
+                  />
                 </div>
               ))}
             </div>
@@ -547,7 +540,15 @@ function ArenaVotingOverlay({
 }) {
   const voteMatches = matches.length > 0 ? matches : []
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [touchStart, setTouchStart] = useState<number | null>(null)
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const check = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   useEffect(() => {
     if (!voteMatches.length) {
@@ -567,6 +568,8 @@ function ArenaVotingOverlay({
   }, [activeMatchId, voteMatches])
 
   const hasInfiniteVote = voteMatches.length > 1
+  const SWIPE_CLOSE_THRESHOLD = 60
+  const SWIPE_NAV_THRESHOLD = 50
 
   function goToPrevious() {
     setCurrentIndex((current) => (current - 1 + voteMatches.length) % voteMatches.length)
@@ -576,18 +579,28 @@ function ArenaVotingOverlay({
     setCurrentIndex((current) => (current + 1) % voteMatches.length)
   }
 
-  function handleTouchEnd(endX: number) {
-    if (touchStart == null) {
+  function handleTouchStart(e: React.TouchEvent) {
+    const t = e.changedTouches[0]
+    if (t) setTouchStart({ x: t.clientX, y: t.clientY })
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    const t = e.changedTouches[0]
+    if (!t || !touchStart) {
+      setTouchStart(null)
       return
     }
+    const deltaX = t.clientX - touchStart.x
+    const deltaY = t.clientY - touchStart.y
+    const absX = Math.abs(deltaX)
+    const absY = Math.abs(deltaY)
 
-    const distance = endX - touchStart
-    if (distance > 50) {
-      goToPrevious()
-    } else if (distance < -50) {
-      goToNext()
+    if (absY >= SWIPE_CLOSE_THRESHOLD && absY >= absX) {
+      onClose()
+    } else if (absX >= SWIPE_NAV_THRESHOLD) {
+      if (deltaX > 0) goToPrevious()
+      else goToNext()
     }
-
     setTouchStart(null)
   }
 
@@ -613,77 +626,107 @@ function ArenaVotingOverlay({
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,8,20,0.92),rgba(10,8,27,0.97)),url('https://img.freepik.com/free-photo/cosmic-lightning-storm-space-background_23-2151955881.jpg?semt=ais_hybrid&w=740&q=80')] bg-cover bg-center" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(34,211,238,0.16),transparent_26%),radial-gradient(circle_at_85%_15%,rgba(244,114,182,0.18),transparent_24%)]" />
 
-      <div className="relative flex h-[100dvh] flex-col overflow-hidden px-4 py-4">
-        <div className="mb-4 flex items-center justify-between gap-3">
+      <div className="relative flex h-[100dvh] flex-col overflow-hidden px-4 pt-3 pb-4">
+        {/* Header: hidden on mobile; swipe up/down to close instead */}
+        <div className="mb-3 hidden shrink-0 items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 backdrop-blur-md md:flex">
           <button
             onClick={onClose}
-            className="glass-button inline-flex items-center gap-2 !rounded-xl px-4 py-2.5 text-sm"
+            className="flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:bg-white/15 active:scale-[0.98]"
             title="Exit"
           >
-            <ChevronLeft size={18} className="shrink-0" />
+            <ChevronLeft size={20} className="shrink-0" />
             <span className="whitespace-nowrap">Exit</span>
           </button>
-          <div className="text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.28em] text-green-300/80">Voting Mode</p>
+          <div className="flex flex-1 flex-col items-center justify-center">
+            <p className="text-[0.65rem] font-bold uppercase tracking-[0.28em] text-green-300/90">Voting Mode</p>
+            <p className="mt-0.5 text-xs font-bold text-white/80">
+              {currentIndex + 1} <span className="font-normal text-white/50">/ {voteMatches.length}</span>
+            </p>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-xs font-bold uppercase tracking-[0.18em] text-white/70">
-            {currentIndex + 1} / {voteMatches.length}
-          </div>
+          <div className="w-[4.5rem]" aria-hidden />
         </div>
 
         {voteMatches.length === 0 ? (
           <div className="flex flex-1 items-center justify-center text-center text-white/70">
             No voting cards available right now.
           </div>
-        ) : (
-          <>
-            <div className="flex w-full flex-1 items-center justify-center gap-3 md:gap-8">
-              <button
-                onClick={goToPrevious}
-                disabled={!hasInfiniteVote}
-                className="glass-button hidden !rounded-2xl !px-4 !py-4 disabled:opacity-40 md:inline-flex"
-                title="Previous"
-              >
-                <ChevronLeft size={20} />
-              </button>
+        ) : isMobile ? (
+          <div
+            className="flex min-h-0 flex-1 flex-col overflow-hidden"
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          >
+            <div className="relative flex min-h-0 flex-1 w-full overflow-hidden">
               <div
-                className="flex h-full w-full flex-1 items-center justify-center overflow-visible"
-                onTouchStart={(event) => setTouchStart(event.changedTouches[0]?.clientX ?? null)}
-                onTouchEnd={(event) => handleTouchEnd(event.changedTouches[0]?.clientX ?? 0)}
+                className="flex h-full transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                style={{
+                  width: `${voteMatches.length * 100}%`,
+                  transform: `translateX(-${currentIndex * (100 / voteMatches.length)}%)`,
+                }}
               >
-                <MatchCarouselStage
-                  matches={voteMatches}
-                  currentIndex={currentIndex}
-                  onPrevious={goToPrevious}
-                  onNext={goToNext}
-                  onSelectMatch={(_, index) => setCurrentIndex(index)}
-                  onVote={() => void onVote()}
-                  className="flex-1"
-                  stageHeightClass="h-[70dvh] min-h-[30rem] md:h-[76dvh]"
-                  centerWidthClass="w-[min(24rem,90vw)] md:w-[min(28rem,38vw)] xl:w-[min(30rem,30vw)]"
-                  sideWidthClass="w-[19.5rem] lg:w-[21.5rem] xl:w-[22.5rem]"
-                  outerSideWidthClass="w-[14rem] xl:w-[15.5rem]"
-                  showOuterSideCards
-                />
+                {voteMatches.map((match) => (
+                  <div
+                    key={match.id}
+                    className="flex h-full shrink-0 items-center justify-center px-1"
+                    style={{ width: `${100 / voteMatches.length}%` }}
+                  >
+                    <div className="flex h-full w-auto max-w-full items-center justify-center">
+                      <div className="aspect-[9/16] h-full max-w-full overflow-hidden rounded-xl shadow-xl">
+                        <MatchCard
+                          match={match}
+                          onVote={() => void onVote()}
+                          interactive
+                          className="!h-full !min-h-0 !w-full !max-w-none !rounded-xl"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <button
-                onClick={goToNext}
-                disabled={!hasInfiniteVote}
-                className="glass-button hidden !rounded-2xl !px-4 !py-4 disabled:opacity-40 md:inline-flex"
-                title="Next"
-              >
-                <ChevronRight size={20} />
-              </button>
             </div>
-            <div className="mt-4 flex items-center justify-center gap-2 md:hidden">
-              <button onClick={goToPrevious} disabled={!hasInfiniteVote} className="glass-button !rounded-2xl !px-4 !py-3 disabled:opacity-40" title="Previous">
-                <ChevronLeft size={18} />
-              </button>
-              <button onClick={goToNext} disabled={!hasInfiniteVote} className="glass-button !rounded-2xl !px-4 !py-3 disabled:opacity-40" title="Next">
-                <ChevronRight size={18} />
-              </button>
+            <p className="mt-2 shrink-0 text-[0.6rem] font-bold uppercase tracking-wider text-white/50">
+              Swipe up or down to close · Left/right to change card
+            </p>
+          </div>
+        ) : (
+          <div
+            className="flex w-full flex-1 items-center justify-center gap-3 md:gap-8"
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          >
+            <button
+              onClick={goToPrevious}
+              disabled={!hasInfiniteVote}
+              className="glass-button hidden !rounded-2xl !px-4 !py-4 disabled:opacity-40 md:inline-flex"
+              title="Previous"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <div className="flex h-full w-full flex-1 items-center justify-center overflow-visible">
+              <MatchCarouselStage
+                matches={voteMatches}
+                currentIndex={currentIndex}
+                onPrevious={goToPrevious}
+                onNext={goToNext}
+                onSelectMatch={(_, index) => setCurrentIndex(index)}
+                onVote={() => void onVote()}
+                className="flex-1"
+                stageHeightClass="h-[70dvh] min-h-[30rem] md:h-[76dvh]"
+                centerWidthClass="w-[min(24rem,90vw)] md:w-[min(28rem,38vw)] xl:w-[min(30rem,30vw)]"
+                sideWidthClass="w-[19.5rem] lg:w-[21.5rem] xl:w-[22.5rem]"
+                outerSideWidthClass="w-[14rem] xl:w-[15.5rem]"
+                showOuterSideCards
+              />
             </div>
-          </>
+            <button
+              onClick={goToNext}
+              disabled={!hasInfiniteVote}
+              className="glass-button hidden !rounded-2xl !px-4 !py-4 disabled:opacity-40 md:inline-flex"
+              title="Next"
+            >
+              <ChevronRight size={20} />
+            </button>
+          </div>
         )}
       </div>
     </div>
@@ -816,21 +859,171 @@ function MiniMatchCard({ match }: { match: MatchRecord }) {
   )
 }
 
-function ResultRow({ match }: { match: MatchRecord }) {
-  const totalVotes = match.poll_team1_votes + match.poll_team2_votes
+const RESULT_CARD_WIDTH_REM = 26
+const RESULT_CARD_GAP_REM = 1.5
+const RESULT_CARD_HEIGHT_REM = 20
+const RESULT_CARD_SLOT_REM = RESULT_CARD_WIDTH_REM + RESULT_CARD_GAP_REM
+const RESULT_CARD_OFFSET_REM = RESULT_CARD_WIDTH_REM / 2
+
+function ResultsBoardSlider({ matches }: { matches: MatchRecord[] }) {
+  const list = matches.slice(0, 15)
+  const count = list.length
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [isJumping, setIsJumping] = useState(false)
+  const hasInfinite = count > 1
+
+  // Three copies so: center can always have a card to the left (previous). We "live" at indices [count, 2*count).
+  // Start at count = first card at center, previous (left) = last card. Never show empty left.
+  const displayList = count > 0 ? [...list, ...list, ...list] : []
+  const displayCount = displayList.length
+  const effectiveIndex = count > 0 && currentIndex === 0 ? count : currentIndex
+  const translateRem = RESULT_CARD_OFFSET_REM + effectiveIndex * RESULT_CARD_SLOT_REM
+
+  useEffect(() => {
+    if (count > 0 && currentIndex === 0) setCurrentIndex(count)
+  }, [count, currentIndex])
+
+  const goPrev = () => {
+    if (count <= 0) return
+    if (currentIndex === 0) {
+      setCurrentIndex(displayCount - 1)
+      setIsJumping(true)
+    } else {
+      setCurrentIndex((i) => i - 1)
+    }
+  }
+  const goNext = () => {
+    if (count <= 0) return
+    if (currentIndex >= 2 * count - 1) {
+      setCurrentIndex(2 * count)
+      setIsJumping(true)
+    } else {
+      setCurrentIndex((i) => i + 1)
+    }
+  }
+
+  useEffect(() => {
+    if (!isJumping || displayCount === 0) return
+    const t = setTimeout(() => {
+      if (currentIndex === 2 * count) {
+        requestAnimationFrame(() => {
+          setCurrentIndex(count)
+          requestAnimationFrame(() => setIsJumping(false))
+        })
+      } else if (currentIndex === displayCount - 1) {
+        setCurrentIndex(count - 1)
+        setIsJumping(false)
+      } else {
+        setIsJumping(false)
+      }
+    }, 520)
+    return () => clearTimeout(t)
+  }, [isJumping, currentIndex, count, displayCount])
+
+  if (count === 0) {
+    return (
+      <div className="glass-panel p-6 text-sm text-white/60">No results yet. Finished matches will show up here with final scorelines and vote history.</div>
+    )
+  }
+
+  const stripWidthRem = displayCount * RESULT_CARD_SLOT_REM - RESULT_CARD_GAP_REM
+
   return (
-    <div className="glass-panel p-5">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-lg font-bold text-white">{match.team1} vs {match.team2}</p>
-          <p className="mt-1 text-sm text-white/60">
-            {match.sport}
-            {match.league ? ` - ${match.league}` : ''}
-          </p>
-          <p className="mt-3 text-base font-semibold text-green-300">{match.result_summary || 'Final result recorded'}</p>
+    <div className="flex items-center gap-4">
+      <button
+        type="button"
+        onClick={goPrev}
+        disabled={!hasInfinite}
+        className="glass-button hidden shrink-0 !rounded-2xl !px-4 !py-4 disabled:opacity-40 md:inline-flex"
+        aria-label="Previous results"
+        title="Previous"
+      >
+        <ChevronLeft size={20} />
+      </button>
+      <div className="relative min-h-[20rem] w-full flex-1 overflow-hidden">
+        <div
+          className="absolute flex transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
+          style={{
+            left: '50%',
+            width: `${stripWidthRem}rem`,
+            minHeight: `${RESULT_CARD_HEIGHT_REM}rem`,
+            transform: `translate(-${translateRem}rem, 0)`,
+            transitionDuration: isJumping && (currentIndex === displayCount - 1 || currentIndex === count - 1 || currentIndex === count) ? '0ms' : '500ms',
+          }}
+        >
+          {displayList.map((match, i) => (
+            <div
+              key={`${match.id}-${i}`}
+              className="shrink-0"
+              style={{ width: `${RESULT_CARD_WIDTH_REM}rem`, minHeight: `${RESULT_CARD_HEIGHT_REM}rem`, marginRight: i < displayList.length - 1 ? `${RESULT_CARD_GAP_REM}rem` : 0 }}
+            >
+              <MiniResultCard match={match} className="h-full min-h-[20rem]" />
+            </div>
+          ))}
         </div>
-        <div className="rounded-full border border-green-400/25 bg-green-400/10 px-3 py-2 text-xs font-bold uppercase tracking-[0.18em] text-green-300">
-          {totalVotes} votes
+      </div>
+      <button
+        type="button"
+        onClick={goNext}
+        disabled={!hasInfinite}
+        className="glass-button hidden shrink-0 !rounded-2xl !px-4 !py-4 disabled:opacity-40 md:inline-flex"
+        aria-label="Next results"
+        title="Next"
+      >
+        <ChevronRight size={20} />
+      </button>
+    </div>
+  )
+}
+
+function MiniResultCard({ match, className = '' }: { match: MatchRecord; className?: string }) {
+  const totalVotes = match.poll_team1_votes + match.poll_team2_votes
+  const team1Pct = totalVotes > 0 ? Math.round((match.poll_team1_votes / totalVotes) * 100) : 50
+  const team2Pct = totalVotes > 0 ? Math.round((match.poll_team2_votes / totalVotes) * 100) : 50
+  const resultArtwork = match.result_artwork_url
+
+  return (
+    <div className={`group relative flex min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-black/30 to-black/50 transition hover:border-green-400/30 hover:shadow-[0_0_24px_rgba(92,255,155,0.12)] ${className}`}>
+      {resultArtwork ? (
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-20 transition group-hover:opacity-25"
+          style={{ backgroundImage: `url(${resultArtwork})` }}
+        />
+      ) : null}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
+      <div className="relative flex min-h-0 flex-1 flex-col justify-between p-4">
+        <div>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <span className="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-white/50">
+              {match.sport}
+              {match.league ? ` · ${match.league}` : ''}
+            </span>
+            <span className="rounded-full border border-green-400/30 bg-green-400/10 px-2.5 py-1 text-[0.6rem] font-bold uppercase tracking-wider text-green-300">
+              Final
+            </span>
+          </div>
+          <h3 className="text-base font-black uppercase leading-tight text-white drop-shadow-sm md:text-lg">
+            {match.team1} <span className="text-white/50">vs</span> {match.team2}
+          </h3>
+          <p className="mt-2 line-clamp-2 min-h-[2.5rem] text-sm font-semibold text-green-300/95">
+            {match.result_summary || 'Result recorded'}
+          </p>
+        </div>
+        <div className="mt-3 shrink-0 space-y-1.5">
+          <div className="h-2 overflow-hidden rounded-full bg-white/10">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-red-400/80 to-amber-500/80 transition-all"
+              style={{ width: `${team1Pct}%` }}
+            />
+          </div>
+          <div className="flex justify-between text-[0.65rem] font-bold uppercase tracking-wider text-white/70">
+            <span>{match.team1} {team1Pct}%</span>
+            <span>{match.team2} {team2Pct}%</span>
+          </div>
+          <div className="flex items-center gap-2 border-t border-white/10 pt-3 text-[0.6rem] font-bold uppercase tracking-[0.12em] text-white/50">
+            <span>{totalVotes} votes</span>
+            {match.venue ? <span className="truncate">· {match.venue}</span> : null}
+          </div>
         </div>
       </div>
     </div>
@@ -950,7 +1143,7 @@ function MatchCarouselStage({
         return (
           <div
             key={match.id}
-            className={`absolute top-1/2 aspect-[9/16] -translate-y-1/2 transform-gpu transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${anchorClass} ${wrapperClass}`}
+            className={`absolute top-1/2 aspect-[9/16] -translate-y-1/2 transform-gpu transition-[transform,opacity] duration-400 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform ${anchorClass} ${wrapperClass}`}
           >
             <MatchCard
               match={match}

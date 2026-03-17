@@ -114,6 +114,9 @@ function dedupeVisibleMatches(matches: ReturnType<typeof hydrateMatches>) {
   return Array.from(picked.values())
 }
 
+/** Default: matches that have started become live; live matches past this interval become finished */
+const LIVE_TO_FINISHED_HOURS = 3
+
 export async function refreshDerivedMatchStatuses() {
   await ensureSchema()
 
@@ -122,6 +125,13 @@ export async function refreshDerivedMatchStatuses() {
     SET status = 'live'
     WHERE status = 'upcoming'
       AND match_time <= NOW()
+  `
+
+  await sql`
+    UPDATE matches
+    SET status = 'finished'
+    WHERE status = 'live'
+      AND match_time < NOW() - (INTERVAL '1 hour' * ${LIVE_TO_FINISHED_HOURS})
   `
 }
 
