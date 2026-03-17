@@ -72,7 +72,7 @@ export default function MatchCard({ match, onVote, onCardClick, interactive = tr
   const totalVotes = match.poll_team1_votes + match.poll_team2_votes
   const team1Percentage = totalVotes > 0 ? Math.round((match.poll_team1_votes / totalVotes) * 100) : 50
   const team2Percentage = totalVotes > 0 ? Math.round((match.poll_team2_votes / totalVotes) * 100) : 50
-  const isVotingOpen = interactive && match.status === 'upcoming' && !timeLeft.expired
+  const isVotingOpen = interactive && match.status === 'upcoming'
   const headline = match.league?.toUpperCase() || `${match.sport.toUpperCase()} SHOWDOWN`
   const versusTitle = `${match.team1} vs ${match.team2}`.toUpperCase()
   const backgroundArtworkUrl =
@@ -185,14 +185,22 @@ export default function MatchCard({ match, onVote, onCardClick, interactive = tr
               <span>{match.venue || 'Venue TBA'}</span>
             </div>
             <div className="mt-1 text-center text-[0.88rem] font-black text-[#ffe495]">{formatMatchTime(match.match_time)}</div>
-            {isVotingOpen ? (
+            {match.status === 'upcoming' ? (
               <div className="mt-1 flex items-center justify-center gap-2 text-[0.58rem] font-bold uppercase tracking-[0.16em] text-white/80">
                 <Clock3 size={12} />
                 <span>{formatCountdown(timeLeft)}</span>
               </div>
+            ) : match.status === 'finished' ? (
+              <div className="mt-1 text-center text-[0.58rem] font-bold uppercase tracking-[0.18em] text-green-300">
+                Voting closed. Result in.
+              </div>
+            ) : !interactive ? (
+              <div className="mt-1 text-center text-[0.58rem] font-bold uppercase tracking-[0.18em] text-white/60">
+                Admin preview mode
+              </div>
             ) : (
-              <div className={`mt-1 text-center text-[0.58rem] font-bold uppercase tracking-[0.18em] ${match.status === 'finished' ? 'text-green-300' : 'text-red-300'}`}>
-                {match.status === 'finished' ? 'Voting closed. Result in.' : interactive ? 'Voting closed' : 'Admin preview mode'}
+              <div className="mt-1 text-center text-[0.58rem] font-bold uppercase tracking-[0.18em] text-red-300">
+                Voting closed
               </div>
             )}
             <div className="mt-2 flex items-center justify-between border-t border-white/10 pt-2 text-[0.56rem] uppercase tracking-[0.16em] text-white/72">

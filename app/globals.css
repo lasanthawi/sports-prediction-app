@@ -145,8 +145,8 @@ body {
   position: relative;
   overflow: hidden;
   width: 100%;
-  max-width: 24rem;
-  min-height: 40.5rem;
+  aspect-ratio: 9 / 16;
+  min-height: 0;
   border-radius: 2rem;
   border: 1px solid rgba(255, 255, 255, 0.14);
   box-shadow:
@@ -155,7 +155,7 @@ body {
 }
 
 .admin-poster {
-  min-height: 38.5rem;
+  aspect-ratio: 9 / 16;
 }
 
 .poster-noise {
@@ -285,4 +285,35 @@ body {
   100% {
     transform: translateY(100%);
   }
+}
+
+/* Revolver / carousel card transition */
+@keyframes revolver-slide-in-right {
+  from {
+    opacity: 0.4;
+    transform: translateX(4rem) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes revolver-slide-in-left {
+  from {
+    opacity: 0.4;
+    transform: translateX(-4rem) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.revolver-slide-in-right {
+  animation: revolver-slide-in-right 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.revolver-slide-in-left {
+  animation: revolver-slide-in-left 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }

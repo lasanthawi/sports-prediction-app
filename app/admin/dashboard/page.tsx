@@ -158,7 +158,13 @@ export default function AdminDashboard() {
 
       setMessage('Match metadata updated and card variants regenerated')
       setEditingId(null)
-      await fetchMatches()
+      if (payload.match) {
+        setMatches((current) =>
+          current.map((m) => (m.id === id ? { ...m, ...payload.match } : m))
+        )
+      } else {
+        await fetchMatches()
+      }
     })
   }
 
@@ -190,19 +196,25 @@ export default function AdminDashboard() {
       return
     }
 
-    await runAction(`delete-${id}`, async () => {
+    const previousMatches = matches
+    setMatches((current) => current.filter((m) => m.id !== id))
+    if (editingId === id) {
+      setEditingId(null)
+    }
+    setBusyMap((current) => ({ ...current, [`delete-${id}`]: true }))
+    try {
       const res = await fetch(`/api/matches/${id}`, { method: 'DELETE' })
       const payload = await res.json()
       if (!res.ok) {
         throw new Error(payload.error || 'Failed to delete match')
       }
-
-      setMessage('Match deleted')
-      if (editingId === id) {
-        setEditingId(null)
-      }
-      await fetchMatches()
-    })
+      setMessage('Match deleted.')
+    } catch (error: unknown) {
+      setMessage(error instanceof Error ? error.message : 'Action failed')
+      setMatches(previousMatches)
+    } finally {
+      setBusyMap((current) => ({ ...current, [`delete-${id}`]: false }))
+    }
   }
 
   async function runAction(key: string, task: () => Promise<void>) {

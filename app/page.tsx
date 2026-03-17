@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowRight, Bell, CalendarDays, ChevronLeft, ChevronRight, LogIn, Sparkles, Swords, Target, Waves } from 'lucide-react'
 import MatchCard from './components/MatchCard'
@@ -38,7 +38,8 @@ export default function Home() {
   const [votingMode, setVotingMode] = useState(false)
   const [activeMatchId, setActiveMatchId] = useState<number | null>(null)
   const [desktopSlide, setDesktopSlide] = useState(0)
-  const [desktopCardsPerView, setDesktopCardsPerView] = useState(3)
+  const [slideDirection, setSlideDirection] = useState<1 | -1>(1)
+  const voteModeCloseRequestedRef = useRef(false)
 
   useEffect(() => {
     void fetchMatches()
@@ -58,21 +59,6 @@ export default function Home() {
       document.documentElement.style.overflow = previousHtmlOverflow
     }
   }, [votingMode])
-
-  useEffect(() => {
-    const updateDesktopCardsPerView = () => {
-      if (window.innerWidth >= 1280) {
-        setDesktopCardsPerView(3)
-        return
-      }
-
-      setDesktopCardsPerView(2)
-    }
-
-    updateDesktopCardsPerView()
-    window.addEventListener('resize', updateDesktopCardsPerView)
-    return () => window.removeEventListener('resize', updateDesktopCardsPerView)
-  }, [])
 
   async function fetchMatches() {
     try {
@@ -102,19 +88,25 @@ export default function Home() {
   const mobileVotingMatches = votingMatches.slice(0, 8)
   const totalVotes = matches.reduce((sum, match) => sum + match.poll_team1_votes + match.poll_team2_votes, 0)
   const spotlightResult = [...finishedMatches].sort((a, b) => (b.poll_team1_votes + b.poll_team2_votes) - (a.poll_team1_votes + a.poll_team2_votes))[0]
-  const maxDesktopSlide = Math.max(0, featuredMatches.length - desktopCardsPerView)
+  const maxDesktopSlide = Math.max(0, featuredMatches.length - 1)
+  const hasInfiniteSlider = featuredMatches.length > 1
+  const prevSlideIndex = featuredMatches.length > 0 ? (desktopSlide - 1 + featuredMatches.length) % featuredMatches.length : 0
+  const nextSlideIndex = featuredMatches.length > 0 ? (desktopSlide + 1) % featuredMatches.length : 0
 
   useEffect(() => {
     setDesktopSlide((current) => Math.min(current, maxDesktopSlide))
   }, [maxDesktopSlide])
 
   useEffect(() => {
-    if (loading) {
-      return
-    }
-
     const matchParam = searchParams.get('match')
     if (!matchParam) {
+      voteModeCloseRequestedRef.current = false
+      return
+    }
+    if (voteModeCloseRequestedRef.current) {
+      return
+    }
+    if (loading) {
       return
     }
 
@@ -139,6 +131,7 @@ export default function Home() {
   }
 
   function closeVotingMode() {
+    voteModeCloseRequestedRef.current = true
     setVotingMode(false)
     setActiveMatchId(null)
     router.replace('/', { scroll: false })
@@ -241,42 +234,106 @@ export default function Home() {
                       Slide through live and upcoming battle cards
                     </p>
                     <div className="flex items-center gap-3">
+                      <span className="text-xs font-bold uppercase tracking-[0.18em] text-white/50">
+                        {desktopSlide + 1} / {featuredMatches.length}
+                      </span>
                       <button
-                        onClick={() => setDesktopSlide((current) => Math.max(0, current - 1))}
-                        disabled={desktopSlide === 0}
+                        onClick={() => {
+                          setSlideDirection(-1)
+                          setDesktopSlide((current) => (current - 1 + featuredMatches.length) % featuredMatches.length)
+                        }}
+                        disabled={!hasInfiniteSlider}
                         className="glass-button !rounded-2xl !px-4 !py-3 disabled:opacity-40"
+                        title="Previous match"
                       >
                         <ChevronLeft size={18} />
                       </button>
                       <button
-                        onClick={() => setDesktopSlide((current) => Math.min(maxDesktopSlide, current + 1))}
-                        disabled={desktopSlide >= maxDesktopSlide}
+                        onClick={() => {
+                          setSlideDirection(1)
+                          setDesktopSlide((current) => (current + 1) % featuredMatches.length)
+                        }}
+                        disabled={!hasInfiniteSlider}
                         className="glass-button !rounded-2xl !px-4 !py-3 disabled:opacity-40"
+                        title="Next match"
                       >
                         <ChevronRight size={18} />
                       </button>
                     </div>
                   </div>
 
-                  <div className="overflow-hidden">
-                    <div
-                      className="flex gap-8 transition-transform duration-500 ease-out"
-                      style={{ transform: `translateX(-${desktopSlide * (100 / desktopCardsPerView)}%)` }}
+                  <div className="flex min-h-0 w-full items-center justify-center gap-4 md:gap-6">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSlideDirection(-1)
+                        setDesktopSlide((current) => (current - 1 + featuredMatches.length) % featuredMatches.length)
+                      }}
+                      disabled={!hasInfiniteSlider}
+                      className="glass-button hidden !rounded-2xl !px-4 !py-4 disabled:opacity-40 md:inline-flex"
+                      aria-label="Previous match"
+                      title="Previous match"
                     >
-                      {featuredMatches.map((match) => (
-                        <div
-                          key={match.id}
-                          className={desktopCardsPerView === 3 ? 'min-w-[calc((100%-4rem)/3)]' : 'min-w-[calc((100%-2rem)/2)]'}
-                        >
+                      <ChevronLeft size={20} />
+                    </button>
+
+                    <div className="flex w-full flex-1 items-center justify-center gap-4 md:gap-8">
+                      {featuredMatches.length > 0 ? (
+                        <div className="hidden w-[20rem] shrink-0 items-center justify-end opacity-50 md:flex md:aspect-[9/16]">
                           <MatchCard
-                            match={match}
+                            match={featuredMatches[prevSlideIndex]}
                             onVote={() => void fetchMatches()}
-                            onCardClick={() => openMatchViewer(match.id)}
-                            className="mx-auto"
+                            onCardClick={() => {
+                              setSlideDirection(-1)
+                              setDesktopSlide((current) => (current - 1 + featuredMatches.length) % featuredMatches.length)
+                            }}
+                            className="!h-full !min-h-0 !w-full !max-w-none scale-90"
                           />
                         </div>
-                      ))}
+                      ) : null}
+
+                      {featuredMatches.length > 0 ? (
+                        <div
+                          key={desktopSlide}
+                          className={`aspect-[9/16] w-full max-w-[28rem] shrink-0 flex-1 ${slideDirection === 1 ? 'revolver-slide-in-right' : 'revolver-slide-in-left'}`}
+                        >
+                          <MatchCard
+                            match={featuredMatches[desktopSlide]}
+                            onVote={() => void fetchMatches()}
+                            onCardClick={() => openMatchViewer(featuredMatches[desktopSlide].id)}
+                            className="!h-full !min-h-0 !w-full !max-w-none"
+                          />
+                        </div>
+                      ) : null}
+
+                      {featuredMatches.length > 0 ? (
+                        <div className="hidden w-[20rem] shrink-0 items-center justify-start opacity-50 md:flex md:aspect-[9/16]">
+                          <MatchCard
+                            match={featuredMatches[nextSlideIndex]}
+                            onVote={() => void fetchMatches()}
+                            onCardClick={() => {
+                              setSlideDirection(1)
+                              setDesktopSlide((current) => (current + 1) % featuredMatches.length)
+                            }}
+                            className="!h-full !min-h-0 !w-full !max-w-none scale-90"
+                          />
+                        </div>
+                      ) : null}
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSlideDirection(1)
+                        setDesktopSlide((current) => (current + 1) % featuredMatches.length)
+                      }}
+                      disabled={!hasInfiniteSlider}
+                      className="glass-button hidden !rounded-2xl !px-4 !py-4 disabled:opacity-40 md:inline-flex"
+                      aria-label="Next match"
+                      title="Next match"
+                    >
+                      <ChevronRight size={20} />
+                    </button>
                   </div>
                 </div>
               )}
@@ -286,17 +343,19 @@ export default function Home() {
               <div className="glass-panel p-6 md:p-8">
                 <SectionHeading
                   eyebrow="Clash Queue"
-                  title="Upcoming Clashes"
-                  copy="Scan the next wave of battles, see where the arena hype is building, and lock in predictions before the clock hits zero."
+                  title={upcomingMatches.length > 0 ? 'Upcoming Clashes' : 'Latest Clashes'}
+                  copy={upcomingMatches.length > 0
+                    ? 'Scan the next wave of battles, see where the arena hype is building, and lock in predictions before the clock hits zero.'
+                    : 'Latest finished matches. New upcoming clashes will appear here when scheduled.'}
                   compact
                 />
-                <div className="space-y-4">
-                  {upcomingMatches.slice(0, 5).map((match) => (
-                    <UpcomingRow key={match.id} match={match} />
+                <div className="space-y-3">
+                  {(upcomingMatches.length > 0 ? upcomingMatches.slice(0, 6) : finishedMatches.slice(0, 6)).map((match) => (
+                    <MiniMatchCard key={match.id} match={match} />
                   ))}
-                  {upcomingMatches.length === 0 ? (
+                  {upcomingMatches.length === 0 && finishedMatches.length === 0 ? (
                     <p className="rounded-2xl border border-white/10 bg-black/20 px-4 py-5 text-sm text-white/60">
-                      No upcoming matches right now. New clashes will appear here as soon as they are scheduled.
+                      No matches yet. New clashes will appear here as soon as they are scheduled.
                     </p>
                   ) : null}
                 </div>
@@ -489,12 +548,14 @@ function MobileArenaApp({
                       {match.status}
                     </span>
                   </div>
-                  <MatchCard
-                    match={match}
-                    onVote={() => void onRefresh()}
-                    onCardClick={() => onOpenMatch(match.id)}
-                    className="!min-h-[24rem] !max-w-none"
-                  />
+                  <div className="aspect-[9/16] w-full max-w-[20rem] mx-auto">
+                    <MatchCard
+                      match={match}
+                      onVote={() => void onRefresh()}
+                      onCardClick={() => onOpenMatch(match.id)}
+                      className="!h-full !min-h-0 !max-w-none"
+                    />
+                  </div>
                 </div>
               ))}
             </div>
@@ -532,6 +593,7 @@ function ArenaVotingOverlay({
 }) {
   const voteMatches = matches.length > 0 ? matches : []
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [slideDirection, setSlideDirection] = useState<1 | -1>(1)
   const [touchStart, setTouchStart] = useState<number | null>(null)
 
   useEffect(() => {
@@ -552,15 +614,20 @@ function ArenaVotingOverlay({
   }, [activeMatchId, voteMatches])
 
   const activeMatch = voteMatches[currentIndex] || null
-  const previousMatch = currentIndex > 0 ? voteMatches[currentIndex - 1] : null
-  const nextMatch = currentIndex < voteMatches.length - 1 ? voteMatches[currentIndex + 1] : null
+  const hasInfiniteVote = voteMatches.length > 1
+  const prevVoteIndex = voteMatches.length > 0 ? (currentIndex - 1 + voteMatches.length) % voteMatches.length : 0
+  const nextVoteIndex = voteMatches.length > 0 ? (currentIndex + 1) % voteMatches.length : 0
+  const previousMatch = voteMatches.length > 0 ? voteMatches[prevVoteIndex] : null
+  const nextMatch = voteMatches.length > 0 ? voteMatches[nextVoteIndex] : null
 
   function goToPrevious() {
-    setCurrentIndex((current) => Math.max(0, current - 1))
+    setSlideDirection(-1)
+    setCurrentIndex((current) => (current - 1 + voteMatches.length) % voteMatches.length)
   }
 
   function goToNext() {
-    setCurrentIndex((current) => Math.min(voteMatches.length - 1, current + 1))
+    setSlideDirection(1)
+    setCurrentIndex((current) => (current + 1) % voteMatches.length)
   }
 
   function handleTouchEnd(endX: number) {
@@ -578,6 +645,25 @@ function ArenaVotingOverlay({
     setTouchStart(null)
   }
 
+  useEffect(() => {
+    if (voteMatches.length === 0) return
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault()
+        setSlideDirection(-1)
+        setCurrentIndex((current) => (current - 1 + voteMatches.length) % voteMatches.length)
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault()
+        setSlideDirection(1)
+        setCurrentIndex((current) => (current + 1) % voteMatches.length)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [voteMatches.length])
+
   return (
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,8,20,0.92),rgba(10,8,27,0.97)),url('https://img.freepik.com/free-photo/cosmic-lightning-storm-space-background_23-2151955881.jpg?semt=ais_hybrid&w=740&q=80')] bg-cover bg-center" />
@@ -585,15 +671,19 @@ function ArenaVotingOverlay({
 
       <div className="relative flex h-[100dvh] flex-col overflow-hidden px-4 py-4">
         <div className="mb-4 flex items-center justify-between gap-3">
-          <button onClick={onClose} className="glass-button !rounded-2xl !px-4 !py-3 text-sm">
-            <ChevronLeft size={16} /> Exit
+          <button
+            onClick={onClose}
+            className="glass-button inline-flex items-center gap-2 !rounded-xl px-4 py-2.5 text-sm"
+            title="Exit"
+          >
+            <ChevronLeft size={18} className="shrink-0" />
+            <span className="whitespace-nowrap">Exit</span>
           </button>
           <div className="text-center">
             <p className="text-xs font-bold uppercase tracking-[0.28em] text-green-300/80">Voting Mode</p>
-            <p className="text-sm text-white/70">Swipe left or right through the arena</p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-xs font-bold uppercase tracking-[0.18em] text-white/70">
-            {voteMatches.length} cards
+            {currentIndex + 1} / {voteMatches.length}
           </div>
         </div>
 
@@ -603,66 +693,69 @@ function ArenaVotingOverlay({
           </div>
         ) : (
           <>
-            <div className="mb-3 flex items-center justify-between px-1 text-xs uppercase tracking-[0.24em] text-white/50">
-              <span>Swipe or use arrows to change battles</span>
-              <span>{currentIndex + 1} / {voteMatches.length}</span>
-            </div>
-            <div className="flex flex-1 items-center justify-center gap-3 md:gap-6">
+            <div className="flex w-full flex-1 items-center justify-center gap-3 md:gap-8">
               <button
                 onClick={goToPrevious}
-                disabled={currentIndex === 0}
+                disabled={!hasInfiniteVote}
                 className="glass-button hidden !rounded-2xl !px-4 !py-4 disabled:opacity-40 md:inline-flex"
+                title="Previous"
               >
                 <ChevronLeft size={20} />
               </button>
               <div
-                className="flex h-full w-full items-center justify-center gap-4 md:gap-6"
+                className="flex h-full w-full flex-1 items-center justify-center gap-4 md:gap-8"
                 onTouchStart={(event) => setTouchStart(event.changedTouches[0]?.clientX ?? null)}
                 onTouchEnd={(event) => handleTouchEnd(event.changedTouches[0]?.clientX ?? 0)}
               >
                 {previousMatch ? (
-                  <div className="hidden md:flex md:h-[calc(100dvh-11rem)] md:w-[16rem] md:shrink-0 md:items-center md:justify-end md:opacity-40">
+                  <div className="hidden w-[20rem] shrink-0 items-center justify-end opacity-50 md:flex md:aspect-[9/16]">
                     <MatchCard
                       match={previousMatch}
                       onVote={() => void onVote()}
                       onCardClick={goToPrevious}
-                      className="!h-full !min-h-0 !w-full !max-w-[15rem] scale-[0.9]"
+                      className="!h-full !min-h-0 !w-full !max-w-none scale-90"
                     />
                   </div>
-                ) : <div className="hidden md:block md:w-[16rem] md:shrink-0" />}
+                ) : voteMatches.length > 0 ? <div className="hidden w-[20rem] shrink-0 md:block" /> : null}
 
                 {activeMatch ? (
-                  <MatchCard
-                    match={activeMatch}
-                    onVote={() => void onVote()}
-                    className="!h-[calc(100dvh-8.75rem)] !min-h-0 !w-full !max-w-[min(100%,28rem)] md:!max-w-[30rem]"
-                  />
+                  <div
+                    key={currentIndex}
+                    className={`aspect-[9/16] w-full max-w-[28rem] min-h-0 shrink-0 flex-1 ${slideDirection === 1 ? 'revolver-slide-in-right' : 'revolver-slide-in-left'}`}
+                  >
+                    <MatchCard
+                      match={activeMatch}
+                      onVote={() => void onVote()}
+                      className="!h-full !min-h-0 !w-full !max-w-none"
+                    />
+                  </div>
                 ) : null}
 
                 {nextMatch ? (
-                  <div className="hidden md:flex md:h-[calc(100dvh-11rem)] md:w-[16rem] md:shrink-0 md:items-center md:justify-start md:opacity-40">
+                  <div className="hidden w-[20rem] shrink-0 items-center justify-start opacity-50 md:flex md:aspect-[9/16]">
                     <MatchCard
                       match={nextMatch}
                       onVote={() => void onVote()}
                       onCardClick={goToNext}
-                      className="!h-full !min-h-0 !w-full !max-w-[15rem] scale-[0.9]"
+                      className="!h-full !min-h-0 !w-full !max-w-none scale-90"
                     />
                   </div>
-                ) : <div className="hidden md:block md:w-[16rem] md:shrink-0" />}
+                ) : voteMatches.length > 0 ? <div className="hidden w-[20rem] shrink-0 md:block" /> : null}
               </div>
               <button
                 onClick={goToNext}
-                disabled={currentIndex >= voteMatches.length - 1}
+                disabled={!hasInfiniteVote}
                 className="glass-button hidden !rounded-2xl !px-4 !py-4 disabled:opacity-40 md:inline-flex"
+                title="Next"
               >
                 <ChevronRight size={20} />
               </button>
             </div>
             <div className="mt-4 flex items-center justify-center gap-2 md:hidden">
-              <button onClick={goToPrevious} disabled={currentIndex === 0} className="glass-button !rounded-2xl !px-4 !py-3 disabled:opacity-40">
+              <button onClick={goToPrevious} disabled={!hasInfiniteVote} className="glass-button !rounded-2xl !px-4 !py-3 disabled:opacity-40" title="Previous">
                 <ChevronLeft size={18} />
               </button>
-              <button onClick={goToNext} disabled={currentIndex >= voteMatches.length - 1} className="glass-button !rounded-2xl !px-4 !py-3 disabled:opacity-40">
+              <button onClick={goToNext} disabled={!hasInfiniteVote} className="glass-button !rounded-2xl !px-4 !py-3 disabled:opacity-40" title="Next">
                 <ChevronRight size={18} />
               </button>
             </div>
@@ -723,22 +816,76 @@ function SectionHeading({
   )
 }
 
-function UpcomingRow({ match }: { match: MatchRecord }) {
+function teamInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase()
+}
+
+function hasLogo(url: string | null | undefined) {
+  return typeof url === 'string' && /^(https?:\/\/|\/)/i.test(url.trim())
+}
+
+function MiniMatchCard({ match }: { match: MatchRecord }) {
   const totalVotes = match.poll_team1_votes + match.poll_team2_votes
+  const isFinished = match.status === 'finished'
+  const summaryParts = [match.sport, match.league, match.venue].filter(Boolean)
+  const summaryLine = summaryParts.length > 0 ? summaryParts.join(' · ') : match.sport
+  const matchTime = new Date(match.match_time)
+  const timeStr = matchTime.toLocaleString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+  const showLogo1 = hasLogo(match.team1_logo)
+  const showLogo2 = hasLogo(match.team2_logo)
+
   return (
-    <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4 backdrop-blur-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-lg font-bold text-white">{match.team1} vs {match.team2}</p>
-          <p className="text-sm text-white/60">
-            {match.sport}
-            {match.league ? ` - ${match.league}` : ''}
-            {match.venue ? ` - ${match.venue}` : ''}
-          </p>
+    <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-3 backdrop-blur-sm">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/20 bg-black/30">
+          {showLogo1 ? (
+            <img src={match.team1_logo!} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <span className="text-xs font-bold text-white/90">{teamInitials(match.team1)}</span>
+          )}
         </div>
-        <div className="text-right text-sm text-white/65">
-          <p>{new Date(match.match_time).toLocaleString()}</p>
-          <p>{totalVotes} picks</p>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-bold text-white">{match.team1}</p>
+          <p className="truncate text-xs text-white/55">{summaryLine}</p>
+        </div>
+      </div>
+
+      <div className="shrink-0 text-center">
+        {isFinished ? (
+          <p className="text-xs font-bold text-green-300">{match.result_summary || 'FT'}</p>
+        ) : (
+          <p className="text-[0.65rem] font-bold uppercase tracking-wider text-white/50">vs</p>
+        )}
+        <p className="mt-0.5 text-[0.6rem] text-white/45">{timeStr}</p>
+        <p className="text-[0.6rem] text-white/50">{totalVotes} picks</p>
+      </div>
+
+      <div className="flex min-w-0 flex-1 items-center gap-2 justify-end">
+        <div className="min-w-0 text-right">
+          <p className="truncate text-sm font-bold text-white">{match.team2}</p>
+          {match.rivalry_tagline ? (
+            <p className="truncate text-xs text-white/55">{match.rivalry_tagline}</p>
+          ) : (
+            <p className="truncate text-xs text-white/55">{summaryLine}</p>
+          )}
+        </div>
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/20 bg-black/30">
+          {showLogo2 ? (
+            <img src={match.team2_logo!} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <span className="text-xs font-bold text-white/90">{teamInitials(match.team2)}</span>
+          )}
         </div>
       </div>
     </div>
