@@ -39,13 +39,18 @@ function visibleMatchKey(match: ReturnType<typeof hydrateMatches>[number]) {
     return `external:${match.external_id}`
   }
 
+  const matchDate = new Date(match.match_time)
+  const dateBucket = Number.isNaN(matchDate.getTime())
+    ? normalizeMatchKeyPart(match.match_time)
+    : matchDate.toISOString().slice(0, 10)
+
   return [
     normalizeMatchKeyPart(match.sport),
     normalizeMatchKeyPart(match.league),
     normalizeMatchKeyPart(match.team1),
     normalizeMatchKeyPart(match.team2),
     normalizeMatchKeyPart(match.venue),
-    new Date(match.match_time).toISOString(),
+    dateBucket,
   ].join('|')
 }
 
