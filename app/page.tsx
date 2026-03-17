@@ -663,15 +663,15 @@ function CardLinkBar({
     <div className="grid grid-cols-2 gap-2">
       <button
         onClick={onOpen}
-        className="rounded-[1rem] border border-cyan-300/35 bg-cyan-400/10 px-3 py-3 text-center text-[0.72rem] font-bold uppercase tracking-[0.18em] text-cyan-100 transition hover:border-cyan-200/50 hover:text-white"
+        className="rounded-[0.95rem] border border-cyan-300/30 bg-cyan-400/8 px-3 py-2 text-center text-[0.62rem] font-bold uppercase tracking-[0.16em] text-cyan-100 transition hover:border-cyan-200/50 hover:text-white"
       >
-        Enter Voting
+        Vote
       </button>
       <Link
         href={`/?match=${matchId}`}
-        className="rounded-[1rem] border border-white/15 bg-black/25 px-3 py-3 text-center text-[0.72rem] font-bold uppercase tracking-[0.18em] text-white/85 transition hover:border-white/30 hover:text-white"
+        className="rounded-[0.95rem] border border-white/15 bg-black/18 px-3 py-2 text-center text-[0.62rem] font-bold uppercase tracking-[0.16em] text-white/85 transition hover:border-white/30 hover:text-white"
       >
-        {linked ? 'Direct URL' : 'Open Link'}
+        {linked ? 'URL' : 'Link'}
       </Link>
     </div>
   )

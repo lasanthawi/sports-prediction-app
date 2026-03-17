@@ -146,7 +146,7 @@ body {
   overflow: hidden;
   width: 100%;
   max-width: 24rem;
-  min-height: 44rem;
+  min-height: 40.5rem;
   border-radius: 2rem;
   border: 1px solid rgba(255, 255, 255, 0.14);
   box-shadow:
@@ -155,7 +155,7 @@ body {
 }
 
 .admin-poster {
-  min-height: 42rem;
+  min-height: 38.5rem;
 }
 
 .poster-noise {
@@ -171,7 +171,7 @@ body {
 .poster-vignette {
   position: absolute;
   inset: 0;
-  box-shadow: inset 0 -110px 80px rgba(2, 6, 23, 0.72), inset 0 90px 70px rgba(2, 6, 23, 0.38);
+  box-shadow: inset 0 -88px 72px rgba(2, 6, 23, 0.62), inset 0 78px 58px rgba(2, 6, 23, 0.34);
   pointer-events: none;
 }
 

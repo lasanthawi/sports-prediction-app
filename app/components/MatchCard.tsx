@@ -123,19 +123,19 @@ export default function MatchCard({ match, onVote, interactive = true, footerSlo
             : 'linear-gradient(145deg, rgba(18,34,64,0.96), rgba(13,18,32,0.96)), radial-gradient(circle at 22% 28%, rgba(239,68,68,0.2), transparent 26%), radial-gradient(circle at 78% 28%, rgba(59,130,246,0.22), transparent 28%), radial-gradient(circle at 50% 56%, rgba(250,204,21,0.1), transparent 22%)',
         }}
       />
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.5)_0%,rgba(2,6,23,0.12)_28%,rgba(2,6,23,0.02)_52%,rgba(2,6,23,0.16)_70%,rgba(2,6,23,0.72)_100%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.48)_0%,rgba(2,6,23,0.12)_24%,rgba(2,6,23,0.01)_50%,rgba(2,6,23,0.08)_72%,rgba(2,6,23,0.56)_100%)]" />
 
       <div className="relative flex h-full flex-col justify-between p-4 md:p-5">
-        <div className="space-y-2.5">
+        <div className="space-y-2">
           <div className="text-center">
             <p className="text-[0.58rem] font-bold uppercase tracking-[0.34em] text-white/74">{headline}</p>
-            <h3 className="mt-1.5 text-[1.55rem] font-black uppercase leading-[0.92] tracking-[0.04em] text-white drop-shadow-[0_6px_14px_rgba(0,0,0,0.45)] md:text-[1.85rem]">
+            <h3 className="mt-1 text-[1.4rem] font-black uppercase leading-[0.92] tracking-[0.035em] text-white drop-shadow-[0_6px_14px_rgba(0,0,0,0.45)] md:text-[1.65rem]">
               {versusTitle}
             </h3>
           </div>
 
-          <div className="mx-auto min-h-[3.4rem] max-w-[82%] rounded-[1rem] border border-white/10 bg-black/12 px-3 py-1.5 text-center backdrop-blur-[2px]">
-            <p className="text-[0.8rem] font-semibold leading-snug text-white/84 drop-shadow-[0_4px_12px_rgba(0,0,0,0.45)]">
+          <div className="mx-auto min-h-[2.2rem] max-w-[78%] px-2 text-center">
+            <p className="text-[0.74rem] font-semibold leading-snug text-white/82 drop-shadow-[0_4px_12px_rgba(0,0,0,0.45)]">
               {question}
             </p>
           </div>
@@ -143,7 +143,7 @@ export default function MatchCard({ match, onVote, interactive = true, footerSlo
 
         <div className="flex-1" />
 
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <div className="grid gap-2">
             <SideButton
               tone="red"
@@ -167,43 +167,42 @@ export default function MatchCard({ match, onVote, interactive = true, footerSlo
             />
           </div>
 
-          <div className="rounded-[1.15rem] border border-white/10 bg-black/22 px-4 py-2 text-center backdrop-blur-[4px]">
-            <div className="flex items-center justify-center gap-2 text-[0.62rem] font-bold uppercase tracking-[0.18em] text-white/66">
-              <MapPin size={13} />
+          <div className="rounded-[1rem] border border-white/10 bg-black/18 px-4 py-2 backdrop-blur-[4px]">
+            <div className="flex items-center justify-center gap-2 text-[0.58rem] font-bold uppercase tracking-[0.18em] text-white/66">
+              <MapPin size={12} />
               <span>{match.venue || 'Venue TBA'}</span>
             </div>
-            <div className="mt-1 text-[0.95rem] font-black text-[#ffe495]">{formatMatchTime(match.match_time)}</div>
+            <div className="mt-1 text-center text-[0.88rem] font-black text-[#ffe495]">{formatMatchTime(match.match_time)}</div>
             {isVotingOpen ? (
-              <div className="mt-1.5 flex items-center justify-center gap-2 text-[0.62rem] font-bold uppercase tracking-[0.16em] text-white/80">
-                <Clock3 size={13} />
+              <div className="mt-1 flex items-center justify-center gap-2 text-[0.58rem] font-bold uppercase tracking-[0.16em] text-white/80">
+                <Clock3 size={12} />
                 <span>{formatCountdown(timeLeft)}</span>
               </div>
             ) : (
-              <div className={`mt-1.5 text-[0.62rem] font-bold uppercase tracking-[0.18em] ${match.status === 'finished' ? 'text-green-300' : 'text-red-300'}`}>
+              <div className={`mt-1 text-center text-[0.58rem] font-bold uppercase tracking-[0.18em] ${match.status === 'finished' ? 'text-green-300' : 'text-red-300'}`}>
                 {match.status === 'finished' ? 'Voting closed. Result in.' : interactive ? 'Voting closed' : 'Admin preview mode'}
               </div>
             )}
+            <div className="mt-2 flex items-center justify-between border-t border-white/10 pt-2 text-[0.56rem] uppercase tracking-[0.16em] text-white/72">
+              <span className="flex items-center gap-1.5">
+                <TrendingUp size={12} />
+                {totalVotes} picks
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Zap size={12} />
+                {match.status}
+              </span>
+            </div>
+            {footerSlot ? <div className="mt-2">{footerSlot}</div> : null}
           </div>
 
-          <div className="flex items-center justify-between rounded-[1rem] border border-white/10 bg-black/18 px-4 py-2 text-[0.6rem] uppercase tracking-[0.16em] text-white/72">
-            <span className="flex items-center gap-2">
-              <TrendingUp size={13} />
-              {totalVotes} picks
-            </span>
-            <span className="flex items-center gap-2">
-              <Zap size={13} />
-              {match.status}
-            </span>
-          </div>
-
-          {voting ? <div className="text-center text-[0.62rem] font-bold uppercase tracking-[0.18em] text-yellow-300">Locking your prediction...</div> : null}
+          {voting ? <div className="text-center text-[0.58rem] font-bold uppercase tracking-[0.18em] text-yellow-300">Locking your prediction...</div> : null}
           {voted ? (
-            <div className="flex items-center justify-center gap-2 text-center text-[0.62rem] font-bold uppercase tracking-[0.18em] text-green-300">
-              <Sparkles size={13} />
+            <div className="flex items-center justify-center gap-2 text-center text-[0.58rem] font-bold uppercase tracking-[0.18em] text-green-300">
+              <Sparkles size={12} />
               Prediction powered up
             </div>
           ) : null}
-          {footerSlot}
         </div>
       </div>
     </article>
@@ -243,11 +242,11 @@ function SideButton({
     <button
       onClick={onClick}
       disabled={!interactive || disabled}
-      className={`relative overflow-hidden rounded-[1.15rem] border bg-black/34 px-3 py-2.5 text-left transition ${toneClass} ${interactive && !disabled ? 'hover:-translate-y-1 hover:scale-[1.01]' : 'cursor-default'} ${selected ? 'ring-2 ring-yellow-300' : ''}`}
+      className={`relative overflow-hidden rounded-[1rem] border bg-black/28 px-3 py-2 text-left transition ${toneClass} ${interactive && !disabled ? 'hover:-translate-y-1 hover:scale-[1.01]' : 'cursor-default'} ${selected ? 'ring-2 ring-yellow-300' : ''}`}
     >
       <div className="absolute inset-0 bg-gradient-to-r from-white/10 via-transparent to-white/5" />
       <div className="relative flex items-center gap-2.5">
-        <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-white/30 bg-black/28 text-center text-[0.7rem] font-black text-white">
+        <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-white/30 bg-black/24 text-center text-[0.68rem] font-black text-white">
           {showImage ? (
             <img
               src={logo || ''}
@@ -260,10 +259,10 @@ function SideButton({
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-[0.58rem] font-bold uppercase tracking-[0.18em] text-white/78">{interactive ? 'Vote' : 'Preview'}</div>
-          <div className="line-clamp-2 text-[0.88rem] font-black uppercase leading-tight text-white">{team}</div>
+          <div className="text-[0.54rem] font-bold uppercase tracking-[0.18em] text-white/76">{interactive ? 'Vote' : 'Preview'}</div>
+          <div className="line-clamp-2 text-[0.82rem] font-black uppercase leading-tight text-white">{team}</div>
         </div>
-        <div className="rounded-full bg-black/28 px-2.5 py-1 text-[0.7rem] font-black text-white">{percentage}%</div>
+        <div className="rounded-full bg-black/24 px-2.5 py-1 text-[0.66rem] font-black text-white">{percentage}%</div>
       </div>
     </button>
   )
