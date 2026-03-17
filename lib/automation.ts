@@ -8,6 +8,23 @@ import { AssetRecord, AssetVariant, MatchRecord } from './types'
 const DEFAULT_WEBHOOK_TIMEOUT_MS = 10000
 const RENDER_RECIPE_VERSION = 'portrait-card-v1'
 
+interface UnexpectedAssetTypeSummary {
+  asset_type: string
+  count: number
+}
+
+interface PublishAssetsResult {
+  published: number
+  queued: number
+  mode: 'queue-only' | 'webhook'
+  assets: AssetRecord[]
+  skipped: boolean
+  message: string
+  anomalies: {
+    unexpectedAssetTypes: UnexpectedAssetTypeSummary[]
+  }
+}
+
 function getBaseUrl() {
   return (
     process.env.NEXT_PUBLIC_APP_URL ||
@@ -350,11 +367,67 @@ export async function generateAssetsForMatches(matches: MatchRecord[]) {
   return generated
 }
 
-async function publishAssets(rows: AssetRecord[], mode: 'queue-only' | 'webhook') {
+async function listUnexpectedAssetTypes() {
+  const { rows } = await sql<UnexpectedAssetTypeSummary>`
+    SELECT asset_type, COUNT(*)::int AS count
+    FROM generated_assets
+    WHERE LOWER(TRIM(asset_type)) NOT IN ('artwork', 'card')
+    GROUP BY asset_type
+    ORDER BY asset_type ASC
+  `
+
+  return rows
+}
+
+async function publishAssets(rows: AssetRecord[], mode: 'queue-only' | 'webhook'): Promise<PublishAssetsResult> {
+  const unexpectedAssetTypes = await listUnexpectedAssetTypes()
+
+  if (rows.length === 0) {
+    const message = 'No ready card assets to publish.'
+    await logAutomationRun('publish_assets', 'skipped', message, {
+      count: 0,
+      mode,
+      anomalies: { unexpectedAssetTypes },
+    })
+    return {
+      published: 0,
+      queued: 0,
+      mode,
+      assets: rows,
+      skipped: true,
+      message,
+      anomalies: { unexpectedAssetTypes },
+    }
+  }
+
   const webhookUrl = process.env.PUBLISH_WEBHOOK_URL
   if (!webhookUrl) {
-    await logAutomationRun('publish_assets', 'skipped', 'PUBLISH_WEBHOOK_URL is not configured', { count: rows.length, mode })
-    return { published: 0, queued: rows.length, mode: 'queue-only', assets: rows }
+    for (const asset of rows) {
+      await sql`
+        UPDATE generated_assets
+        SET
+          published_status = 'published',
+          published_to = 'local-app',
+          published_at = NOW()
+        WHERE id = ${asset.id}
+      `
+    }
+
+    const message = `Published ${rows.length} card asset${rows.length === 1 ? '' : 's'} to the local app. External webhook is not configured.`
+    await logAutomationRun('publish_assets', 'skipped', message, {
+      count: rows.length,
+      mode,
+      anomalies: { unexpectedAssetTypes },
+    })
+    return {
+      published: rows.length,
+      queued: rows.length,
+      mode: 'queue-only',
+      assets: rows,
+      skipped: false,
+      message,
+      anomalies: { unexpectedAssetTypes },
+    }
   }
 
   let published = 0
@@ -391,8 +464,25 @@ async function publishAssets(rows: AssetRecord[], mode: 'queue-only' | 'webhook'
     }
   }
 
-  await logAutomationRun('publish_assets', 'success', `Processed ${rows.length} assets`, { published, queued: rows.length, mode })
-  return { published, queued: rows.length, mode: 'webhook', assets: rows }
+  const message = published === rows.length
+    ? `Published ${published} card asset${published === 1 ? '' : 's'}.`
+    : `Published ${published} of ${rows.length} card assets.`
+
+  await logAutomationRun('publish_assets', 'success', `Processed ${rows.length} assets`, {
+    published,
+    queued: rows.length,
+    mode,
+    anomalies: { unexpectedAssetTypes },
+  })
+  return {
+    published,
+    queued: rows.length,
+    mode: 'webhook',
+    assets: rows,
+    skipped: false,
+    message,
+    anomalies: { unexpectedAssetTypes },
+  }
 }
 
 export async function publishReadyAssets() {

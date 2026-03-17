@@ -1,5 +1,6 @@
 import { sql } from '@vercel/postgres'
 import { ensureSchema } from './db'
+import { getActivePublishStatus, normalizePublishStatus } from './publish'
 import { FeedMatch, MatchInput, MatchRecord, MatchUpdateInput } from './types'
 
 function normalizeText(value: string | null | undefined) {
@@ -14,7 +15,6 @@ function hydrateMatches(rows: MatchRecord[]) {
   return rows.map((row) => {
     const predictionCardUrl = toAssetUrl(row.prediction_card_asset_id)
     const resultCardUrl = toAssetUrl(row.result_card_asset_id)
-    const publishStatus = row.status === 'finished' ? row.result_publish_status : row.prediction_publish_status
     const predictionArtworkUrl = toAssetUrl(row.prediction_artwork_asset_id)
     const resultArtworkUrl = toAssetUrl(row.result_artwork_asset_id)
 
@@ -28,7 +28,7 @@ function hydrateMatches(rows: MatchRecord[]) {
       card_asset_url: row.status === 'finished' ? resultCardUrl : predictionCardUrl,
       asset_generation_status:
         (row.status === 'finished' ? row.result_asset_status : row.prediction_asset_status) || null,
-      publish_status: publishStatus || 'draft',
+      publish_status: getActivePublishStatus(row),
     }
   })
 }
@@ -60,7 +60,7 @@ function visibleMatchKey(match: ReturnType<typeof hydrateMatches>[number]) {
 
 function visibleMatchRank(match: ReturnType<typeof hydrateMatches>[number]) {
   const assetStatus = match.asset_generation_status
-  const publishStatus = match.publish_status
+  const publishStatus = normalizePublishStatus(match.publish_status)
 
   if (assetStatus === 'generated' && publishStatus === 'published') {
     return 4
@@ -153,7 +153,7 @@ function matchSelectClause() {
       WHERE match_id = matches.id
         AND asset_type = 'card'
         AND asset_variant = 'prediction'
-      ORDER BY id DESC
+      ORDER BY (CASE WHEN LOWER(TRIM(published_status)) = 'published' THEN 0 ELSE 1 END), id DESC
       LIMIT 1
     ) prediction_card ON TRUE
     LEFT JOIN LATERAL (
@@ -171,7 +171,7 @@ function matchSelectClause() {
       WHERE match_id = matches.id
         AND asset_type = 'card'
         AND asset_variant = 'result'
-      ORDER BY id DESC
+      ORDER BY (CASE WHEN LOWER(TRIM(published_status)) = 'published' THEN 0 ELSE 1 END), id DESC
       LIMIT 1
     ) result_card ON TRUE
   `
@@ -196,7 +196,7 @@ export async function listVisibleMatches() {
     ${matchSelectClause()}
     WHERE matches.status IN ('upcoming', 'live')
       AND prediction_card.id IS NOT NULL
-      AND prediction_card.published_status = 'published'
+      AND LOWER(TRIM(prediction_card.published_status)) = 'published'
     ORDER BY match_time ASC, matches.id DESC
     LIMIT 60
   `)

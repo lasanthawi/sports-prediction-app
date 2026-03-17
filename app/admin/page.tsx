@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState, type Dispatch, type FormEvent, type ReactNode, type SetStateAction } from 'react'
 import { ArrowLeft, CheckCircle2, ChevronDown, Database, Edit3, Image as ImageIcon, MoreHorizontal, PlayCircle, Plus, RefreshCw, Rocket, Search, Send, Square, Trash2, WandSparkles } from 'lucide-react'
 import MatchCard from '@/app/components/MatchCard'
+import { getActivePublishStatus, getPublishStatusLabel, isPublishedStatus } from '@/lib/publish'
 
 type MatchStatus = 'upcoming' | 'live' | 'finished' | 'cancelled'
 type AdminTab = 'overview' | 'create' | 'matches' | 'automation'
@@ -51,6 +52,20 @@ interface AutomationRun {
   status: string
   summary: string | null
   started_at: string
+}
+
+interface PublishOutcome {
+  published: number
+  queued: number
+  mode: 'queue-only' | 'webhook'
+  skipped: boolean
+  message?: string
+  anomalies?: {
+    unexpectedAssetTypes?: Array<{
+      asset_type: string
+      count: number
+    }>
+  }
 }
 
 interface FeedQueueItem {
@@ -154,8 +169,7 @@ export default function AdminPage() {
   const viewMatches = matches.filter((match) => {
     if (matchView === 'results') return match.status === 'finished'
     if (matchView === 'unpublished') {
-      const pub = match.status === 'finished' ? (match.result_publish_status || match.publish_status) || 'draft' : (match.prediction_publish_status || match.publish_status) || 'draft'
-      return pub !== 'published'
+      return !isPublishedStatus(getActivePublishStatus(match))
     }
     return match.status !== 'finished'
   })
@@ -250,7 +264,7 @@ export default function AdminPage() {
         throw new Error(payload.error || `Request failed for ${key}`)
       }
 
-      setMessage(successMessage)
+      setMessage(resolveSuccessMessage(payload, successMessage))
       await refreshDashboard()
     } catch (error: any) {
       setMessage(error.message || 'Job failed')
@@ -371,38 +385,56 @@ export default function AdminPage() {
     await runAction(`bulk-${action}`, async () => {
       const requests = selectedMatchIds.map(async (id) => {
         if (action === 'generate') {
-          await fetch(`/api/matches/${id}?mode=full&variant=all`, { method: 'POST' })
-          return
+          return fetch(`/api/matches/${id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mode: 'full', variant: 'all' }),
+          })
         }
 
         if (action === 'publish') {
-          await fetch(`/api/matches/${id}?mode=publish&variant=all`, { method: 'POST' })
-          return
+          return fetch(`/api/matches/${id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mode: 'publish', variant: 'all' }),
+          })
         }
 
         if (action === 'live') {
-          await fetch(`/api/matches/${id}`, {
+          return fetch(`/api/matches/${id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status: 'live' }),
           })
-          return
         }
 
-        await fetch(`/api/matches/${id}`, { method: 'DELETE' })
+        return fetch(`/api/matches/${id}`, { method: 'DELETE' })
       })
 
-      await Promise.all(requests)
+      const responses = await Promise.all(requests)
+      const payloads = await Promise.all(responses.map(async (response) => {
+        const payload = await response.json().catch(() => ({}))
+        if (!response.ok) {
+          throw new Error(payload.error || `Bulk ${action} failed`)
+        }
+        return payload
+      }))
+
       setSelectedMatchIds([])
       await refreshDashboard()
+
+      if (action === 'publish') {
+        const publishResults = payloads.map((payload) => payload.published).filter(Boolean) as PublishOutcome[]
+        setMessage(formatBulkPublishOutcome(publishResults, selectedMatchIds.length))
+        return
+      }
+
       setMessage(
         action === 'generate'
           ? 'Selected matches queued for generation'
-          : action === 'publish'
-            ? 'Selected matches sent to publish flow'
-            : action === 'live'
-              ? 'Selected matches marked live'
-              : 'Selected matches deleted',
+          : action === 'live'
+            ? 'Selected matches marked live'
+            : 'Selected matches deleted',
       )
     })
   }
@@ -428,7 +460,8 @@ export default function AdminPage() {
     id: number,
     mode: 'artwork' | 'card' | 'full' | 'publish',
     variant: 'prediction' | 'result' | 'all',
-    successMessage: string
+    successMessage: string,
+    currentPublishStatus?: string
   ) {
     await runAction(`${mode}-${variant}-${id}`, async () => {
       const res = await fetch(`/api/matches/${id}`, {
@@ -441,7 +474,11 @@ export default function AdminPage() {
         throw new Error(payload.error || 'Action failed')
       }
 
-      setMessage(successMessage)
+      if (mode === 'publish') {
+        setMessage(formatPublishOutcome(payload.published, currentPublishStatus))
+      } else {
+        setMessage(resolveSuccessMessage(payload, successMessage))
+      }
       await refreshDashboard()
     })
   }
@@ -491,7 +528,11 @@ export default function AdminPage() {
         throw new Error(payload.error || 'Feed queue action failed')
       }
 
-      setMessage(successMessage)
+      if (action === 'publish') {
+        setMessage(formatPublishOutcome(payload.published))
+      } else {
+        setMessage(resolveSuccessMessage(payload, successMessage))
+      }
       await refreshDashboard()
     })
   }
@@ -755,7 +796,7 @@ export default function AdminPage() {
                             onEdit={() => startEdit(match)}
                             onGenerateImage={() => void runMatchAction(match.id, 'artwork', 'prediction', 'Individual artwork generation started')}
                             onGenerateSet={() => void runMatchAction(match.id, 'full', 'all', 'Prediction and result cards regenerated')}
-                            onPublish={() => void runMatchAction(match.id, 'publish', 'all', match.publish_status === 'published' ? 'Match cards are already published' : 'Match assets published')}
+                            onPublish={() => void runMatchAction(match.id, 'publish', 'all', 'Match assets published', getActivePublishStatus(match))}
                             onMarkLive={() => void updateMatch(match.id, { status: 'live' }, 'Match marked live')}
                             onFinish={() => void updateMatch(match.id, { status: 'finished', winner: match.poll_team1_votes >= match.poll_team2_votes ? 1 : 2, result_summary: `${match.team1} ${match.poll_team1_votes} - ${match.poll_team2_votes} ${match.team2}` }, 'Match marked finished')}
                             onDelete={() => void removeMatch(match.id)}
@@ -827,11 +868,9 @@ export default function AdminPage() {
                     const queueAssetStatus = item.status === 'finished'
                       ? item.result_asset_status || null
                       : item.prediction_asset_status || null
-                    const queuePublishStatus = item.status === 'finished'
-                      ? item.result_publish_status || 'draft'
-                      : item.prediction_publish_status || 'draft'
+                    const queuePublishStatus = getActivePublishStatus(item)
                     const isGenerated = Boolean(queueAssetStatus && queueAssetStatus !== 'pending')
-                    const isPublished = queuePublishStatus === 'published'
+                    const isPublished = isPublishedStatus(queuePublishStatus)
                     const isImported = Boolean(item.imported_match_id)
 
                     const stage: 'queued' | 'imported' | 'generated' | 'published' | 'dismissed' =
@@ -991,7 +1030,8 @@ export default function AdminPage() {
             <div className="space-y-6">
               <div className="grid gap-4 xl:grid-cols-2">
               {visibleMatches.map((match) => {
-                const isPublished = match.publish_status === 'published'
+                const currentPublishStatus = getActivePublishStatus(match)
+                const isPublished = isPublishedStatus(currentPublishStatus)
                 const publishButtonLabel = isPublished ? 'Published' : 'Publish'
 
                 return (
@@ -1076,7 +1116,7 @@ export default function AdminPage() {
                               <div className="mt-3 flex flex-wrap gap-2">
                                 <StatusBadge label="Fetched" value={match.source === 'manual' ? 'manual' : 'synced'} tone={match.source === 'manual' ? 'slate' : 'cyan'} />
                                 <StatusBadge label="Generated" value={match.asset_generation_status || 'pending'} tone={assetTone(match.asset_generation_status)} />
-                                <StatusBadge label="Published" value={match.publish_status || 'draft'} tone={publishTone(match.publish_status)} />
+                                <StatusBadge label="Published" value={getPublishStatusLabel(currentPublishStatus)} tone={publishTone(currentPublishStatus)} />
                               </div>
                               {match.rivalry_tagline ? <p className="mt-2 text-sm text-gray-300">{match.rivalry_tagline}</p> : null}
                             </div>
@@ -1274,8 +1314,8 @@ function FeaturedMatchRow({
   busy: Record<string, boolean>
 }) {
   const currentAssetStatus = activeAssetStatus(match)
-  const currentPublishStatus = activePublishStatus(match)
-  const isPublished = currentPublishStatus === 'published'
+  const currentPublishStatus = getActivePublishStatus(match)
+  const isPublished = isPublishedStatus(currentPublishStatus)
 
   return (
     <div className="grid gap-0 xl:grid-cols-[minmax(0,320px)_minmax(0,1fr)] xl:items-stretch">
@@ -1298,7 +1338,7 @@ function FeaturedMatchRow({
             </button>
             <StatusBadge label="Fetched" value={match.source === 'manual' ? 'manual' : 'synced'} tone={match.source === 'manual' ? 'slate' : 'cyan'} />
             <StatusBadge label="Generated" value={currentAssetStatus || 'pending'} tone={assetTone(currentAssetStatus)} />
-            <StatusBadge label="Published" value={currentPublishStatus || 'draft'} tone={publishTone(currentPublishStatus)} />
+            <StatusBadge label="Published" value={getPublishStatusLabel(currentPublishStatus)} tone={publishTone(currentPublishStatus)} />
           </div>
         </div>
 
@@ -1325,7 +1365,7 @@ function FeaturedMatchRow({
             <div className="grid gap-3 md:grid-cols-4">
               <ToolbarButton onClick={onEdit} tone="slate">Edit</ToolbarButton>
               <ToolbarButton onClick={onGenerateImage} disabled={busy.image} tone="violet">{currentAssetStatus && currentAssetStatus !== 'pending' ? 'Regenerate' : 'Generate'}</ToolbarButton>
-              <ToolbarButton onClick={onPublish} disabled={busy.publish || isPublished} tone="violet">{isPublished ? 'Published' : currentPublishStatus === 'ready' ? 'Publish Ready' : 'Publish'}</ToolbarButton>
+              <ToolbarButton onClick={onPublish} disabled={busy.publish || isPublished} tone="violet">{isPublished ? 'Published' : currentPublishStatus === 'ready' ? 'Ready to Publish' : 'Publish'}</ToolbarButton>
               <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-gray-300">
                 {match.prediction_card_url ? <a href={match.prediction_card_url} target="_blank" className="text-cyan-200 hover:text-white">Open card</a> : 'No card yet'}
               </div>
@@ -1369,8 +1409,8 @@ function CompactMatchCard({
   busy: Record<string, boolean>
 }) {
   const currentAssetStatus = activeAssetStatus(match)
-  const currentPublishStatus = activePublishStatus(match)
-  const isPublished = currentPublishStatus === 'published'
+  const currentPublishStatus = getActivePublishStatus(match)
+  const isPublished = isPublishedStatus(currentPublishStatus)
   const imageUrl = match.prediction_artwork_url || match.prediction_card_url || match.result_artwork_url || match.result_card_url || null
 
   return (
@@ -1399,14 +1439,14 @@ function CompactMatchCard({
 
         <div className="mt-3 flex flex-wrap gap-2">
           <StatusBadge label="Generated" value={currentAssetStatus || 'pending'} tone={assetTone(currentAssetStatus)} />
-          <StatusBadge label="Published" value={currentPublishStatus || 'draft'} tone={publishTone(currentPublishStatus)} />
+          <StatusBadge label="Published" value={getPublishStatusLabel(currentPublishStatus)} tone={publishTone(currentPublishStatus)} />
           <StatusBadge label="Status" value={match.status} tone={match.status === 'live' ? 'green' : match.status === 'finished' ? 'slate' : 'cyan'} />
         </div>
 
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           <ToolbarButton onClick={onEdit} tone="slate">Edit</ToolbarButton>
           <ToolbarButton onClick={onGenerate} disabled={busy.image} tone="violet">{currentAssetStatus && currentAssetStatus !== 'pending' ? 'Regenerate' : 'Generate'}</ToolbarButton>
-          <ToolbarButton onClick={onPublish} disabled={busy.publish || isPublished} tone="violet">{isPublished ? 'Published' : currentPublishStatus === 'ready' ? 'Publish Ready' : 'Publish'}</ToolbarButton>
+          <ToolbarButton onClick={onPublish} disabled={busy.publish || isPublished} tone="violet">{isPublished ? 'Published' : currentPublishStatus === 'ready' ? 'Ready to Publish' : 'Publish'}</ToolbarButton>
           <ToolbarButton onClick={onMarkLive} disabled={busy.match} tone="cyan">Mark Live</ToolbarButton>
         </div>
 
@@ -1656,13 +1696,15 @@ function assetTone(value?: string | null): 'green' | 'yellow' | 'red' | 'cyan' |
 }
 
 function publishTone(value?: string | null): 'green' | 'yellow' | 'red' | 'cyan' | 'slate' {
-  if (value === 'published') {
+  const status = String(value ?? '').trim().toLowerCase()
+
+  if (status === 'published') {
     return 'green'
   }
-  if (value === 'failed') {
+  if (status === 'failed') {
     return 'red'
   }
-  if (value === 'ready') {
+  if (status === 'ready') {
     return 'cyan'
   }
 
@@ -1677,12 +1719,68 @@ function activeAssetStatus(match: Pick<MatchRecord, 'status' | 'prediction_asset
   return match.prediction_asset_status || match.asset_generation_status || null
 }
 
-function activePublishStatus(match: Pick<MatchRecord, 'status' | 'prediction_publish_status' | 'result_publish_status' | 'publish_status'>) {
-  if (match.status === 'finished') {
-    return match.result_publish_status || match.publish_status || 'draft'
+function formatPublishOutcome(result?: PublishOutcome | null, currentPublishStatus?: string | null) {
+  if (isPublishedStatus(currentPublishStatus)) {
+    return 'Match cards are already published.'
   }
 
-  return match.prediction_publish_status || match.publish_status || 'draft'
+  if (!result) {
+    return 'Publish flow completed.'
+  }
+
+  const anomalyMessage = formatAssetTypeAnomalies(result.anomalies?.unexpectedAssetTypes)
+  const baseMessage = result.message
+    || (result.skipped
+      ? 'Publish skipped.'
+      : result.published > 0
+        ? `Published ${result.published} card asset${result.published === 1 ? '' : 's'}.`
+        : 'No ready card assets to publish.')
+
+  return anomalyMessage ? `${baseMessage} ${anomalyMessage}` : baseMessage
+}
+
+function formatBulkPublishOutcome(results: PublishOutcome[], totalSelected: number) {
+  const published = results.reduce((sum, result) => sum + (result.published || 0), 0)
+  const queued = results.reduce((sum, result) => sum + (result.queued || 0), 0)
+  const skipped = results.filter((result) => result.skipped).length
+  const anomalyEntries = results.flatMap((result) => result.anomalies?.unexpectedAssetTypes || [])
+  const mergedAnomalies = Array.from(
+    anomalyEntries.reduce((map, entry) => {
+      map.set(entry.asset_type, (map.get(entry.asset_type) || 0) + entry.count)
+      return map
+    }, new Map<string, number>()),
+    ([asset_type, count]) => ({ asset_type, count }),
+  )
+
+  const baseMessage = skipped > 0
+    ? `Bulk publish finished for ${totalSelected} matches: ${published} published, ${queued} ready, ${skipped} skipped.`
+    : `Bulk publish finished for ${totalSelected} matches: ${published} card assets published.`
+  const anomalyMessage = formatAssetTypeAnomalies(mergedAnomalies)
+
+  return anomalyMessage ? `${baseMessage} ${anomalyMessage}` : baseMessage
+}
+
+function formatAssetTypeAnomalies(entries?: Array<{ asset_type: string; count: number }>) {
+  if (!entries || entries.length === 0) {
+    return ''
+  }
+
+  const summary = entries
+    .map((entry) => `${entry.asset_type} (${entry.count})`)
+    .join(', ')
+
+  return `Unexpected generated_assets.asset_type values detected: ${summary}.`
+}
+
+function resolveSuccessMessage(payload: Record<string, any>, fallback: string) {
+  if (payload?.publish) {
+    return formatPublishOutcome(payload.publish)
+  }
+  if (payload?.published) {
+    return formatPublishOutcome(payload.published)
+  }
+
+  return fallback
 }
 
 function feedFetchTone(value: FeedQueueItem['sync_status']): 'green' | 'yellow' | 'red' | 'cyan' | 'slate' {

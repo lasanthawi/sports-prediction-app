@@ -2,6 +2,7 @@ import { sql } from '@vercel/postgres'
 import { createHash } from 'crypto'
 
 let schemaReady = false
+let schemaReadyPromise: Promise<void> | null = null
 
 const seededUsers = [
   {
@@ -43,6 +44,25 @@ const seededUsers = [
 ]
 
 export async function ensureSchema() {
+  if (schemaReady) {
+    return
+  }
+
+  if (schemaReadyPromise) {
+    await schemaReadyPromise
+    return
+  }
+
+  schemaReadyPromise = ensureSchemaInner()
+
+  try {
+    await schemaReadyPromise
+  } finally {
+    schemaReadyPromise = null
+  }
+}
+
+async function ensureSchemaInner() {
   if (schemaReady) {
     return
   }

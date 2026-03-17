@@ -39,7 +39,9 @@ export async function POST(request: Request, { params }: RouteContext) {
       return NextResponse.json({ error: 'Invalid match id' }, { status: 400 })
     }
 
-    let mode: 'artwork' | 'card' | 'full' | 'publish' = 'full'
+    const { searchParams } = new URL(request.url)
+    let mode: 'artwork' | 'card' | 'full' | 'publish' =
+      (searchParams.get('mode') as 'artwork' | 'card' | 'full' | 'publish' | null) || 'full'
     let variant: AssetVariant | undefined
 
     try {
@@ -47,7 +49,8 @@ export async function POST(request: Request, { params }: RouteContext) {
       mode = body.mode || 'full'
       variant = body.variant && body.variant !== 'all' ? body.variant : undefined
     } catch {
-      // Support empty-body POSTs from older admin flows.
+      const queryVariant = searchParams.get('variant')
+      variant = queryVariant && queryVariant !== 'all' ? queryVariant as AssetVariant : undefined
     }
 
     const match = await getMatch(id)
