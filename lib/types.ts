@@ -43,6 +43,7 @@ export interface MatchRecord {
   result_card_url?: string | null
   result_asset_status?: AssetGenerationStatus | null
   result_publish_status?: string | null
+  public_artwork_url?: string | null
   card_asset_url?: string | null
   asset_generation_status?: AssetGenerationStatus | null
   publish_status?: string | null

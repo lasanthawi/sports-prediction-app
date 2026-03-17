@@ -15,13 +15,16 @@ function hydrateMatches(rows: MatchRecord[]) {
     const predictionCardUrl = toAssetUrl(row.prediction_card_asset_id)
     const resultCardUrl = toAssetUrl(row.result_card_asset_id)
     const publishStatus = row.status === 'finished' ? row.result_publish_status : row.prediction_publish_status
+    const predictionArtworkUrl = toAssetUrl(row.prediction_artwork_asset_id)
+    const resultArtworkUrl = toAssetUrl(row.result_artwork_asset_id)
 
     return {
       ...row,
-      prediction_artwork_url: toAssetUrl(row.prediction_artwork_asset_id),
+      prediction_artwork_url: predictionArtworkUrl,
       prediction_card_url: predictionCardUrl,
-      result_artwork_url: toAssetUrl(row.result_artwork_asset_id),
+      result_artwork_url: resultArtworkUrl,
       result_card_url: resultCardUrl,
+      public_artwork_url: row.status === 'finished' ? resultArtworkUrl : predictionArtworkUrl,
       card_asset_url: row.status === 'finished' ? resultCardUrl : predictionCardUrl,
       asset_generation_status:
         (row.status === 'finished' ? row.result_asset_status : row.prediction_asset_status) || null,
@@ -35,16 +38,11 @@ function normalizeMatchKeyPart(value: string | null | undefined) {
 }
 
 function visibleMatchKey(match: ReturnType<typeof hydrateMatches>[number]) {
-  if (match.external_id) {
-    return `external:${match.external_id}`
-  }
-
   const matchDate = new Date(match.match_time)
   const dateBucket = Number.isNaN(matchDate.getTime())
     ? normalizeMatchKeyPart(match.match_time)
     : matchDate.toISOString().slice(0, 10)
-
-  return [
+  const detailKey = [
     normalizeMatchKeyPart(match.sport),
     normalizeMatchKeyPart(match.league),
     normalizeMatchKeyPart(match.team1),
@@ -52,23 +50,35 @@ function visibleMatchKey(match: ReturnType<typeof hydrateMatches>[number]) {
     normalizeMatchKeyPart(match.venue),
     dateBucket,
   ].join('|')
+
+  if (detailKey.replaceAll('|', '').length > 0) {
+    return detailKey
+  }
+
+  return match.external_id ? `external:${match.external_id}` : `match:${match.id}`
 }
 
 function visibleMatchRank(match: ReturnType<typeof hydrateMatches>[number]) {
-  const publishRank =
-    match.publish_status === 'published'
-      ? 3
-      : match.publish_status === 'ready'
-        ? 2
-        : 0
-  const assetRank =
-    match.asset_generation_status === 'generated'
-      ? 2
-      : match.asset_generation_status === 'fallback'
-        ? 1
-        : 0
+  const assetStatus = match.asset_generation_status
+  const publishStatus = match.publish_status
 
-  return publishRank * 10 + assetRank
+  if (assetStatus === 'generated' && publishStatus === 'published') {
+    return 4
+  }
+
+  if (assetStatus === 'generated') {
+    return 3
+  }
+
+  if (assetStatus === 'fallback' && publishStatus === 'published') {
+    return 2
+  }
+
+  if (assetStatus === 'fallback') {
+    return 1
+  }
+
+  return 0
 }
 
 function dedupeVisibleMatches(matches: ReturnType<typeof hydrateMatches>) {

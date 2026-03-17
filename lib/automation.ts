@@ -45,27 +45,36 @@ function getAssetDataUrl(asset: AssetRecord) {
 function buildFallbackArtwork(match: MatchRecord, variant: AssetVariant) {
   const accentA = match.team1_palette || '#58f4a7'
   const accentB = match.team2_palette || '#ff5ca8'
-  const headline = variant === 'result' ? 'Final Showdown' : 'Prediction Arena'
-  const subline = variant === 'result' ? match.result_summary || 'Result card fallback art' : match.rivalry_tagline || 'Premium pre-match card fallback art'
+  const centerGlow = variant === 'result' ? '#ffd84d' : '#9cf8c0'
+  const haze = variant === 'result' ? '0.22' : '0.18'
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="1080" height="1920" viewBox="0 0 1080 1920" fill="none" xmlns="http://www.w3.org/2000/svg">
   <rect width="1080" height="1920" fill="#0B1020"/>
   <rect width="1080" height="1920" fill="url(#bg)"/>
-  <circle cx="230" cy="420" r="260" fill="${accentA}" fill-opacity="0.3"/>
-  <circle cx="860" cy="540" r="280" fill="${accentB}" fill-opacity="0.28"/>
-  <rect x="70" y="120" width="940" height="1680" rx="42" fill="rgba(0,0,0,0.24)" stroke="rgba(255,216,77,0.55)" stroke-width="4"/>
-  <text x="110" y="300" fill="#FFD84D" font-family="Arial, sans-serif" font-size="68" font-weight="700">${escapeXml(headline)}</text>
-  <text x="110" y="390" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="90" font-weight="800">${escapeXml(match.team1)}</text>
-  <text x="110" y="510" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="90" font-weight="800">${escapeXml(match.team2)}</text>
-  <text x="110" y="640" fill="#D1D5DB" font-family="Arial, sans-serif" font-size="36">${escapeXml(subline)}</text>
-  <text x="110" y="720" fill="#E5E7EB" font-family="Arial, sans-serif" font-size="32">${escapeXml(match.team1_captain || `${match.team1} captain`)}</text>
-  <text x="110" y="770" fill="#E5E7EB" font-family="Arial, sans-serif" font-size="32">${escapeXml(match.team2_captain || `${match.team2} captain`)}</text>
+  <rect width="1080" height="1920" fill="url(#atmosphere)"/>
+  <circle cx="220" cy="460" r="300" fill="${accentA}" fill-opacity="${haze}"/>
+  <circle cx="860" cy="480" r="320" fill="${accentB}" fill-opacity="${haze}"/>
+  <ellipse cx="540" cy="920" rx="300" ry="520" fill="${centerGlow}" fill-opacity="0.08"/>
+  <path d="M120 300C270 440 300 650 290 860C282 1046 214 1266 120 1540" stroke="${accentA}" stroke-opacity="0.4" stroke-width="24" stroke-linecap="round"/>
+  <path d="M960 300C810 440 780 650 790 860C798 1046 866 1266 960 1540" stroke="${accentB}" stroke-opacity="0.4" stroke-width="24" stroke-linecap="round"/>
+  <rect x="72" y="86" width="936" height="1748" rx="48" fill="rgba(0,0,0,0.12)" stroke="rgba(255,255,255,0.12)" stroke-width="3"/>
+  <rect x="120" y="1180" width="840" height="520" rx="80" fill="url(#fadeBottom)"/>
   <defs>
     <linearGradient id="bg" x1="40" y1="60" x2="1040" y2="1860" gradientUnits="userSpaceOnUse">
       <stop stop-color="#142040"/>
       <stop offset="0.52" stop-color="#1D124A"/>
       <stop offset="1" stop-color="#090B15"/>
+    </linearGradient>
+    <linearGradient id="atmosphere" x1="540" y1="0" x2="540" y2="1920" gradientUnits="userSpaceOnUse">
+      <stop stop-color="rgba(255,255,255,0.08)"/>
+      <stop offset="0.34" stop-color="rgba(255,255,255,0.02)"/>
+      <stop offset="0.7" stop-color="rgba(0,0,0,0)"/>
+      <stop offset="1" stop-color="rgba(5,8,20,0.32)"/>
+    </linearGradient>
+    <linearGradient id="fadeBottom" x1="540" y1="1180" x2="540" y2="1700" gradientUnits="userSpaceOnUse">
+      <stop stop-color="rgba(5,8,20,0)"/>
+      <stop offset="1" stop-color="rgba(5,8,20,0.42)"/>
     </linearGradient>
   </defs>
 </svg>`

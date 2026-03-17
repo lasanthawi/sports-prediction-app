@@ -75,9 +75,7 @@ export default function MatchCard({ match, onVote, interactive = true, footerSlo
   const headline = match.league?.toUpperCase() || `${match.sport.toUpperCase()} SHOWDOWN`
   const versusTitle = `${match.team1} vs ${match.team2}`.toUpperCase()
   const backgroundArtworkUrl =
-    (match.status === 'finished' ? match.result_artwork_url : match.prediction_artwork_url) ||
-    match.card_asset_url ||
-    null
+    (match.status === 'finished' ? match.result_artwork_url : match.prediction_artwork_url) || null
   const question =
     match.status === 'finished'
       ? match.result_summary || 'Result locked in'
@@ -122,7 +120,7 @@ export default function MatchCard({ match, onVote, interactive = true, footerSlo
         style={{
           backgroundImage: backgroundArtworkUrl
             ? `linear-gradient(180deg, rgba(7,10,20,0.14), rgba(7,10,20,0.22) 20%, rgba(7,10,20,0.08) 50%, rgba(7,10,20,0.48) 100%), url(${backgroundArtworkUrl})`
-            : 'linear-gradient(135deg, rgba(237,29,36,0.72), rgba(14,165,233,0.72))',
+            : 'linear-gradient(145deg, rgba(18,34,64,0.96), rgba(13,18,32,0.96)), radial-gradient(circle at 22% 28%, rgba(239,68,68,0.2), transparent 26%), radial-gradient(circle at 78% 28%, rgba(59,130,246,0.22), transparent 28%), radial-gradient(circle at 50% 56%, rgba(250,204,21,0.1), transparent 22%)',
         }}
       />
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.5)_0%,rgba(2,6,23,0.12)_28%,rgba(2,6,23,0.02)_52%,rgba(2,6,23,0.16)_70%,rgba(2,6,23,0.72)_100%)]" />
@@ -136,7 +134,7 @@ export default function MatchCard({ match, onVote, interactive = true, footerSlo
             </h3>
           </div>
 
-          <div className="mx-auto max-w-[82%] rounded-[1rem] border border-white/10 bg-black/14 px-3 py-1.5 text-center backdrop-blur-[2px]">
+          <div className="mx-auto min-h-[3.4rem] max-w-[82%] rounded-[1rem] border border-white/10 bg-black/12 px-3 py-1.5 text-center backdrop-blur-[2px]">
             <p className="text-[0.8rem] font-semibold leading-snug text-white/84 drop-shadow-[0_4px_12px_rgba(0,0,0,0.45)]">
               {question}
             </p>
@@ -231,10 +229,15 @@ function SideButton({
   interactive: boolean
   onClick: () => void
 }) {
+  const [showImage, setShowImage] = useState(isRenderableImageUrl(logo))
   const toneClass =
     tone === 'red'
       ? 'poster-red border-red-400/70 shadow-[0_0_22px_rgba(239,68,68,0.38)]'
       : 'poster-blue border-sky-300/70 shadow-[0_0_22px_rgba(56,189,248,0.34)]'
+
+  useEffect(() => {
+    setShowImage(isRenderableImageUrl(logo))
+  }, [logo])
 
   return (
     <button
@@ -244,8 +247,17 @@ function SideButton({
     >
       <div className="absolute inset-0 bg-gradient-to-r from-white/10 via-transparent to-white/5" />
       <div className="relative flex items-center gap-2.5">
-        <div className="flex h-11 w-11 items-center justify-center rounded-full border border-white/30 bg-black/28 text-center text-[0.7rem] font-black text-white">
-          {logo || initials(team)}
+        <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-white/30 bg-black/28 text-center text-[0.7rem] font-black text-white">
+          {showImage ? (
+            <img
+              src={logo || ''}
+              alt={`${team} logo`}
+              className="h-full w-full object-cover"
+              onError={() => setShowImage(false)}
+            />
+          ) : (
+            initials(team)
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <div className="text-[0.58rem] font-bold uppercase tracking-[0.18em] text-white/78">{interactive ? 'Vote' : 'Preview'}</div>
@@ -264,6 +276,14 @@ function initials(team: string) {
     .map((part) => part[0])
     .join('')
     .toUpperCase()
+}
+
+function isRenderableImageUrl(value?: string | null) {
+  if (!value) {
+    return false
+  }
+
+  return /^(https?:\/\/|\/)/i.test(value.trim())
 }
 
 function formatMatchTime(matchTime: string) {
