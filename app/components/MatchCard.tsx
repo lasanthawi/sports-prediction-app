@@ -289,7 +289,9 @@ function SideButton({
           <div className="text-[0.54rem] font-bold uppercase tracking-[0.18em] text-white/76">{interactive ? 'Vote' : 'Preview'}</div>
           <div className="line-clamp-2 text-[0.82rem] font-black uppercase leading-tight text-white">{team}</div>
         </div>
-        <div className="rounded-full bg-black/24 px-2.5 py-1 text-[0.66rem] font-black text-white">{percentage}%</div>
+        <div className="flex shrink-0 items-center justify-center rounded-xl border border-white/25 bg-gradient-to-b from-white/12 to-black/50 px-3.5 py-2 shadow-[0_0_14px_rgba(255,255,255,0.1),inset_0_1px_0_rgba(255,255,255,0.08)]">
+          <span className="text-[1.5rem] font-black tabular-nums leading-none text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.6)]">{percentage}%</span>
+        </div>
       </div>
     </button>
   )

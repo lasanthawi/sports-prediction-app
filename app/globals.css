@@ -39,6 +39,31 @@ body {
   overflow-x: hidden;
 }
 
+/* Themed slim scrollbars site-wide */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(92, 255, 155, 0.35) rgba(255, 255, 255, 0.06);
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(92, 255, 155, 0.35);
+  border-radius: 3px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(92, 255, 155, 0.5);
+}
+
 .text-glow {
   text-shadow: 0 0 10px rgba(92, 255, 155, 0.55);
 }

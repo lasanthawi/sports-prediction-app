@@ -4,7 +4,8 @@ import { upsertFeedMatches } from './matches'
 import { FeedMatch, FeedQueueRecord, MatchStatus } from './types'
 
 const DEFAULT_SPORTSDB_API_KEY = '123'
-const DEFAULT_SPORTSDB_LEAGUE_IDS = ['4328', '4335', '4387']
+// Extended: EPL, La Liga, Serie A, Bundesliga, Ligue 1, Liga Portugal — more sports/leagues via SPORTSDB_LEAGUE_IDS
+const DEFAULT_SPORTSDB_LEAGUE_IDS = ['4328', '4335', '4387', '4346', '4351', '4394']
 
 function slugify(value: string | null | undefined) {
   return (value || '')
