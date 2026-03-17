@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowRight, Bell, CalendarDays, ChevronLeft, ChevronRight, LogIn, Sparkles, Swords, Target, Waves } from 'lucide-react'
 import MatchCard from './components/MatchCard'
@@ -29,7 +29,7 @@ interface MatchRecord {
 const COSMIC_BACKGROUND = 'https://img.freepik.com/free-photo/cosmic-lightning-storm-space-background_23-2151955881.jpg?semt=ais_hybrid&w=740&q=80'
 const BRAND_IMAGE = 'https://i.ibb.co/qLsG4ByG/70325951-97a2-4fb3-ad27-a3c7ba251676.png'
 
-export default function Home() {
+function HomeContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [matches, setMatches] = useState<MatchRecord[]>([])
@@ -395,6 +395,18 @@ export default function Home() {
   )
 }
 
+export default function Home() {
+  return (
+    <Suspense fallback={
+      <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#09091b]">
+        <div className="h-12 w-12 animate-spin rounded-full border-2 border-green-400 border-t-transparent" />
+      </main>
+    }>
+      <HomeContent />
+    </Suspense>
+  )
+}
+
 function MobileArenaApp({
   matches,
   totalVotes,
@@ -540,7 +552,7 @@ function ArenaVotingOverlay({
 }) {
   const voteMatches = matches.length > 0 ? matches : []
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null)
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null)
   const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
@@ -580,18 +592,17 @@ function ArenaVotingOverlay({
   }
 
   function handleTouchStart(e: React.TouchEvent) {
-    const t = e.changedTouches[0]
-    if (t) setTouchStart({ x: t.clientX, y: t.clientY })
+    const t = e.changedTouches[0] ?? e.touches[0]
+    if (t) touchStartRef.current = { x: t.clientX, y: t.clientY }
   }
 
   function handleTouchEnd(e: React.TouchEvent) {
-    const t = e.changedTouches[0]
-    if (!t || !touchStart) {
-      setTouchStart(null)
-      return
-    }
-    const deltaX = t.clientX - touchStart.x
-    const deltaY = t.clientY - touchStart.y
+    const t = e.changedTouches[0] ?? e.touches[0]
+    const start = touchStartRef.current
+    touchStartRef.current = null
+    if (!t || !start) return
+    const deltaX = t.clientX - start.x
+    const deltaY = t.clientY - start.y
     const absX = Math.abs(deltaX)
     const absY = Math.abs(deltaY)
 
@@ -601,7 +612,6 @@ function ArenaVotingOverlay({
       if (deltaX > 0) goToPrevious()
       else goToNext()
     }
-    setTouchStart(null)
   }
 
   useEffect(() => {
@@ -622,11 +632,11 @@ function ArenaVotingOverlay({
   }, [voteMatches.length])
 
   return (
-    <div className="fixed inset-0 z-50">
+    <div className="fixed inset-0 z-50 min-h-screen h-[100dvh]">
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,8,20,0.92),rgba(10,8,27,0.97)),url('https://img.freepik.com/free-photo/cosmic-lightning-storm-space-background_23-2151955881.jpg?semt=ais_hybrid&w=740&q=80')] bg-cover bg-center" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(34,211,238,0.16),transparent_26%),radial-gradient(circle_at_85%_15%,rgba(244,114,182,0.18),transparent_24%)]" />
 
-      <div className="relative flex h-[100dvh] flex-col overflow-hidden px-4 pt-3 pb-4">
+      <div className="relative flex h-full min-h-0 flex-col overflow-hidden px-4 pt-3 pb-4">
         {/* Header: hidden on mobile; swipe up/down to close instead */}
         <div className="mb-3 hidden shrink-0 items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 backdrop-blur-md md:flex">
           <button
