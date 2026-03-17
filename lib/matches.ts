@@ -195,6 +195,8 @@ export async function listVisibleMatches() {
   const { rows } = await sql.query<MatchRecord>(`
     ${matchSelectClause()}
     WHERE matches.status IN ('upcoming', 'live')
+      AND prediction_card.id IS NOT NULL
+      AND prediction_card.published_status = 'published'
     ORDER BY match_time ASC, matches.id DESC
     LIMIT 60
   `)

@@ -38,7 +38,6 @@ export default function Home() {
   const [votingMode, setVotingMode] = useState(false)
   const [activeMatchId, setActiveMatchId] = useState<number | null>(null)
   const [desktopSlide, setDesktopSlide] = useState(0)
-  const [slideDirection, setSlideDirection] = useState<1 | -1>(1)
   const voteModeCloseRequestedRef = useRef(false)
 
   useEffect(() => {
@@ -238,10 +237,7 @@ export default function Home() {
                         {desktopSlide + 1} / {featuredMatches.length}
                       </span>
                       <button
-                        onClick={() => {
-                          setSlideDirection(-1)
-                          setDesktopSlide((current) => (current - 1 + featuredMatches.length) % featuredMatches.length)
-                        }}
+                        onClick={() => setDesktopSlide((current) => (current - 1 + featuredMatches.length) % featuredMatches.length)}
                         disabled={!hasInfiniteSlider}
                         className="glass-button !rounded-2xl !px-4 !py-3 disabled:opacity-40"
                         title="Previous match"
@@ -249,10 +245,7 @@ export default function Home() {
                         <ChevronLeft size={18} />
                       </button>
                       <button
-                        onClick={() => {
-                          setSlideDirection(1)
-                          setDesktopSlide((current) => (current + 1) % featuredMatches.length)
-                        }}
+                        onClick={() => setDesktopSlide((current) => (current + 1) % featuredMatches.length)}
                         disabled={!hasInfiniteSlider}
                         className="glass-button !rounded-2xl !px-4 !py-3 disabled:opacity-40"
                         title="Next match"
@@ -263,77 +256,83 @@ export default function Home() {
                   </div>
 
                   <div className="flex min-h-0 w-full items-center justify-center gap-4 md:gap-6">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSlideDirection(-1)
-                        setDesktopSlide((current) => (current - 1 + featuredMatches.length) % featuredMatches.length)
-                      }}
-                      disabled={!hasInfiniteSlider}
-                      className="glass-button hidden !rounded-2xl !px-4 !py-4 disabled:opacity-40 md:inline-flex"
-                      aria-label="Previous match"
-                      title="Previous match"
-                    >
-                      <ChevronLeft size={20} />
-                    </button>
+<button
+                    type="button"
+                    onClick={() => setDesktopSlide((current) => (current - 1 + featuredMatches.length) % featuredMatches.length)}
+                    disabled={!hasInfiniteSlider}
+                    className="glass-button hidden !rounded-2xl !px-4 !py-4 disabled:opacity-40 md:inline-flex"
+                    aria-label="Previous match"
+                    title="Previous match"
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
 
-                    <div className="flex w-full flex-1 items-center justify-center gap-4 md:gap-8">
+                    <div className="relative flex w-full flex-1 items-center justify-center overflow-hidden">
                       {featuredMatches.length > 0 ? (
-                        <div className="hidden w-[20rem] shrink-0 items-center justify-end opacity-50 md:flex md:aspect-[9/16]">
-                          <MatchCard
-                            match={featuredMatches[prevSlideIndex]}
-                            onVote={() => void fetchMatches()}
-                            onCardClick={() => {
-                              setSlideDirection(-1)
-                              setDesktopSlide((current) => (current - 1 + featuredMatches.length) % featuredMatches.length)
-                            }}
-                            className="!h-full !min-h-0 !w-full !max-w-none scale-90"
-                          />
-                        </div>
-                      ) : null}
-
-                      {featuredMatches.length > 0 ? (
-                        <div
-                          key={desktopSlide}
-                          className={`aspect-[9/16] w-full max-w-[28rem] shrink-0 flex-1 ${slideDirection === 1 ? 'revolver-slide-in-right' : 'revolver-slide-in-left'}`}
-                        >
-                          <MatchCard
-                            match={featuredMatches[desktopSlide]}
-                            onVote={() => void fetchMatches()}
-                            onCardClick={() => openMatchViewer(featuredMatches[desktopSlide].id)}
-                            className="!h-full !min-h-0 !w-full !max-w-none"
-                          />
-                        </div>
-                      ) : null}
-
-                      {featuredMatches.length > 0 ? (
-                        <div className="hidden w-[20rem] shrink-0 items-center justify-start opacity-50 md:flex md:aspect-[9/16]">
-                          <MatchCard
-                            match={featuredMatches[nextSlideIndex]}
-                            onVote={() => void fetchMatches()}
-                            onCardClick={() => {
-                              setSlideDirection(1)
-                              setDesktopSlide((current) => (current + 1) % featuredMatches.length)
-                            }}
-                            className="!h-full !min-h-0 !w-full !max-w-none scale-90"
-                          />
-                        </div>
+                        <>
+                          <div className="hidden w-[20rem] shrink-0 items-center justify-end opacity-50 md:flex md:aspect-[9/16]">
+                            <MatchCard
+                              match={featuredMatches[prevSlideIndex]}
+                              onVote={() => void fetchMatches()}
+                              onCardClick={() => setDesktopSlide((current) => (current - 1 + featuredMatches.length) % featuredMatches.length)}
+                              className="!h-full !min-h-0 !w-full !max-w-none scale-90"
+                            />
+                          </div>
+                          <div className="flex flex-1 justify-center overflow-hidden">
+                            <div
+                              className="flex gap-8 pl-[calc(50%-14rem)]"
+                              style={{ transform: `translateX(-${desktopSlide * 30}rem)` }}
+                            >
+                              {featuredMatches.map((match, idx) => (
+                                <div
+                                  key={match.id}
+                                  className="aspect-[9/16] w-[28rem] shrink-0 cursor-pointer"
+                                  onClick={() => {
+                                    setDesktopSlide(idx)
+                                    openMatchViewer(match.id)
+                                  }}
+                                  role="button"
+                                  tabIndex={0}
+                                  aria-label={`View ${match.team1} vs ${match.team2}`}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                      e.preventDefault()
+                                      setDesktopSlide(idx)
+                                      openMatchViewer(match.id)
+                                    }
+                                  }}
+                                >
+                                  <MatchCard
+                                    match={match}
+                                    onVote={() => void fetchMatches()}
+                                    className="!h-full !min-h-0 !w-full !max-w-none"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="hidden w-[20rem] shrink-0 items-center justify-start opacity-50 md:flex md:aspect-[9/16]">
+                            <MatchCard
+                              match={featuredMatches[nextSlideIndex]}
+                              onVote={() => void fetchMatches()}
+                              onCardClick={() => setDesktopSlide((current) => (current + 1) % featuredMatches.length)}
+                              className="!h-full !min-h-0 !w-full !max-w-none scale-90"
+                            />
+                          </div>
+                        </>
                       ) : null}
                     </div>
 
                     <button
-                      type="button"
-                      onClick={() => {
-                        setSlideDirection(1)
-                        setDesktopSlide((current) => (current + 1) % featuredMatches.length)
-                      }}
-                      disabled={!hasInfiniteSlider}
-                      className="glass-button hidden !rounded-2xl !px-4 !py-4 disabled:opacity-40 md:inline-flex"
-                      aria-label="Next match"
-                      title="Next match"
-                    >
-                      <ChevronRight size={20} />
-                    </button>
+                    type="button"
+                    onClick={() => setDesktopSlide((current) => (current + 1) % featuredMatches.length)}
+                    disabled={!hasInfiniteSlider}
+                    className="glass-button hidden !rounded-2xl !px-4 !py-4 disabled:opacity-40 md:inline-flex"
+                    aria-label="Next match"
+                    title="Next match"
+                  >
+                    <ChevronRight size={20} />
+                  </button>
                   </div>
                 </div>
               )}
@@ -536,19 +535,16 @@ function MobileArenaApp({
               </div>
             </div>
           ) : (
-            <div className="grid gap-4 overflow-hidden">
-              {matches.slice(0, 2).map((match) => (
-                <div key={match.id} className="rounded-[1.75rem] border border-white/10 bg-black/20 p-3 backdrop-blur-md">
-                  <div className="mb-3 flex items-center justify-between gap-3 px-1">
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/55">{match.league || match.sport}</p>
-                      <p className="text-lg font-black text-white">{match.team1} vs {match.team2}</p>
-                    </div>
-                    <span className="rounded-full border border-green-300/20 bg-green-300/10 px-3 py-1 text-[0.65rem] font-bold uppercase tracking-[0.18em] text-green-200">
+            <div className="grid grid-cols-2 gap-3 overflow-hidden">
+              {matches.slice(0, 4).map((match) => (
+                <div key={match.id} className="rounded-[1.75rem] border border-white/10 bg-black/20 p-2 backdrop-blur-md">
+                  <div className="mb-2 flex items-center justify-between gap-2 px-1">
+                    <p className="truncate text-sm font-black text-white">{match.team1} vs {match.team2}</p>
+                    <span className="shrink-0 rounded-full border border-green-300/20 bg-green-300/10 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-green-200">
                       {match.status}
                     </span>
                   </div>
-                  <div className="aspect-[9/16] w-full max-w-[20rem] mx-auto">
+                  <div className="aspect-[9/16] w-full">
                     <MatchCard
                       match={match}
                       onVote={() => void onRefresh()}
@@ -593,7 +589,6 @@ function ArenaVotingOverlay({
 }) {
   const voteMatches = matches.length > 0 ? matches : []
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [slideDirection, setSlideDirection] = useState<1 | -1>(1)
   const [touchStart, setTouchStart] = useState<number | null>(null)
 
   useEffect(() => {
@@ -613,7 +608,6 @@ function ArenaVotingOverlay({
     }
   }, [activeMatchId, voteMatches])
 
-  const activeMatch = voteMatches[currentIndex] || null
   const hasInfiniteVote = voteMatches.length > 1
   const prevVoteIndex = voteMatches.length > 0 ? (currentIndex - 1 + voteMatches.length) % voteMatches.length : 0
   const nextVoteIndex = voteMatches.length > 0 ? (currentIndex + 1) % voteMatches.length : 0
@@ -621,12 +615,10 @@ function ArenaVotingOverlay({
   const nextMatch = voteMatches.length > 0 ? voteMatches[nextVoteIndex] : null
 
   function goToPrevious() {
-    setSlideDirection(-1)
     setCurrentIndex((current) => (current - 1 + voteMatches.length) % voteMatches.length)
   }
 
   function goToNext() {
-    setSlideDirection(1)
     setCurrentIndex((current) => (current + 1) % voteMatches.length)
   }
 
@@ -651,12 +643,10 @@ function ArenaVotingOverlay({
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'ArrowLeft') {
         event.preventDefault()
-        setSlideDirection(-1)
-        setCurrentIndex((current) => (current - 1 + voteMatches.length) % voteMatches.length)
+        goToPrevious()
       } else if (event.key === 'ArrowRight') {
         event.preventDefault()
-        setSlideDirection(1)
-        setCurrentIndex((current) => (current + 1) % voteMatches.length)
+        goToNext()
       }
     }
 
@@ -703,7 +693,7 @@ function ArenaVotingOverlay({
                 <ChevronLeft size={20} />
               </button>
               <div
-                className="flex h-full w-full flex-1 items-center justify-center gap-4 md:gap-8"
+                className="flex h-full w-full flex-1 items-center justify-center gap-4 md:gap-8 overflow-hidden"
                 onTouchStart={(event) => setTouchStart(event.changedTouches[0]?.clientX ?? null)}
                 onTouchEnd={(event) => handleTouchEnd(event.changedTouches[0]?.clientX ?? 0)}
               >
@@ -718,18 +708,24 @@ function ArenaVotingOverlay({
                   </div>
                 ) : voteMatches.length > 0 ? <div className="hidden w-[20rem] shrink-0 md:block" /> : null}
 
-                {activeMatch ? (
-                  <div
-                    key={currentIndex}
-                    className={`aspect-[9/16] w-full max-w-[28rem] min-h-0 shrink-0 flex-1 ${slideDirection === 1 ? 'revolver-slide-in-right' : 'revolver-slide-in-left'}`}
-                  >
-                    <MatchCard
-                      match={activeMatch}
-                      onVote={() => void onVote()}
-                      className="!h-full !min-h-0 !w-full !max-w-none"
-                    />
-                  </div>
-                ) : null}
+                <div className="flex flex-1 justify-center overflow-hidden min-h-[28rem]">
+                  {voteMatches.length > 0 ? (
+                    <div
+                      className="flex gap-8 pl-[calc(50%-14rem)] h-full min-h-[28rem]"
+                      style={{ transform: `translateX(-${currentIndex * 30}rem)` }}
+                    >
+                      {voteMatches.map((match) => (
+                        <div key={match.id} className="aspect-[9/16] w-[28rem] min-h-0 shrink-0">
+                          <MatchCard
+                            match={match}
+                            onVote={() => void onVote()}
+                            className="!h-full !min-h-0 !w-full !max-w-none"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
 
                 {nextMatch ? (
                   <div className="hidden w-[20rem] shrink-0 items-center justify-start opacity-50 md:flex md:aspect-[9/16]">
@@ -944,9 +940,6 @@ function EmptyState() {
     <div className="glass-panel p-12 text-center">
       <p className="text-2xl text-white/75">No featured matches yet</p>
       <p className="mt-3 text-white/55">New clashes will appear here as soon as the arena schedule goes live.</p>
-      <Link href="/login" className="btn-game mt-6 inline-flex items-center gap-2">
-        <LogIn size={18} /> Login to Admin Panel
-      </Link>
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { sql } from '@vercel/postgres'
 import { ensureSchema } from '@/lib/db'
 import { refreshDerivedMatchStatuses } from '@/lib/matches'
@@ -7,6 +8,26 @@ export async function POST(request: Request) {
   try {
     await ensureSchema()
     await refreshDerivedMatchStatuses()
+
+    const cookieStore = cookies()
+    const sessionToken = cookieStore.get('session')?.value
+    if (!sessionToken) {
+      return NextResponse.json(
+        { error: 'Sign in to vote', code: 'auth_required' },
+        { status: 401 }
+      )
+    }
+    const { rows: sessionRows } = await sql`
+      SELECT user_id FROM sessions
+      WHERE session_token = ${sessionToken} AND expires_at > NOW()
+    `
+    if (sessionRows.length === 0) {
+      return NextResponse.json(
+        { error: 'Sign in to vote', code: 'auth_required' },
+        { status: 401 }
+      )
+    }
+
     const { matchId, team } = await request.json()
     
     // Check if match is still upcoming

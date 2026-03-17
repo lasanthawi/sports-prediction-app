@@ -7,7 +7,7 @@ import MatchCard from '@/app/components/MatchCard'
 
 type MatchStatus = 'upcoming' | 'live' | 'finished' | 'cancelled'
 type AdminTab = 'overview' | 'create' | 'matches' | 'automation'
-type MatchView = 'matches' | 'results'
+type MatchView = 'matches' | 'results' | 'unpublished'
 
 interface MatchRecord {
   id: number
@@ -151,11 +151,14 @@ export default function AdminPage() {
     .slice(0, 2)
   const recentRuns = runs.slice(0, 4)
   const queuedFeedItems = feedQueue.filter((item) => item.sync_status === 'queued')
-  const viewMatches = matches.filter((match) => (
-    matchView === 'results'
-      ? match.status === 'finished'
-      : match.status !== 'finished'
-  ))
+  const viewMatches = matches.filter((match) => {
+    if (matchView === 'results') return match.status === 'finished'
+    if (matchView === 'unpublished') {
+      const pub = match.status === 'finished' ? (match.result_publish_status || match.publish_status) || 'draft' : (match.prediction_publish_status || match.publish_status) || 'draft'
+      return pub !== 'published'
+    }
+    return match.status !== 'finished'
+  })
   const filteredMatches = viewMatches
     .filter((match) => {
       const haystack = [
@@ -188,8 +191,6 @@ export default function AdminPage() {
     })
   const totalMatchPages = Math.max(1, Math.ceil(filteredMatches.length / matchesPerPage))
   const visibleMatches = filteredMatches.slice((matchPage - 1) * matchesPerPage, matchPage * matchesPerPage)
-  const featuredMatch = visibleMatches[0] || null
-  const secondaryMatches = visibleMatches.slice(1)
   const allVisibleSelected = visibleMatches.length > 0 && visibleMatches.every((match) => selectedMatchIds.includes(match.id))
 
   useEffect(() => {
@@ -725,6 +726,9 @@ export default function AdminPage() {
                   <button onClick={() => setMatchView('results')} className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${matchView === 'results' ? 'border border-cyan-400/40 bg-cyan-400/10 text-cyan-100' : 'border border-white/10 bg-white/5 text-gray-300'}`}>
                     Results
                   </button>
+                  <button onClick={() => setMatchView('unpublished')} className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${matchView === 'unpublished' ? 'border border-cyan-400/40 bg-cyan-400/10 text-cyan-100' : 'border border-white/10 bg-white/5 text-gray-300'}`}>
+                    Unpublished
+                  </button>
                   <span className="text-sm text-gray-400">Showing {filteredMatches.length} total</span>
                 </div>
                 <div className="text-sm text-gray-400">Page {matchPage} of {totalMatchPages}</div>
@@ -737,53 +741,29 @@ export default function AdminPage() {
                   <p className="text-gray-400">No matches found for the current filters.</p>
                 ) : (
                   <div className="space-y-5">
-                    {featuredMatch ? (
-                      <div className="rounded-2xl border border-white/10 bg-[#12172a]">
-                        {editingId === featuredMatch.id ? (
+                    {visibleMatches.map((match) => (
+                      <div key={match.id} className="rounded-2xl border border-white/10 bg-[#12172a]">
+                        {editingId === match.id ? (
                           <div className="p-4">
-                            <MatchEditForm match={featuredMatch} editForm={editForm} setEditForm={setEditForm} onCancel={stopEdit} onSave={(event) => void saveEdit(event, featuredMatch.id)} saving={jobState[`save-${featuredMatch.id}`]} />
+                            <MatchEditForm match={match} editForm={editForm} setEditForm={setEditForm} onCancel={stopEdit} onSave={(event) => void saveEdit(event, match.id)} saving={jobState[`save-${match.id}`]} />
                           </div>
                         ) : (
                           <FeaturedMatchRow
-                            match={featuredMatch}
-                            selected={selectedMatchIds.includes(featuredMatch.id)}
-                            onSelect={() => toggleMatchSelection(featuredMatch.id)}
-                            onEdit={() => startEdit(featuredMatch)}
-                            onGenerateImage={() => void runMatchAction(featuredMatch.id, 'artwork', 'prediction', 'Individual artwork generation started')}
-                            onGenerateSet={() => void runMatchAction(featuredMatch.id, 'full', 'all', 'Prediction and result cards regenerated')}
-                            onPublish={() => void runMatchAction(featuredMatch.id, 'publish', 'all', featuredMatch.publish_status === 'published' ? 'Match cards are already published' : 'Match assets published')}
-                            onMarkLive={() => void updateMatch(featuredMatch.id, { status: 'live' }, 'Match marked live')}
-                            onFinish={() => void updateMatch(featuredMatch.id, { status: 'finished', winner: featuredMatch.poll_team1_votes >= featuredMatch.poll_team2_votes ? 1 : 2, result_summary: `${featuredMatch.team1} ${featuredMatch.poll_team1_votes} - ${featuredMatch.poll_team2_votes} ${featuredMatch.team2}` }, 'Match marked finished')}
-                            onDelete={() => void removeMatch(featuredMatch.id)}
-                            busy={{ match: !!jobState[`match-${featuredMatch.id}`], image: !!jobState[`artwork-prediction-${featuredMatch.id}`], full: !!jobState[`full-all-${featuredMatch.id}`], publish: !!jobState[`publish-all-${featuredMatch.id}`], delete: !!jobState[`delete-${featuredMatch.id}`] }}
+                            match={match}
+                            selected={selectedMatchIds.includes(match.id)}
+                            onSelect={() => toggleMatchSelection(match.id)}
+                            onEdit={() => startEdit(match)}
+                            onGenerateImage={() => void runMatchAction(match.id, 'artwork', 'prediction', 'Individual artwork generation started')}
+                            onGenerateSet={() => void runMatchAction(match.id, 'full', 'all', 'Prediction and result cards regenerated')}
+                            onPublish={() => void runMatchAction(match.id, 'publish', 'all', match.publish_status === 'published' ? 'Match cards are already published' : 'Match assets published')}
+                            onMarkLive={() => void updateMatch(match.id, { status: 'live' }, 'Match marked live')}
+                            onFinish={() => void updateMatch(match.id, { status: 'finished', winner: match.poll_team1_votes >= match.poll_team2_votes ? 1 : 2, result_summary: `${match.team1} ${match.poll_team1_votes} - ${match.poll_team2_votes} ${match.team2}` }, 'Match marked finished')}
+                            onDelete={() => void removeMatch(match.id)}
+                            busy={{ match: !!jobState[`match-${match.id}`], image: !!jobState[`artwork-prediction-${match.id}`], full: !!jobState[`full-all-${match.id}`], publish: !!jobState[`publish-all-${match.id}`], delete: !!jobState[`delete-${match.id}`] }}
                           />
                         )}
                       </div>
-                    ) : null}
-
-                    {secondaryMatches.length > 0 ? (
-                      <div className="grid gap-4 xl:grid-cols-2">
-                        {secondaryMatches.map((match) => (
-                          <div key={match.id} className="rounded-2xl border border-white/10 bg-[#12172a] p-4">
-                            {editingId === match.id ? (
-                              <MatchEditForm match={match} editForm={editForm} setEditForm={setEditForm} onCancel={stopEdit} onSave={(event) => void saveEdit(event, match.id)} saving={jobState[`save-${match.id}`]} />
-                            ) : (
-                              <CompactMatchCard
-                                match={match}
-                                selected={selectedMatchIds.includes(match.id)}
-                                onSelect={() => toggleMatchSelection(match.id)}
-                                onEdit={() => startEdit(match)}
-                                onGenerate={() => void runMatchAction(match.id, 'artwork', 'prediction', 'Individual artwork generation started')}
-                                onPublish={() => void runMatchAction(match.id, 'publish', 'all', match.publish_status === 'published' ? 'Match cards are already published' : 'Match assets published')}
-                                onMarkLive={() => void updateMatch(match.id, { status: 'live' }, 'Match marked live')}
-                                onDelete={() => void removeMatch(match.id)}
-                                busy={{ image: !!jobState[`artwork-prediction-${match.id}`], publish: !!jobState[`publish-all-${match.id}`], match: !!jobState[`match-${match.id}`], delete: !!jobState[`delete-${match.id}`] }}
-                              />
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
+                    ))}
 
                     <PaginationControls
                       page={matchPage}
@@ -810,98 +790,131 @@ export default function AdminPage() {
         ) : null}
 
         {activeTab === 'automation' ? (
-        <section className="rounded-2xl border border-green-400/20 bg-gray-800/80 p-6">
-          <div className="mb-5 flex items-center justify-between gap-4">
+        <section className="rounded-2xl border border-white/10 bg-gray-800/50 p-6">
+          <div className="mb-6 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-2xl font-bold">Feed Staging Queue</h2>
-              <p className="mt-1 text-sm text-gray-400">
-                Sync pulls real upcoming fixtures into this inbox first. Review them here, then import, generate, or publish one by one.
+              <h2 className="text-xl font-semibold text-white">Feed queue</h2>
+              <p className="mt-0.5 text-sm text-gray-400">
+                Sync fetches fixtures here. Import to matches, then generate assets and publish when ready.
               </p>
             </div>
-            <div className="text-right text-sm text-gray-400">
-              <p>{queuedFeedItems.length} queued</p>
-              <p>{feedQueue.length} total items</p>
-            </div>
+            <p className="text-sm text-gray-400">
+              <span className="font-medium text-white">{feedQueue.length}</span> items
+              {queuedFeedItems.length > 0 ? (
+                <> · <span className="text-cyan-300">{queuedFeedItems.length} queued</span></>
+              ) : null}
+            </p>
           </div>
 
           {feedQueue.length === 0 ? (
-            <p className="text-gray-400">No staged feed items yet. Click Sync Feed to fetch upcoming matches from the configured provider.</p>
+            <p className="rounded-xl border border-white/10 bg-gray-900/40 px-4 py-6 text-center text-sm text-gray-400">
+              Queue is empty. Run Sync Feed to pull in upcoming matches.
+            </p>
           ) : (
-            <div className="overflow-hidden rounded-2xl border border-white/10 bg-gray-900/60">
-              <div className="hidden grid-cols-[minmax(0,1.8fr)_1fr_1fr_0.9fr_2fr] gap-4 border-b border-white/10 bg-white/[0.04] px-5 py-4 text-[0.68rem] font-bold uppercase tracking-[0.2em] text-gray-500 lg:grid">
-                <div>Match</div>
-                <div>Kickoff</div>
-                <div>Feed Source</div>
-                <div>Queue State</div>
-                <div>Actions</div>
-              </div>
-
-              <div className="divide-y divide-white/10">
-                {feedQueue.slice(0, 10).map((item) => (
-                  (() => {
+            <div className="overflow-x-auto rounded-xl border border-white/10 bg-gray-900/40">
+              <table className="w-full min-w-[720px] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-white/10 bg-white/[0.03] text-xs font-medium uppercase tracking-wider text-gray-500">
+                    <th className="w-[min(220px,35%)] py-3 pl-4 pr-3">Match</th>
+                    <th className="w-36 shrink-0 py-3 px-3">When</th>
+                    <th className="w-28 shrink-0 py-3 px-3">Source</th>
+                    <th className="w-24 shrink-0 py-3 px-3">Status</th>
+                    <th className="min-w-[22rem] shrink-0 py-3 pl-3 pr-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {feedQueue.slice(0, 15).map((item) => {
                     const queueAssetStatus = item.status === 'finished'
                       ? item.result_asset_status || null
                       : item.prediction_asset_status || null
                     const queuePublishStatus = item.status === 'finished'
                       ? item.result_publish_status || 'draft'
                       : item.prediction_publish_status || 'draft'
-                    const queuePublished = queuePublishStatus === 'published'
+                    const isGenerated = Boolean(queueAssetStatus && queueAssetStatus !== 'pending')
+                    const isPublished = queuePublishStatus === 'published'
+                    const isImported = Boolean(item.imported_match_id)
+
+                    const stage: 'queued' | 'imported' | 'generated' | 'published' | 'dismissed' =
+                      item.sync_status === 'dismissed' ? 'dismissed'
+                      : item.sync_status === 'queued' && !isImported ? 'queued'
+                      : isImported && !isGenerated ? 'imported'
+                      : isGenerated && !isPublished ? 'generated'
+                      : 'published'
+
+                    const whenStr = new Date(item.match_time).toLocaleString(undefined, {
+                      weekday: 'short',
+                      month: 'numeric',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })
+                    const sourceLabel = item.provider
+                      ? item.provider.replace(/\b\w/g, (c) => c.toUpperCase())
+                      : item.source || '—'
 
                     return (
-                  <div key={item.id} className="px-4 py-4 lg:px-5">
-                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1.8fr)_1fr_1fr_0.9fr_2fr] lg:items-center">
-                      <div className="min-w-0">
-                        <p className="text-base font-bold text-white">{item.team1} vs {item.team2}</p>
-                        <p className="mt-1 text-sm text-gray-400">
-                          {item.sport}
-                          {item.league ? ` - ${item.league}` : ''}
-                          {item.venue ? ` - ${item.venue}` : ''}
-                        </p>
-                        <p className="mt-2 text-xs uppercase tracking-[0.18em] text-gray-500">
-                          queue #{item.id}{item.imported_match_id ? ` - imported as #${item.imported_match_id}` : ''}
-                        </p>
-                      </div>
-
-                      <div>
-                        <p className="text-sm font-semibold text-white">{new Date(item.match_time).toLocaleDateString()}</p>
-                        <p className="mt-1 text-sm text-gray-400">{new Date(item.match_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                      </div>
-
-                      <div>
-                        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-200">{item.provider}</p>
-                        <p className="mt-1 text-sm text-gray-400">{item.source}</p>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2">
-                        <StatusBadge label="Fetch" value={item.sync_status} tone={feedFetchTone(item.sync_status)} />
-                        {item.imported_match_id ? (
-                          <>
-                            <StatusBadge label="Generated" value={queueAssetStatus || 'pending'} tone={assetTone(queueAssetStatus)} />
-                            <StatusBadge label="Published" value={queuePublishStatus || 'draft'} tone={publishTone(queuePublishStatus)} />
-                          </>
-                        ) : null}
-                      </div>
-
-                      <div className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1 lg:justify-end">
-                        <ToolbarButton compact onClick={() => void handleFeedQueueAction(item.id, 'import', 'Feed item imported to matches')} disabled={item.sync_status !== 'queued' || jobState[`feed-import-${item.id}`]} tone="slate">
-                          {item.sync_status === 'imported' ? 'Imported' : 'Import'}
-                        </ToolbarButton>
-                        <ToolbarButton compact onClick={() => void handleFeedQueueAction(item.id, 'generate', 'Feed item imported and asset generation started')} disabled={item.sync_status !== 'queued' || jobState[`feed-generate-${item.id}`]} tone="violet">
-                          {queueAssetStatus && queueAssetStatus !== 'pending' ? 'Generated' : 'Generate'}
-                        </ToolbarButton>
-                        <ToolbarButton compact onClick={() => void handleFeedQueueAction(item.id, 'publish', 'Feed item imported, generated, and published')} disabled={item.sync_status !== 'queued' || jobState[`feed-publish-${item.id}`] || queuePublished} tone="emerald">
-                          {queuePublished ? 'Published' : queuePublishStatus === 'ready' ? 'Publish Ready' : 'Publish'}
-                        </ToolbarButton>
-                        <ToolbarButton compact onClick={() => void handleFeedQueueAction(item.id, 'dismiss', 'Feed item dismissed')} disabled={item.sync_status !== 'queued' || jobState[`feed-dismiss-${item.id}`]} tone="rose">
-                          Dismiss
-                        </ToolbarButton>
-                      </div>
-                    </div>
-                  </div>
+                      <tr key={item.id} className="align-middle">
+                        <td className="py-3 pl-4 pr-3">
+                          <p className="truncate font-medium text-white">{item.team1} vs {item.team2}</p>
+                          <p className="truncate text-xs text-gray-500">
+                            {[item.sport, item.league].filter(Boolean).join(' · ') || '—'}
+                          </p>
+                        </td>
+                        <td className="py-3 px-3 text-gray-300">{whenStr}</td>
+                        <td className="py-3 px-3 text-gray-400">{sourceLabel}</td>
+                        <td className="py-3 px-3">
+                          <span className={[
+                            'inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize whitespace-nowrap',
+                            stage === 'queued' && 'border-cyan-400/40 bg-cyan-400/10 text-cyan-200',
+                            stage === 'imported' && 'border-emerald-400/40 bg-emerald-400/10 text-emerald-200',
+                            stage === 'generated' && 'border-violet-400/40 bg-violet-400/10 text-violet-200',
+                            stage === 'published' && 'border-green-400/40 bg-green-400/10 text-green-200',
+                            stage === 'dismissed' && 'border-white/10 bg-white/5 text-gray-400',
+                          ].filter(Boolean).join(' ') || ''}>
+                            {stage}
+                          </span>
+                        </td>
+                        <td className="min-w-[22rem] py-3 pl-3 pr-4 text-right align-middle">
+                          <div className="inline-flex flex-nowrap items-center justify-end gap-2">
+                            <ToolbarButton
+                              compact
+                              onClick={() => void handleFeedQueueAction(item.id, 'import', 'Imported to matches')}
+                              disabled={item.sync_status !== 'queued' || jobState[`feed-import-${item.id}`]}
+                              tone="slate"
+                            >
+                              {isImported ? '✓ Import' : 'Import'}
+                            </ToolbarButton>
+                            <ToolbarButton
+                              compact
+                              onClick={() => void handleFeedQueueAction(item.id, 'generate', 'Generation started')}
+                              disabled={item.sync_status !== 'queued' || jobState[`feed-generate-${item.id}`]}
+                              tone="violet"
+                            >
+                              {isGenerated ? '✓ Generate' : 'Generate'}
+                            </ToolbarButton>
+                            <ToolbarButton
+                              compact
+                              onClick={() => void handleFeedQueueAction(item.id, 'publish', 'Published')}
+                              disabled={item.sync_status !== 'queued' || jobState[`feed-publish-${item.id}`] || isPublished}
+                              tone="emerald"
+                            >
+                              {isPublished ? '✓ Publish' : 'Publish'}
+                            </ToolbarButton>
+                            <ToolbarButton
+                              compact
+                              onClick={() => void handleFeedQueueAction(item.id, 'dismiss', 'Dismissed')}
+                              disabled={item.sync_status !== 'queued' || jobState[`feed-dismiss-${item.id}`]}
+                              tone="rose"
+                            >
+                              Dismiss
+                            </ToolbarButton>
+                          </div>
+                        </td>
+                      </tr>
                     )
-                  })()
-                ))}
-              </div>
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </section>
@@ -1263,14 +1276,13 @@ function FeaturedMatchRow({
   const currentAssetStatus = activeAssetStatus(match)
   const currentPublishStatus = activePublishStatus(match)
   const isPublished = currentPublishStatus === 'published'
-  const imageUrl = match.prediction_artwork_url || match.prediction_card_url || match.result_artwork_url || match.result_card_url || null
 
   return (
-    <div className="grid gap-0 xl:grid-cols-[320px_minmax(0,1fr)] xl:items-stretch">
-      <div className="flex border-b border-white/10 p-0 xl:border-b-0 xl:border-r">
-        <ThumbnailPreview imageUrl={imageUrl} title={`${match.team1} vs ${match.team2}`} className="!h-full !w-full !max-w-none !rounded-none xl:!rounded-l-2xl xl:!rounded-r-none" />
+    <div className="grid gap-0 xl:grid-cols-[minmax(0,320px)_minmax(0,1fr)] xl:items-stretch">
+      <div className="flex aspect-[9/16] max-h-[28rem] w-full max-w-[320px] border-b border-white/10 shrink-0 justify-center overflow-hidden rounded-t-2xl bg-black/20 xl:max-h-none xl:border-b-0 xl:border-r xl:rounded-l-2xl xl:rounded-tr-none">
+        <MatchCard match={match} interactive={false} className="!h-full !min-h-0 !w-full !max-w-none" />
       </div>
-      <div className="p-4">
+      <div className="p-4 min-w-0">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h3 className="text-3xl font-black tracking-tight text-white">{match.team1} vs {match.team2}</h3>

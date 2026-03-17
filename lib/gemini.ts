@@ -2,7 +2,7 @@ import sharp from 'sharp'
 import { MatchRecord } from './types'
 
 const DEFAULT_MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image-preview'
-const PROMPT_VERSION = 'gemini-match-card-v2'
+const PROMPT_VERSION = 'gemini-match-card-v3'
 
 function safe(value: string | null | undefined, fallback: string) {
   return value?.trim() || fallback
@@ -75,9 +75,10 @@ export function buildGeminiPrompt(match: MatchRecord, variant: 'prediction' | 'r
     `Rivalry angle: ${safe(match.rivalry_tagline, `${match.team1} and ${match.team2} in a high-stakes showdown`)}.`,
     variantBrief,
     'Scene should look like a dramatic match battle poster in a realistic stadium, with cinematic lighting, atmospheric smoke, sparks, and energy between the players.',
-    'Do not include any text, logos, scoreboards, badges, UI buttons, countdowns, percentage bars, card frames, packaging, or watermarks.',
-    'Do not generate a flyer template or trading card template. This is only the raw realistic background artwork.',
-    'Reserve clear negative space for a top title band, a center versus zone, a lower vote CTA area, and a footer strip.',
+    'CRITICAL: The image must contain ZERO text, titles, phrases, words, typography, captions, labels, team names, slogans, headlines, or any written content. Do not render any letters, numbers, or symbols anywhere in the image. Text and titles will be overlaid in the UI; the artwork must be purely visual.',
+    'Do not include any logos, scoreboards, badges, UI elements, countdowns, percentage bars, card frames, packaging, or watermarks.',
+    'Do not generate a flyer template or trading card template. This is only the raw realistic background artwork with no text of any kind.',
+    'Reserve clear negative space for a top title band, a center versus zone, a lower vote CTA area, and a footer strip (these will be added as overlays; do not draw any text in them).',
     'Faces must stay visible and not be covered by foreground effects.',
     'Output polished realistic vertical key art suitable as the background of a premium sports prediction card.',
   ].join(' ')

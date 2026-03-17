@@ -287,33 +287,3 @@ body {
   }
 }
 
-/* Revolver / carousel card transition */
-@keyframes revolver-slide-in-right {
-  from {
-    opacity: 0.4;
-    transform: translateX(4rem) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0) scale(1);
-  }
-}
-
-@keyframes revolver-slide-in-left {
-  from {
-    opacity: 0.4;
-    transform: translateX(-4rem) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0) scale(1);
-  }
-}
-
-.revolver-slide-in-right {
-  animation: revolver-slide-in-right 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-
-.revolver-slide-in-left {
-  animation: revolver-slide-in-left 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}

@@ -97,6 +97,10 @@ export default function MatchCard({ match, onVote, onCardClick, interactive = tr
 
       const payload = await res.json()
       if (!res.ok) {
+        if (res.status === 401 && payload?.code === 'auth_required') {
+          window.location.href = '/login?from=vote'
+          return
+        }
         throw new Error(payload.error || 'Vote failed')
       }
 
