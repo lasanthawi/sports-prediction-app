@@ -680,8 +680,13 @@ function ArenaVotingOverlay({
                     className="flex h-full shrink-0 items-center justify-center px-2"
                     style={{ width: `${100 / voteMatches.length}%` }}
                   >
-                    <div className="w-full max-w-[23.5rem]">
-                      <div className="aspect-[9/16] w-full overflow-hidden rounded-xl shadow-xl">
+                    <div className="w-full">
+                      <div
+                        className="mx-auto aspect-[9/16] w-full max-w-full overflow-hidden rounded-xl shadow-xl"
+                        style={{
+                          width: 'min(96vw, calc((100dvh - 6.5rem) * 9 / 16))',
+                        }}
+                      >
                         <MatchCard
                           match={match}
                           onVote={() => void onVote()}
