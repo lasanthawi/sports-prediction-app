@@ -271,8 +271,8 @@ export default function Home() {
                           <MatchCard
                             match={match}
                             onVote={() => void fetchMatches()}
+                            onCardClick={() => openMatchViewer(match.id)}
                             className="mx-auto"
-                            footerSlot={<CardLinkBar matchId={match.id} onOpen={() => openMatchViewer(match.id)} />}
                           />
                         </div>
                       ))}
@@ -492,8 +492,8 @@ function MobileArenaApp({
                   <MatchCard
                     match={match}
                     onVote={() => void onRefresh()}
+                    onCardClick={() => onOpenMatch(match.id)}
                     className="!min-h-[24rem] !max-w-none"
-                    footerSlot={<CardLinkBar matchId={match.id} onOpen={() => onOpenMatch(match.id)} />}
                   />
                 </div>
               ))}
@@ -552,6 +552,8 @@ function ArenaVotingOverlay({
   }, [activeMatchId, voteMatches])
 
   const activeMatch = voteMatches[currentIndex] || null
+  const previousMatch = currentIndex > 0 ? voteMatches[currentIndex - 1] : null
+  const nextMatch = currentIndex < voteMatches.length - 1 ? voteMatches[currentIndex + 1] : null
 
   function goToPrevious() {
     setCurrentIndex((current) => Math.max(0, current - 1))
@@ -614,18 +616,39 @@ function ArenaVotingOverlay({
                 <ChevronLeft size={20} />
               </button>
               <div
-                className="flex h-full w-full items-center justify-center"
+                className="flex h-full w-full items-center justify-center gap-4 md:gap-6"
                 onTouchStart={(event) => setTouchStart(event.changedTouches[0]?.clientX ?? null)}
                 onTouchEnd={(event) => handleTouchEnd(event.changedTouches[0]?.clientX ?? 0)}
               >
+                {previousMatch ? (
+                  <div className="hidden md:flex md:h-[calc(100dvh-11rem)] md:w-[16rem] md:shrink-0 md:items-center md:justify-end md:opacity-40">
+                    <MatchCard
+                      match={previousMatch}
+                      onVote={() => void onVote()}
+                      onCardClick={goToPrevious}
+                      className="!h-full !min-h-0 !w-full !max-w-[15rem] scale-[0.9]"
+                    />
+                  </div>
+                ) : <div className="hidden md:block md:w-[16rem] md:shrink-0" />}
+
                 {activeMatch ? (
                   <MatchCard
                     match={activeMatch}
                     onVote={() => void onVote()}
                     className="!h-[calc(100dvh-8.75rem)] !min-h-0 !w-full !max-w-[min(100%,28rem)] md:!max-w-[30rem]"
-                    footerSlot={<CardLinkBar matchId={activeMatch.id} onOpen={() => undefined} linked />}
                   />
                 ) : null}
+
+                {nextMatch ? (
+                  <div className="hidden md:flex md:h-[calc(100dvh-11rem)] md:w-[16rem] md:shrink-0 md:items-center md:justify-start md:opacity-40">
+                    <MatchCard
+                      match={nextMatch}
+                      onVote={() => void onVote()}
+                      onCardClick={goToNext}
+                      className="!h-full !min-h-0 !w-full !max-w-[15rem] scale-[0.9]"
+                    />
+                  </div>
+                ) : <div className="hidden md:block md:w-[16rem] md:shrink-0" />}
               </div>
               <button
                 onClick={goToNext}
@@ -646,33 +669,6 @@ function ArenaVotingOverlay({
           </>
         )}
       </div>
-    </div>
-  )
-}
-
-function CardLinkBar({
-  matchId,
-  onOpen,
-  linked = false,
-}: {
-  matchId: number
-  onOpen: () => void
-  linked?: boolean
-}) {
-  return (
-    <div className="grid grid-cols-2 gap-2">
-      <button
-        onClick={onOpen}
-        className="rounded-[0.95rem] border border-cyan-300/30 bg-cyan-400/8 px-3 py-2 text-center text-[0.62rem] font-bold uppercase tracking-[0.16em] text-cyan-100 transition hover:border-cyan-200/50 hover:text-white"
-      >
-        Vote
-      </button>
-      <Link
-        href={`/?match=${matchId}`}
-        className="rounded-[0.95rem] border border-white/15 bg-black/18 px-3 py-2 text-center text-[0.62rem] font-bold uppercase tracking-[0.16em] text-white/85 transition hover:border-white/30 hover:text-white"
-      >
-        {linked ? 'URL' : 'Link'}
-      </Link>
     </div>
   )
 }

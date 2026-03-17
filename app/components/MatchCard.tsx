@@ -24,6 +24,7 @@ interface MatchCardProps {
     card_asset_url?: string | null
   }
   onVote?: () => void
+  onCardClick?: () => void
   interactive?: boolean
   footerSlot?: ReactNode
   className?: string
@@ -37,7 +38,7 @@ interface CountdownState {
   seconds?: number
 }
 
-export default function MatchCard({ match, onVote, interactive = true, footerSlot, className = '' }: MatchCardProps) {
+export default function MatchCard({ match, onVote, onCardClick, interactive = true, footerSlot, className = '' }: MatchCardProps) {
   const [voted, setVoted] = useState(false)
   const [selectedTeam, setSelectedTeam] = useState<number | null>(null)
   const [timeLeft, setTimeLeft] = useState<CountdownState>({})
@@ -112,7 +113,18 @@ export default function MatchCard({ match, onVote, interactive = true, footerSlo
   }
 
   return (
-    <article className={`match-poster pack-enter ${votedFlash ? 'vote-burst' : 'pack-float'} ${!interactive ? 'admin-poster' : ''} ${className}`}>
+    <article
+      className={`match-poster pack-enter ${votedFlash ? 'vote-burst' : 'pack-float'} ${!interactive ? 'admin-poster' : ''} ${onCardClick ? 'cursor-pointer' : ''} ${className}`}
+      onClick={onCardClick}
+      role={onCardClick ? 'button' : undefined}
+      tabIndex={onCardClick ? 0 : undefined}
+      onKeyDown={onCardClick ? (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onCardClick()
+        }
+      } : undefined}
+    >
       <div className="poster-noise" />
       <div className="poster-vignette" />
       <div
@@ -240,7 +252,10 @@ function SideButton({
 
   return (
     <button
-      onClick={onClick}
+      onClick={(event) => {
+        event.stopPropagation()
+        onClick()
+      }}
       disabled={!interactive || disabled}
       className={`relative overflow-hidden rounded-[1rem] border bg-black/28 px-3 py-2 text-left transition ${toneClass} ${interactive && !disabled ? 'hover:-translate-y-1 hover:scale-[1.01]' : 'cursor-default'} ${selected ? 'ring-2 ring-yellow-300' : ''}`}
     >
