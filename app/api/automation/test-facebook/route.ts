@@ -59,11 +59,11 @@ export async function POST(request: Request) {
       assetId,
       assetUrl,
       facebook,
-      hint: !facebook.ok && !facebook.skipped
-        ? 'Check the error above. Common: invalid token, wrong permissions, or Facebook cannot fetch the image URL (use a public HTTPS URL, not localhost).'
-        : facebook.skipped
+      hint: facebook.ok
+        ? 'Story was posted to your Page. Check Facebook.'
+        : 'skipped' in facebook && facebook.skipped
           ? 'Set FB_PAGE_ID and FB_PAGE_ACCESS_TOKEN in your environment to post to Facebook.'
-          : 'Story was posted to your Page. Check Facebook.',
+          : 'Check the error above. Common: invalid token, wrong permissions, or Facebook cannot fetch the image URL (use a public HTTPS URL, not localhost).',
     })
   } catch (err) {
     console.error('Test Facebook error:', err)
