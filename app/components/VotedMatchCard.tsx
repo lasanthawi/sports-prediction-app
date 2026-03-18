@@ -41,7 +41,7 @@ export default function VotedMatchCard({ match, className = '' }: VotedMatchCard
   const team2Pct = totalVotes > 0 ? Math.round((match.poll_team2_votes / totalVotes) * 100) : 50
 
   return (
-    <div className={`relative aspect-[9/16] md:aspect-[3/4] rounded-[1.5rem] overflow-hidden shadow-2xl border border-white/10 group transition-all hover:scale-[1.02] ${className}`}>
+    <Link href="/player/dashboard" className={`block relative aspect-[9/16] md:aspect-[3/4] rounded-[1.5rem] overflow-hidden shadow-2xl border border-white/10 group transition-all hover:scale-[1.02] ${className}`}>
       <div 
         className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
         style={{
@@ -89,6 +89,6 @@ export default function VotedMatchCard({ match, className = '' }: VotedMatchCard
           </div>
         </div>
       </div>
-    </div>
+    </Link>
   )
 }
