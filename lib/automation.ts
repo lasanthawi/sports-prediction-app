@@ -655,3 +655,21 @@ export async function getAssetsForMatch(matchId: number) {
   await ensureSchema()
   return getMatchAssets(matchId)
 }
+
+/** Returns the card SVG rebuilt from the current template (for PNG export). Use when serving ?format=png so the latest design is used. */
+export async function getCardSvgForPublish(cardAssetId: number): Promise<Buffer | null> {
+  await ensureSchema()
+  const card = await getAsset(cardAssetId)
+  if (!card || card.asset_type !== 'card' || card.mime_type !== 'image/svg+xml') return null
+  const match = await getMatch(card.match_id)
+  if (!match) return null
+  const { rows } = await sql<AssetRecord>`
+    SELECT * FROM generated_assets
+    WHERE match_id = ${card.match_id} AND asset_type = 'artwork' AND asset_variant = ${card.asset_variant}
+    LIMIT 1
+  `
+  const artwork = rows[0]
+  if (!artwork) return null
+  const svg = buildRenderedCardSvg(match, card.asset_variant as AssetVariant, artwork)
+  return Buffer.from(svg, 'utf8')
+}
