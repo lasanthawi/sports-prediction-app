@@ -22,7 +22,8 @@ async function inlineEmbeddedImagesAsPng(svgBuffer: Buffer): Promise<Buffer> {
       `${attr.replace(':', '\\:')}="(data:image/([^;]+);(base64|utf8),)([^"]+)"`,
       'g'
     )
-    for (const match of [...out.matchAll(dataUriRegex)]) {
+    const matches = Array.from(out.matchAll(dataUriRegex))
+    for (const match of matches) {
       const mime = match[2]
       const enc = match[3]
       const payload = match[4]
