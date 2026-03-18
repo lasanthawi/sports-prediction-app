@@ -501,21 +501,24 @@ function MobileArenaApp({
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3 overflow-hidden">
+            <div className="grid grid-cols-2 gap-2 overflow-hidden sm:gap-3">
               {matches.slice(0, 4).map((match) => (
-                <div key={match.id} className="flex min-w-0 flex-col rounded-[1.75rem] border border-white/10 bg-black/20 p-2 backdrop-blur-md">
-                  <div className="mb-2 flex shrink-0 items-center justify-between gap-2 px-1">
-                    <p className="min-w-0 truncate text-sm font-black text-white">{match.team1} vs {match.team2}</p>
-                    <span className="shrink-0 rounded-full border border-green-300/20 bg-green-300/10 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-green-200">
+                <div key={match.id} className="flex min-w-0 flex-col rounded-[1.25rem] border border-white/10 bg-black/20 p-1.5 backdrop-blur-md sm:rounded-[1.75rem] sm:p-2">
+                  <div className="mb-1 flex shrink-0 items-center justify-between gap-1 px-0.5 sm:mb-2 sm:px-1">
+                    <p className="min-w-0 truncate text-xs font-black text-white sm:text-sm" title={`${match.team1} vs ${match.team2}`}>
+                      {match.team1} vs {match.team2}
+                    </p>
+                    <span className="shrink-0 rounded-full border border-green-300/20 bg-green-300/10 px-1.5 py-0.5 text-[0.55rem] font-bold uppercase tracking-wider text-green-200 sm:px-2 sm:text-[0.6rem]">
                       {match.status}
                     </span>
                   </div>
-                  <div className="relative min-h-0 w-full flex-1 overflow-hidden rounded-xl" style={{ aspectRatio: '9/16' }}>
+                  <div className="relative min-h-0 w-full flex-1 overflow-hidden rounded-lg" style={{ aspectRatio: '9/16' }}>
                     <MatchCard
                       match={match}
                       onVote={() => void onRefresh()}
                       onCardClick={() => onOpenMatch(match.id)}
                       className="!h-full !min-h-0 !w-full !max-w-none"
+                      compact
                     />
                   </div>
                 </div>
@@ -652,7 +655,8 @@ function ArenaVotingOverlay({
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(34,211,238,0.16),transparent_26%),radial-gradient(circle_at_85%_15%,rgba(244,114,182,0.18),transparent_24%)]" />
 
       <div className="relative flex h-[100dvh] flex-col overflow-hidden px-4 py-4">
-        <div className="mb-4 flex items-center justify-between gap-3">
+        {/* Top bar: hidden on mobile; on desktop shows Exit, title, slide count */}
+        <div className="mb-4 hidden items-center justify-between gap-3 md:flex">
           <button
             onClick={onClose}
             className="glass-button inline-flex items-center gap-2 !rounded-xl px-4 py-2.5 text-sm"
