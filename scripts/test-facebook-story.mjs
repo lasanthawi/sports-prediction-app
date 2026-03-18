@@ -56,6 +56,10 @@ async function run() {
           console.log('\nYour asset URL is localhost — Facebook’s servers cannot reach it.')
           console.log('Deploy the app (e.g. Vercel) or use ngrok, then set NEXT_PUBLIC_APP_URL to that public HTTPS URL.')
         }
+        if (data.facebook.error && String(data.facebook.error).includes('image file')) {
+          console.log('\nTip: Run test against your deployed app so Facebook fetches the image from the same server/DB:')
+          console.log('  yarn test:facebook-story', matchId, 'https://sports-prediction-app-zeta.vercel.app')
+        }
       }
       return
     } catch (e) {

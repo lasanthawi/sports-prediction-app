@@ -78,9 +78,13 @@ export async function GET(request: Request, { params }: RouteContext) {
           : null
       let svgBuffer = cardSvg ?? rawBody
       if (asset.asset_type === 'card') {
-        const svgStr = svgBuffer.toString('utf8')
-        const svgWithPaths = await replaceTextWithPaths(svgStr)
-        svgBuffer = Buffer.from(svgWithPaths, 'utf8')
+        try {
+          const svgStr = svgBuffer.toString('utf8')
+          const svgWithPaths = await replaceTextWithPaths(svgStr)
+          svgBuffer = Buffer.from(svgWithPaths, 'utf8')
+        } catch (textErr) {
+          console.warn('[assets] Text-to-path failed, using SVG as-is:', textErr)
+        }
       }
       const svgForSharp = await inlineEmbeddedImagesAsPng(svgBuffer)
       const pngBuffer = await sharp(svgForSharp, { density: SVG_PNG_DENSITY })

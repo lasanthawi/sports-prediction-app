@@ -13,12 +13,20 @@ let fontCache: ReturnType<typeof opentype.parse> | null = null
 
 async function loadFont() {
   if (fontCache) return fontCache
-  const res = await fetch(FONT_URL)
-  if (!res.ok) throw new Error(`Font fetch failed: ${res.status}`)
-  const arrayBuffer = await res.arrayBuffer()
-  const font = opentype.parse(arrayBuffer)
-  fontCache = font
-  return font
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 15000)
+  try {
+    const res = await fetch(FONT_URL, { signal: controller.signal })
+    clearTimeout(timeout)
+    if (!res.ok) throw new Error(`Font fetch failed: ${res.status}`)
+    const arrayBuffer = await res.arrayBuffer()
+    const font = opentype.parse(arrayBuffer)
+    fontCache = font
+    return font
+  } catch (e) {
+    clearTimeout(timeout)
+    throw e
+  }
 }
 
 function decodeXmlEntities(str: string): string {
