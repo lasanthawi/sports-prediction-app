@@ -5,11 +5,12 @@ const FB_GRAPH_VERSION = 'v19.0'
  * 1. Upload photo via Page Photos API (published=false) → get photo_id
  * 2. Publish story via Page Photo Stories API with photo_id
  *
+ * We send a URL to Facebook (not base64). FB’s servers fetch the image from that URL,
+ * so the response must be raw image bytes with a supported type. FB Stories accept
+ * only: .jpeg, .bmp, .png, .gif, .tiff. SVG is not supported.
+ *
  * Requires env: FB_PAGE_ID, FB_PAGE_ACCESS_TOKEN.
  * Page token must have: pages_show_list, pages_read_engagement, pages_manage_posts.
- *
- * Note: Facebook Stories accept .jpeg, .bmp, .png, .gif, .tiff. If assetUrl serves
- * SVG (image/svg+xml), the Graph API may reject it; consider serving PNG for FB.
  */
 export async function publishToFacebookStory(assetUrl: string, _caption?: string) {
   const pageId = process.env.FB_PAGE_ID

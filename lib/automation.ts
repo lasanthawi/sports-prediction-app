@@ -463,7 +463,7 @@ async function publishAssets(rows: AssetRecord[], mode: 'queue-only' | 'webhook'
         WHERE id = ${asset.id}
       `
 
-      const assetUrl = `${getBaseUrl()}/api/assets/${asset.id}`
+      const assetUrl = `${getBaseUrl()}/api/assets/${asset.id}?format=png`
       await publishToFacebookStory(assetUrl)
     }
 
@@ -515,7 +515,7 @@ async function publishAssets(rows: AssetRecord[], mode: 'queue-only' | 'webhook'
 
     if (response.ok) {
       published += 1
-      const assetUrl = `${getBaseUrl()}/api/assets/${asset.id}`
+      const assetUrl = `${getBaseUrl()}/api/assets/${asset.id}?format=png`
       await publishToFacebookStory(assetUrl)
     }
   }
@@ -553,6 +553,18 @@ export async function publishReadyAssets() {
   `
 
   return publishAssets(rows, 'queue-only')
+}
+
+/** Set a match's card assets to ready so they can be (re-)published. */
+export async function setMatchCardsReadyForPublish(matchId: number): Promise<number> {
+  await ensureSchema()
+  const { rows } = await sql`
+    UPDATE generated_assets
+    SET published_status = 'ready', published_to = NULL, published_at = NULL
+    WHERE match_id = ${matchId} AND asset_type = 'card'
+    RETURNING id
+  `
+  return rows?.length ?? 0
 }
 
 export async function publishMatchAssets(matchId: number) {
