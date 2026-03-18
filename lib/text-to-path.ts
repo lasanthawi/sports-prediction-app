@@ -56,6 +56,7 @@ async function loadFont() {
       }
       const font = opentype.parse(ab)
       fontCache = font
+      console.info('[text-to-path] Loaded font from', fontPath)
       return font
     }
   }
