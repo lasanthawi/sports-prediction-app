@@ -55,7 +55,7 @@ async function run() {
         process.exit(1);
       }
       if (publishMatch && data.matchLabel != null) {
-        console.log(JSON.stringify({
+        const out = {
           matchId: data.matchId,
           match: data.matchLabel,
           cardsResetToReady: data.cardsResetToReady,
@@ -63,7 +63,19 @@ async function run() {
           queued: data.queued,
           skipped: data.skipped,
           message: data.message,
-        }, null, 2));
+          facebook: data.facebook,
+        };
+        console.log(JSON.stringify(out, null, 2));
+        if (data.facebook) {
+          if (data.facebook.skipped || data.facebook.failed > 0) {
+            console.log('\nFacebook Story: did not post to your Page. Check:', data.facebook.errors?.join(' ') || data.facebook);
+            if (data.facebook.errors?.some((e) => e.includes('localhost') || e.includes('public HTTPS'))) {
+              console.log('Tip: Set NEXT_PUBLIC_APP_URL to your public app URL (e.g. Vercel or ngrok). Facebook cannot fetch images from localhost.');
+            }
+          } else if (data.facebook.success > 0) {
+            console.log('\nFacebook Story: successfully posted', data.facebook.success, 'story/stories to your Page.');
+          }
+        }
         return;
       }
       const summary = {

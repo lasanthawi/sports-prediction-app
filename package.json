@@ -7,7 +7,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test:publish": "node scripts/test-publish.mjs"
+    "test:publish": "node scripts/test-publish.mjs",
+    "test:facebook-story": "node scripts/test-facebook-story.mjs"
   },
   "dependencies": {
     "@vercel/postgres": "^0.5.1",

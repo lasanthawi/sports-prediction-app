@@ -12,13 +12,23 @@ const FB_GRAPH_VERSION = 'v19.0'
  * Requires env: FB_PAGE_ID, FB_PAGE_ACCESS_TOKEN.
  * Page token must have: pages_show_list, pages_read_engagement, pages_manage_posts.
  */
-export async function publishToFacebookStory(assetUrl: string, _caption?: string) {
+export type FacebookStoryResult =
+  | { ok: true; postId?: string }
+  | { ok: false; skipped: true; reason: string }
+  | { ok: false; skipped: false; error: string }
+
+export async function publishToFacebookStory(assetUrl: string, _caption?: string): Promise<FacebookStoryResult> {
   const pageId = process.env.FB_PAGE_ID
   const accessToken = process.env.FB_PAGE_ACCESS_TOKEN
 
   if (!pageId || !accessToken) {
     console.log('[Facebook] Skipping FB Story publish. FB_PAGE_ID or FB_PAGE_ACCESS_TOKEN not configured.')
-    return false
+    return { ok: false, skipped: true, reason: 'FB_PAGE_ID or FB_PAGE_ACCESS_TOKEN not set' }
+  }
+
+  if (assetUrl.startsWith('http://localhost') || assetUrl.startsWith('http://127.0.0.1')) {
+    console.error('[Facebook] Asset URL is localhost; Facebook’s servers cannot fetch it. Set NEXT_PUBLIC_APP_URL to a public HTTPS URL (e.g. your Vercel URL or ngrok).')
+    return { ok: false, skipped: false, error: 'Asset URL must be public HTTPS. Facebook cannot fetch localhost. Set NEXT_PUBLIC_APP_URL to your deployed URL.' }
   }
 
   console.log(`[Facebook] Publishing story to Page ${pageId}...`)
@@ -67,10 +77,12 @@ export async function publishToFacebookStory(assetUrl: string, _caption?: string
       throw new Error(`Facebook API Error: ${storyData.error?.message || 'Story publish failed'}`)
     }
 
-    console.log('[Facebook] Successfully published story ID:', storyData.post_id || storyData.id)
-    return true
+    const postId = storyData.post_id || storyData.id
+    console.log('[Facebook] Successfully published story ID:', postId)
+    return { ok: true, postId: String(postId) }
   } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error)
     console.error('[Facebook] Failed to publish story:', error)
-    return false
+    return { ok: false, skipped: false, error: msg }
   }
 }

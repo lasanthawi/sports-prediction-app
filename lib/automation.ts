@@ -15,6 +15,15 @@ interface UnexpectedAssetTypeSummary {
   count: number
 }
 
+interface FacebookPublishSummary {
+  attempted: number
+  success: number
+  failed: number
+  skipped: boolean
+  errors: string[]
+  postIds: string[]
+}
+
 interface PublishAssetsResult {
   published: number
   queued: number
@@ -25,6 +34,7 @@ interface PublishAssetsResult {
   anomalies: {
     unexpectedAssetTypes: UnexpectedAssetTypeSummary[]
   }
+  facebook?: FacebookPublishSummary
 }
 
 function getBaseUrl() {
@@ -452,6 +462,9 @@ async function publishAssets(rows: AssetRecord[], mode: 'queue-only' | 'webhook'
   }
 
   const webhookUrl = process.env.PUBLISH_WEBHOOK_URL
+  const baseUrl = getBaseUrl()
+  const facebookSummary: FacebookPublishSummary = { attempted: 0, success: 0, failed: 0, skipped: false, errors: [], postIds: [] }
+
   if (!webhookUrl) {
     for (const asset of rows) {
       await sql`
@@ -463,14 +476,26 @@ async function publishAssets(rows: AssetRecord[], mode: 'queue-only' | 'webhook'
         WHERE id = ${asset.id}
       `
 
-      const assetUrl = `${getBaseUrl()}/api/assets/${asset.id}?format=png`
-      await publishToFacebookStory(assetUrl)
+      const assetUrl = `${baseUrl}/api/assets/${asset.id}?format=png`
+      const fb = await publishToFacebookStory(assetUrl)
+      facebookSummary.attempted += 1
+      if (fb.ok) {
+        facebookSummary.success += 1
+        if (fb.postId) facebookSummary.postIds.push(fb.postId)
+      } else if (fb.skipped) {
+        facebookSummary.skipped = true
+        if (!facebookSummary.errors.includes(fb.reason)) facebookSummary.errors.push(fb.reason)
+      } else {
+        facebookSummary.failed += 1
+        if (fb.error) facebookSummary.errors.push(fb.error)
+      }
     }
 
-    const message = `Published ${rows.length} card asset${rows.length === 1 ? '' : 's'} to the local app. External webhook is not configured.`
+    const message = `Published ${rows.length} card asset${rows.length === 1 ? '' : 's'} (DB). ${facebookSummary.skipped ? 'Facebook skipped: ' + facebookSummary.errors[0] : facebookSummary.success ? `Facebook: ${facebookSummary.success} story/stories posted.` : facebookSummary.failed ? 'Facebook: ' + (facebookSummary.errors[0] ?? 'failed') : 'No Facebook attempt.'}`
     await logAutomationRun('publish_assets', 'skipped', message, {
       count: rows.length,
       mode,
+      facebook: facebookSummary,
       anomalies: { unexpectedAssetTypes },
     })
     return {
@@ -481,6 +506,7 @@ async function publishAssets(rows: AssetRecord[], mode: 'queue-only' | 'webhook'
       skipped: false,
       message,
       anomalies: { unexpectedAssetTypes },
+      facebook: facebookSummary,
     }
   }
 
@@ -516,7 +542,18 @@ async function publishAssets(rows: AssetRecord[], mode: 'queue-only' | 'webhook'
     if (response.ok) {
       published += 1
       const assetUrl = `${getBaseUrl()}/api/assets/${asset.id}?format=png`
-      await publishToFacebookStory(assetUrl)
+      const fb = await publishToFacebookStory(assetUrl)
+      facebookSummary.attempted += 1
+      if (fb.ok) {
+        facebookSummary.success += 1
+        if (fb.postId) facebookSummary.postIds.push(fb.postId)
+      } else if (fb.skipped) {
+        facebookSummary.skipped = true
+        if (!facebookSummary.errors.includes(fb.reason)) facebookSummary.errors.push(fb.reason)
+      } else {
+        facebookSummary.failed += 1
+        if (fb.error) facebookSummary.errors.push(fb.error)
+      }
     }
   }
 
@@ -528,6 +565,7 @@ async function publishAssets(rows: AssetRecord[], mode: 'queue-only' | 'webhook'
     published,
     queued: rows.length,
     mode,
+    facebook: facebookSummary,
     anomalies: { unexpectedAssetTypes },
   })
   return {
@@ -538,6 +576,7 @@ async function publishAssets(rows: AssetRecord[], mode: 'queue-only' | 'webhook'
     skipped: false,
     message,
     anomalies: { unexpectedAssetTypes },
+    facebook: facebookSummary.attempted > 0 ? facebookSummary : undefined,
   }
 }
 
