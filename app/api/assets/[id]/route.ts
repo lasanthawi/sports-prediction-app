@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import sharp from 'sharp'
 import { getAsset, getCardSvgForPublish } from '@/lib/automation'
+import { replaceTextWithPaths } from '@/lib/text-to-path'
 
 const STORY_WIDTH = 1080
 const STORY_HEIGHT = 1920
@@ -75,8 +76,13 @@ export async function GET(request: Request, { params }: RouteContext) {
         asset.asset_type === 'card'
           ? await getCardSvgForPublish(id)
           : null
-      const svgSource = cardSvg ?? rawBody
-      const svgForSharp = await inlineEmbeddedImagesAsPng(svgSource)
+      let svgBuffer = cardSvg ?? rawBody
+      if (asset.asset_type === 'card') {
+        const svgStr = svgBuffer.toString('utf8')
+        const svgWithPaths = await replaceTextWithPaths(svgStr)
+        svgBuffer = Buffer.from(svgWithPaths, 'utf8')
+      }
+      const svgForSharp = await inlineEmbeddedImagesAsPng(svgBuffer)
       const pngBuffer = await sharp(svgForSharp, { density: SVG_PNG_DENSITY })
         .resize(STORY_WIDTH, STORY_HEIGHT)
         .png()

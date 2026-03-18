@@ -1,0 +1,71 @@
+/**
+ * Replace <text> elements in SVG with <path> so sharp/librsvg renders text without system fonts.
+ * Uses opentype.js and a bundled font (loaded from CDN) to convert text to paths.
+ */
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const opentype = require('opentype.js') as { parse: (buf: ArrayBuffer) => { getPath: (text: string, x: number, y: number, fontSize: number) => { getBoundingBox: () => { x1: number; y1: number; x2: number; y2: number }; toPathData: (n?: number) => string } } }
+
+const FONT_URL =
+  'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/notosans/NotoSans-Regular.ttf'
+
+let fontCache: ReturnType<typeof opentype.parse> | null = null
+
+async function loadFont() {
+  if (fontCache) return fontCache
+  const res = await fetch(FONT_URL)
+  if (!res.ok) throw new Error(`Font fetch failed: ${res.status}`)
+  const arrayBuffer = await res.arrayBuffer()
+  const font = opentype.parse(arrayBuffer)
+  fontCache = font
+  return font
+}
+
+function decodeXmlEntities(str: string): string {
+  return str
+    .replace(/&apos;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+}
+
+function getAttr(attrs: string, name: string): string | null {
+  const re = new RegExp(`${name}=["']([^"']*)["']`, 'i')
+  const m = attrs.match(re)
+  return m ? m[1].trim() : null
+}
+
+/**
+ * Replace all <text> elements in the SVG with <g><path></g> using the loaded font.
+ * Preserves fill and position (x, y, text-anchor, font-size).
+ */
+export async function replaceTextWithPaths(svgString: string): Promise<string> {
+  const font = await loadFont()
+  const textRegex = /<text([^>]*)>([\s\S]*?)<\/text>/g
+  let out = svgString
+  let match
+  while ((match = textRegex.exec(svgString)) !== null) {
+    const attrs = match[1]
+    const content = decodeXmlEntities(match[2].trim())
+    if (!content) continue
+    const x = parseFloat(getAttr(attrs, 'x') ?? '0')
+    const y = parseFloat(getAttr(attrs, 'y') ?? '0')
+    const fill = getAttr(attrs, 'fill') ?? '#ffffff'
+    const fontSize = parseFloat(getAttr(attrs, 'font-size') ?? '24')
+    const textAnchor = getAttr(attrs, 'text-anchor') ?? 'start'
+
+    const path = font.getPath(content, 0, 0, fontSize)
+    const bbox = path.getBoundingBox()
+    const pathData = path.toPathData(2)
+    const cy = (bbox.y1 + bbox.y2) / 2
+    let ox: number
+    if (textAnchor === 'middle') ox = (bbox.x1 + bbox.x2) / 2
+    else if (textAnchor === 'end') ox = bbox.x2
+    else ox = bbox.x1
+    const fillEsc = fill.replace(/"/g, '&quot;')
+    const replacement = `<g transform="translate(${x},${y}) scale(1,-1) translate(${-ox},${-cy})"><path d="${pathData}" fill="${fillEsc}"/></g>`
+    out = out.replace(match[0], replacement)
+  }
+  return out
+}
