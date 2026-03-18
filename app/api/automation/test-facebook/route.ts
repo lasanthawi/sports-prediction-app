@@ -44,11 +44,12 @@ export async function POST(request: Request) {
       }, { status: 404 })
     }
 
-    const baseUrl =
+    const baseUrl = (
       process.env.NEXT_PUBLIC_APP_URL ||
       process.env.VERCEL_PROJECT_PRODUCTION_URL?.replace(/^/, 'https://') ||
       process.env.VERCEL_URL?.replace(/^/, 'https://') ||
       'http://localhost:3000'
+    ).replace(/\/$/, '')
     const assetUrl = `${baseUrl}/api/assets/${assetId}?format=png`
 
     const facebook = await publishToFacebookStory(assetUrl)

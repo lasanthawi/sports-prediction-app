@@ -43,7 +43,7 @@ function getBaseUrl() {
     process.env.VERCEL_PROJECT_PRODUCTION_URL?.replace(/^/, 'https://') ||
     process.env.VERCEL_URL?.replace(/^/, 'https://') ||
     'http://localhost:3000'
-  )
+  ).replace(/\/$/, '')
 }
 
 function getCaption(match: MatchRecord, variant: AssetVariant) {
