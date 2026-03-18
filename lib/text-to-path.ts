@@ -12,9 +12,33 @@ const opentype = require('opentype.js') as { parse: (buf: ArrayBuffer) => { getP
 const FONT_URL =
   'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/notosans/NotoSans-Regular.ttf'
 
-/** Path to bundled font (relative to cwd at runtime). */
-function getBundledFontPath(): string {
-  return path.join(process.cwd(), 'lib', 'fonts', 'NotoSans-Regular.ttf')
+const FONT_FILENAME = 'NotoSans-Regular.ttf'
+
+/** Paths to try for bundled font (public/ is always deployed by Next.js). */
+function getBundledFontPaths(): string[] {
+  const cwd = process.cwd()
+  return [
+    path.join(cwd, 'public', 'fonts', FONT_FILENAME),
+    path.join(cwd, 'lib', 'fonts', FONT_FILENAME),
+  ]
+}
+
+/** TrueType/OTF magic bytes. opentype.js accepts TTF (0x00010000 or 'true') and OTF ('OTTO'). */
+function isValidFontBuffer(ab: ArrayBuffer): boolean {
+  if (ab.byteLength < 4) return false
+  const v = new DataView(ab)
+  const sig = v.getUint32(0, false)
+  if (sig === 0x00010000) return true // TrueType
+  if (sig === 0x74727565) return true // 'true'
+  if (v.getUint32(0, true) === 0x4f54544f) return true // 'OTTO' (OTF) little-endian
+  return false
+}
+
+/** Copy Buffer to a new ArrayBuffer so opentype gets exact bytes (avoids shared-pool issues). */
+function bufferToArrayBuffer(buf: Buffer): ArrayBuffer {
+  const ab = new ArrayBuffer(buf.length)
+  new Uint8Array(ab).set(buf)
+  return ab
 }
 
 let fontCache: ReturnType<typeof opentype.parse> | null = null
@@ -22,12 +46,18 @@ let fontCache: ReturnType<typeof opentype.parse> | null = null
 async function loadFont() {
   if (fontCache) return fontCache
 
-  const bundledPath = getBundledFontPath()
-  if (fs.existsSync(bundledPath)) {
-    const buf = fs.readFileSync(bundledPath)
-    const font = opentype.parse(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength))
-    fontCache = font
-    return font
+  for (const fontPath of getBundledFontPaths()) {
+    if (fs.existsSync(fontPath)) {
+      const buf = fs.readFileSync(fontPath)
+      const ab = bufferToArrayBuffer(buf)
+      if (!isValidFontBuffer(ab)) {
+        console.warn('[text-to-path] Bundled file is not a valid TTF/OTF:', fontPath)
+        continue
+      }
+      const font = opentype.parse(ab)
+      fontCache = font
+      return font
+    }
   }
 
   const controller = new AbortController()
@@ -40,6 +70,9 @@ async function loadFont() {
     clearTimeout(timeout)
     if (!res.ok) throw new Error(`Font fetch failed: ${res.status}`)
     const arrayBuffer = await res.arrayBuffer()
+    if (!isValidFontBuffer(arrayBuffer)) {
+      throw new Error('Font URL returned non-font data (e.g. HTML). Use bundled font in public/fonts or lib/fonts.')
+    }
     const font = opentype.parse(arrayBuffer)
     fontCache = font
     return font
