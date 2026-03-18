@@ -101,15 +101,68 @@ function buildFallbackArtwork(match: MatchRecord, variant: AssetVariant) {
 function buildRenderedCardSvg(match: MatchRecord, variant: AssetVariant, artwork: AssetRecord) {
   const artworkUrl = getAssetDataUrl(artwork)
   const isResult = variant === 'result'
-  const title = isResult ? 'Result Locked In' : 'Who Takes the Crown?'
-  const subline = isResult
-    ? match.result_summary || 'Final whistle. Glory claimed.'
-    : match.rivalry_tagline || 'Choose your side before kickoff.'
-  const accent = isResult ? '#FF67B4' : '#FFD84D'
-  const team1Pct = match.poll_team1_votes + match.poll_team2_votes > 0
-    ? Math.round((match.poll_team1_votes / (match.poll_team1_votes + match.poll_team2_votes)) * 100)
+  const totalVotes = match.poll_team1_votes + match.poll_team2_votes
+  const team1Pct = totalVotes > 0
+    ? Math.round((match.poll_team1_votes / totalVotes) * 100)
     : 50
   const team2Pct = 100 - team1Pct
+  const winner = match.winner != null ? match.winner : (team1Pct >= team2Pct ? 1 : 2)
+
+  if (isResult) {
+    const scoreText = match.result_summary || 'FT'
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1080" height="1920" viewBox="0 0 1080 1920" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="goldBar" x1="40" y1="0" x2="1040" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F7C904"/>
+      <stop offset="0.5" stop-color="#FFE77A"/>
+      <stop offset="1" stop-color="#E8B100"/>
+    </linearGradient>
+    <linearGradient id="footerBar" x1="0" y1="0" x2="1080" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#05060F"/>
+      <stop offset="1" stop-color="#161A2F"/>
+    </linearGradient>
+    <linearGradient id="heroMask" x1="540" y1="292" x2="540" y2="1500" gradientUnits="userSpaceOnUse">
+      <stop stop-color="rgba(255,255,255,0)"/>
+      <stop offset="1" stop-color="rgba(255,255,255,0)"/>
+    </linearGradient>
+    <linearGradient id="heroOverlay" x1="540" y1="292" x2="540" y2="1500" gradientUnits="userSpaceOnUse">
+      <stop stop-color="rgba(7,11,22,0.16)"/>
+      <stop offset="0.55" stop-color="rgba(7,11,22,0.12)"/>
+      <stop offset="1" stop-color="rgba(7,11,22,0.72)"/>
+    </linearGradient>
+  </defs>
+  <rect width="1080" height="1920" rx="48" fill="#070B16"/>
+  <rect x="32" y="28" width="1016" height="1864" rx="42" fill="#0A0D18" stroke="rgba(255,216,77,0.5)" stroke-width="4"/>
+  <rect x="68" y="48" width="944" height="78" rx="22" fill="url(#goldBar)"/>
+  <text x="540" y="98" fill="#101828" text-anchor="middle" font-family="Arial, sans-serif" font-size="32" font-weight="800">Final whistle. Glory claimed.</text>
+  <rect x="70" y="140" width="940" height="152" fill="rgba(0,0,0,0.88)"/>
+  <text x="540" y="208" fill="#FFFFFF" text-anchor="middle" font-family="Arial, sans-serif" font-size="42" font-weight="800">${escapeXml(scoreText)}</text>
+  <text x="540" y="252" fill="#D1D5DB" text-anchor="middle" font-family="Arial, sans-serif" font-size="24">${escapeXml(match.sport.toUpperCase())} · ${escapeXml(match.league || '')}</text>
+  <rect x="70" y="292" width="940" height="1208" fill="url(#heroMask)"/>
+  <image href="${artworkUrl}" x="70" y="292" width="940" height="1208" preserveAspectRatio="xMidYMid slice"/>
+  <rect x="70" y="292" width="940" height="1208" fill="url(#heroOverlay)"/>
+  <rect x="70" y="1500" width="940" height="420" rx="28" fill="rgba(5,7,16,0.92)" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+  <text x="120" y="1560" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="52" font-weight="800">${escapeXml(match.team1)}</text>
+  <text x="120" y="1624" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="52" font-weight="800">${escapeXml(match.team2)}</text>
+  <text x="960" y="1582" fill="#FFD84D" text-anchor="end" font-family="Arial, sans-serif" font-size="22" font-weight="700">FINAL SCORE</text>
+  <text x="960" y="1618" fill="#9CA3AF" text-anchor="end" font-family="Arial, sans-serif" font-size="20">${escapeXml(new Date(match.match_time).toLocaleDateString())}</text>
+  <rect x="120" y="1660" width="400" height="88" rx="20" fill="${winner === 1 ? 'rgba(251,191,36,0.2)' : 'rgba(34,197,94,0.14)'}" stroke="${winner === 1 ? 'rgba(251,191,36,0.5)' : 'rgba(34,197,94,0.4)'}" stroke-width="2"/>
+  <rect x="560" y="1660" width="400" height="88" rx="20" fill="${winner === 2 ? 'rgba(251,191,36,0.2)' : 'rgba(236,72,153,0.14)'}" stroke="${winner === 2 ? 'rgba(251,191,36,0.5)' : 'rgba(236,72,153,0.4)'}" stroke-width="2"/>
+  <text x="320" y="1712" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="32" font-weight="800" text-anchor="middle">${escapeXml(match.team1)}</text>
+  <text x="320" y="1742" fill="#94A3B8" font-family="Arial, sans-serif" font-size="22" font-weight="700" text-anchor="middle">${team1Pct}% community</text>
+  <text x="760" y="1712" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="32" font-weight="800" text-anchor="middle">${escapeXml(match.team2)}</text>
+  <text x="760" y="1742" fill="#94A3B8" font-family="Arial, sans-serif" font-size="22" font-weight="700" text-anchor="middle">${team2Pct}% community</text>
+  <rect x="70" y="1810" width="940" height="110" rx="0" fill="url(#footerBar)"/>
+  <text x="120" y="1872" fill="#6B7280" font-family="Arial, sans-serif" font-size="20" font-weight="600">Community split</text>
+  <text x="540" y="1872" fill="#9CA3AF" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="600">${totalVotes} votes</text>
+  <text x="960" y="1872" fill="#22C55E" text-anchor="end" font-family="Arial, sans-serif" font-size="20" font-weight="700">FT</text>
+</svg>`
+  }
+
+  const title = 'Who Takes the Crown?'
+  const subline = match.rivalry_tagline || 'Choose your side before kickoff.'
+  const accent = '#FFD84D'
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="1080" height="1920" viewBox="0 0 1080 1920" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -123,36 +176,6 @@ function buildRenderedCardSvg(match: MatchRecord, variant: AssetVariant, artwork
       <stop stop-color="#05060F"/>
       <stop offset="1" stop-color="#161A2F"/>
     </linearGradient>
-  </defs>
-  <rect width="1080" height="1920" rx="48" fill="#070B16"/>
-  <rect x="32" y="28" width="1016" height="1864" rx="42" fill="#0A0D18" stroke="rgba(255,216,77,0.66)" stroke-width="4"/>
-  <rect x="68" y="48" width="944" height="78" rx="22" fill="url(#goldBar)"/>
-  <rect x="70" y="140" width="940" height="152" fill="rgba(0,0,0,0.86)"/>
-  <rect x="70" y="292" width="940" height="1208" fill="url(#heroMask)"/>
-  <image href="${artworkUrl}" x="70" y="292" width="940" height="1208" preserveAspectRatio="xMidYMid slice"/>
-  <rect x="70" y="292" width="940" height="1208" fill="url(#heroOverlay)"/>
-  <rect x="70" y="1500" width="940" height="238" rx="28" fill="rgba(5,7,16,0.88)" stroke="rgba(255,255,255,0.12)"/>
-  <rect x="70" y="1762" width="940" height="92" fill="url(#footerBar)"/>
-  <text x="540" y="226" fill="${accent}" text-anchor="middle" font-family="Arial, sans-serif" font-size="58" font-weight="800" letter-spacing="3">${escapeXml(title)}</text>
-  <rect x="114" y="248" width="852" height="64" rx="8" fill="rgba(255,255,255,0.94)"/>
-  <text x="540" y="290" fill="#101828" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="700">${escapeXml(subline)}</text>
-  <text x="120" y="1568" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="66" font-weight="800">${escapeXml(match.team1)}</text>
-  <text x="120" y="1648" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="66" font-weight="800">${escapeXml(match.team2)}</text>
-  <text x="860" y="1590" fill="#FFD84D" text-anchor="end" font-family="Arial, sans-serif" font-size="28" font-weight="700">${escapeXml(match.sport.toUpperCase())}</text>
-  <text x="860" y="1632" fill="#D1D5DB" text-anchor="end" font-family="Arial, sans-serif" font-size="24">${escapeXml(match.league || '')}</text>
-  <text x="120" y="1698" fill="#D1D5DB" font-family="Arial, sans-serif" font-size="28">${escapeXml(new Date(match.match_time).toLocaleString())}</text>
-  <rect x="120" y="1718" width="400" height="56" rx="28" fill="rgba(92,255,155,0.18)" stroke="rgba(92,255,155,0.46)"/>
-  <text x="320" y="1753" fill="#6BFFB1" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="700">${isResult ? 'Final community split' : 'Tap your champion'}</text>
-  <rect x="120" y="1798" width="376" height="110" rx="28" fill="rgba(92,255,155,0.18)" stroke="rgba(92,255,155,0.42)"/>
-  <rect x="584" y="1798" width="376" height="110" rx="28" fill="rgba(255,92,168,0.18)" stroke="rgba(255,92,168,0.42)"/>
-  <text x="152" y="1842" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="36" font-weight="800">${escapeXml(match.team1)}</text>
-  <text x="152" y="1884" fill="#6BFFB1" font-family="Arial, sans-serif" font-size="26" font-weight="700">${team1Pct}% backing</text>
-  <text x="616" y="1842" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="36" font-weight="800">${escapeXml(match.team2)}</text>
-  <text x="616" y="1884" fill="#FF76BD" font-family="Arial, sans-serif" font-size="26" font-weight="700">${team2Pct}% backing</text>
-  <text x="120" y="1820" fill="rgba(255,255,255,0.66)" font-family="Arial, sans-serif" font-size="16" font-weight="700">BOOSTER PACK</text>
-  <text x="540" y="1820" fill="#FFD84D" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="700">${isResult ? 'RESULT CARD' : 'PREDICTION CARD'}</text>
-  <text x="972" y="1820" fill="rgba(255,255,255,0.66)" text-anchor="end" font-family="Arial, sans-serif" font-size="16" font-weight="700">${escapeXml(match.status.toUpperCase())}</text>
-  <defs>
     <linearGradient id="heroMask" x1="540" y1="292" x2="540" y2="1500" gradientUnits="userSpaceOnUse">
       <stop stop-color="rgba(255,255,255,0)"/>
       <stop offset="1" stop-color="rgba(255,255,255,0)"/>
@@ -163,6 +186,32 @@ function buildRenderedCardSvg(match: MatchRecord, variant: AssetVariant, artwork
       <stop offset="1" stop-color="rgba(7,11,22,0.72)"/>
     </linearGradient>
   </defs>
+  <rect width="1080" height="1920" rx="48" fill="#070B16"/>
+  <rect x="32" y="28" width="1016" height="1864" rx="42" fill="#0A0D18" stroke="rgba(255,216,77,0.66)" stroke-width="4"/>
+  <rect x="68" y="48" width="944" height="78" rx="22" fill="url(#goldBar)"/>
+  <rect x="70" y="140" width="940" height="152" fill="rgba(0,0,0,0.86)"/>
+  <text x="540" y="226" fill="${accent}" text-anchor="middle" font-family="Arial, sans-serif" font-size="58" font-weight="800" letter-spacing="3">${escapeXml(title)}</text>
+  <rect x="114" y="248" width="852" height="64" rx="8" fill="rgba(255,255,255,0.94)"/>
+  <text x="540" y="290" fill="#101828" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="700">${escapeXml(subline)}</text>
+  <rect x="70" y="292" width="940" height="1208" fill="url(#heroMask)"/>
+  <image href="${artworkUrl}" x="70" y="292" width="940" height="1208" preserveAspectRatio="xMidYMid slice"/>
+  <rect x="70" y="292" width="940" height="1208" fill="url(#heroOverlay)"/>
+  <rect x="70" y="1500" width="940" height="238" rx="28" fill="rgba(5,7,16,0.88)" stroke="rgba(255,255,255,0.12)"/>
+  <text x="120" y="1568" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="66" font-weight="800">${escapeXml(match.team1)}</text>
+  <text x="120" y="1648" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="66" font-weight="800">${escapeXml(match.team2)}</text>
+  <text x="860" y="1590" fill="#FFD84D" text-anchor="end" font-family="Arial, sans-serif" font-size="28" font-weight="700">${escapeXml(match.sport.toUpperCase())}</text>
+  <text x="860" y="1632" fill="#D1D5DB" text-anchor="end" font-family="Arial, sans-serif" font-size="24">${escapeXml(match.league || '')}</text>
+  <text x="120" y="1698" fill="#D1D5DB" font-family="Arial, sans-serif" font-size="28">${escapeXml(new Date(match.match_time).toLocaleString())}</text>
+  <rect x="120" y="1718" width="400" height="56" rx="28" fill="rgba(92,255,155,0.18)" stroke="rgba(92,255,155,0.46)"/>
+  <text x="320" y="1753" fill="#6BFFB1" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="700">Tap your champion</text>
+  <rect x="120" y="1798" width="376" height="110" rx="28" fill="rgba(92,255,155,0.18)" stroke="rgba(92,255,155,0.42)"/>
+  <rect x="584" y="1798" width="376" height="110" rx="28" fill="rgba(255,92,168,0.18)" stroke="rgba(255,92,168,0.42)"/>
+  <text x="152" y="1842" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="36" font-weight="800">${escapeXml(match.team1)}</text>
+  <text x="152" y="1884" fill="#6BFFB1" font-family="Arial, sans-serif" font-size="26" font-weight="700">${team1Pct}% backing</text>
+  <text x="616" y="1842" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="36" font-weight="800">${escapeXml(match.team2)}</text>
+  <text x="616" y="1884" fill="#FF76BD" font-family="Arial, sans-serif" font-size="26" font-weight="700">${team2Pct}% backing</text>
+  <rect x="70" y="1762" width="940" height="92" fill="url(#footerBar)"/>
+  <text x="540" y="1818" fill="#9CA3AF" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="600">PREDICTION CARD</text>
 </svg>`
 }
 

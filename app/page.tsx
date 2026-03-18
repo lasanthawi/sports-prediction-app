@@ -24,6 +24,7 @@ interface MatchRecord {
   team2_logo?: string | null
   prediction_artwork_url?: string | null
   result_artwork_url?: string | null
+  result_card_url?: string | null
   card_asset_url?: string | null
 }
 
@@ -952,16 +953,17 @@ function ResultCard({ match, onClick }: { match: MatchRecord; onClick: () => voi
   const totalVotes = match.poll_team1_votes + match.poll_team2_votes
   const team1Pct = totalVotes > 0 ? Math.round((match.poll_team1_votes / totalVotes) * 100) : 50
   const team2Pct = totalVotes > 0 ? Math.round((match.poll_team2_votes / totalVotes) * 100) : 50
-  const headline = match.league?.toUpperCase() || `${match.sport.toUpperCase()}`
+  const league = match.league?.toUpperCase() || match.sport.toUpperCase()
   const bgUrl = match.result_artwork_url || null
   const winner = match.winner != null ? match.winner : (team1Pct >= team2Pct ? 1 : 2)
   const winnerName = winner === 1 ? match.team1 : match.team2
+  const scoreText = match.result_summary || 'FT'
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="result-card group relative flex shrink-0 flex-col overflow-hidden rounded-2xl border border-white/15 bg-black/40 text-left shadow-[0_12px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm transition-all duration-300 hover:scale-[1.02] hover:border-cyan-400/30 hover:shadow-[0_0_28px_rgba(34,211,238,0.18)] focus:outline-none focus:ring-2 focus:ring-cyan-400/50 focus:ring-offset-2 focus:ring-offset-[#0a081b]"
+      className="result-card group relative flex shrink-0 flex-col overflow-hidden rounded-2xl border border-white/12 bg-black/50 text-left shadow-xl backdrop-blur-sm transition-all duration-300 hover:scale-[1.02] hover:border-white/25 hover:shadow-2xl focus:outline-none focus:ring-2 focus:ring-cyan-400/50 focus:ring-offset-2 focus:ring-offset-[#0a081b]"
       style={{
         width: RESULT_CARD_WIDTH,
         aspectRatio: RESULT_CARD_ASPECT,
@@ -970,37 +972,37 @@ function ResultCard({ match, onClick }: { match: MatchRecord; onClick: () => voi
     >
       {bgUrl ? (
         <div
-          className="absolute inset-0 bg-cover bg-center transition-opacity group-hover:opacity-90"
-          style={{ backgroundImage: `url(${bgUrl})`, opacity: 0.75 }}
+          className="absolute inset-0 bg-cover bg-center transition-opacity group-hover:opacity-85"
+          style={{ backgroundImage: `url(${bgUrl})`, opacity: 0.7 }}
         />
       ) : null}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
-      <div className="relative flex min-h-0 flex-1 flex-col justify-end p-5">
-        <span className="inline-block w-fit rounded-full border border-green-400/30 bg-green-400/10 px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-[0.2em] text-green-300">
-          {headline}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+      <div className="relative flex min-h-0 flex-1 flex-col justify-end p-4">
+        <span className="inline-block w-fit rounded-md border border-white/20 bg-black/40 px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-widest text-white/90">
+          {league}
         </span>
-        <h3 className="mt-3 line-clamp-2 min-h-[2.75rem] text-lg font-black uppercase leading-tight tracking-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">
+        <h3 className="mt-2 line-clamp-2 min-h-[2.5rem] text-base font-bold leading-tight text-white drop-shadow-md">
           {match.team1} vs {match.team2}
         </h3>
-        <p className="mt-2 inline-flex items-center gap-1.5 text-base font-bold text-green-300">
+        <p className="mt-2 flex items-center gap-1.5 text-lg font-bold text-green-400">
           <Trophy className="h-4 w-4 shrink-0" />
-          {match.result_summary || 'FT'}
+          {scoreText}
         </p>
-        <p className="mt-1 line-clamp-1 text-sm font-semibold text-amber-300/95">
+        <p className="mt-0.5 text-xs font-medium text-amber-300/90">
           Winner: {winnerName}
         </p>
-        <div className="mt-4 flex h-2 shrink-0 overflow-hidden rounded-full border border-white/10 bg-black/40">
+        <div className="mt-3 flex h-1.5 shrink-0 overflow-hidden rounded-full bg-white/10">
           <div
-            className={`h-full rounded-l-full bg-gradient-to-r transition-all ${winner === 1 ? 'from-amber-500/95 to-amber-400/90 ring-1 ring-amber-300/50' : 'from-red-500/90 to-red-400/80'}`}
+            className={`h-full rounded-l-full transition-all ${winner === 1 ? 'bg-amber-500' : 'bg-red-500/80'}`}
             style={{ width: `${team1Pct}%` }}
           />
           <div
-            className={`h-full rounded-r-full bg-gradient-to-l transition-all ${winner === 2 ? 'from-amber-500/95 to-amber-400/90 ring-1 ring-amber-300/50' : 'from-sky-500/90 to-sky-400/80'}`}
+            className={`h-full rounded-r-full transition-all ${winner === 2 ? 'bg-amber-500' : 'bg-sky-500/80'}`}
             style={{ width: `${team2Pct}%` }}
           />
         </div>
-        <p className="mt-2 text-[0.7rem] font-bold uppercase tracking-wider text-white/60">
-          Arena: {team1Pct}% – {team2Pct}% · {totalVotes} votes
+        <p className="mt-2 text-[0.65rem] font-medium uppercase tracking-wider text-white/50">
+          {team1Pct}% – {team2Pct} · {totalVotes} votes
         </p>
       </div>
     </button>
@@ -1023,10 +1025,47 @@ function ResultsCarousel({ matches, onCardClick }: { matches: MatchRecord[]; onC
 
 function ResultDetailModal({ match, onClose }: { match: MatchRecord | null; onClose: () => void }) {
   if (!match) return null
+  const totalVotes = match.poll_team1_votes + match.poll_team2_votes
+  const team1Pct = totalVotes > 0 ? Math.round((match.poll_team1_votes / totalVotes) * 100) : 50
+  const team2Pct = totalVotes > 0 ? Math.round((match.poll_team2_votes / totalVotes) * 100) : 50
+  const league = match.league?.toUpperCase() || match.sport.toUpperCase()
+  const bgUrl = match.result_artwork_url || null
+  const resultCardUrl = match.result_card_url || match.card_asset_url || null
+  const winner = match.winner != null ? match.winner : (team1Pct >= team2Pct ? 1 : 2)
+  const winnerName = winner === 1 ? match.team1 : match.team2
+  const scoreText = match.result_summary || 'FT'
+
+  const resultStrip = (
+    <div className="border-t border-white/10 bg-black/70 px-5 py-4">
+      <p className="text-sm font-semibold uppercase tracking-wider text-white/60">{league}</p>
+      <p className="mt-1 flex items-center gap-2 text-xl font-bold text-green-400">
+        <Trophy className="h-5 w-5 shrink-0" />
+        {scoreText}
+      </p>
+      <p className="mt-1 text-sm font-medium text-amber-300/90">Winner: {winnerName}</p>
+      <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-white/10">
+        <div
+          className={`h-full rounded-l-full ${winner === 1 ? 'bg-amber-500' : 'bg-red-500/80'}`}
+          style={{ width: `${team1Pct}%` }}
+        />
+        <div
+          className={`h-full rounded-r-full ${winner === 2 ? 'bg-amber-500' : 'bg-sky-500/80'}`}
+          style={{ width: `${team2Pct}%` }}
+        />
+      </div>
+      <p className="mt-2 text-xs font-medium text-white/50">
+        Community split · {team1Pct}% – {team2Pct}% · {totalVotes} votes
+      </p>
+    </div>
+  )
+
   return (
     <div className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label="Match result detail">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
-      <div className="relative flex h-full w-full items-center justify-center p-4">
+      <div
+        className="relative flex h-full w-full cursor-pointer items-center justify-center p-4"
+        onClick={onClose}
+      >
         <div className="relative w-full max-w-[min(24rem,90vw)] md:max-w-[28rem]">
           <button
             type="button"
@@ -1036,11 +1075,55 @@ function ResultDetailModal({ match, onClose }: { match: MatchRecord | null; onCl
           >
             <X className="h-5 w-5" />
           </button>
-          <MatchCard
-            match={match}
-            interactive={false}
-            className="!aspect-[9/16] !h-auto !w-full !max-w-none shadow-2xl"
-          />
+          {resultCardUrl ? (
+            <div className="overflow-hidden rounded-2xl border border-white/12 bg-black/40 shadow-2xl">
+              <img
+                src={resultCardUrl}
+                alt={`${match.team1} vs ${match.team2} – result`}
+                className="aspect-[9/16] w-full object-cover"
+              />
+              {resultStrip}
+            </div>
+          ) : (
+            <div
+              className="relative flex flex-col overflow-hidden rounded-2xl border border-white/12 bg-black/60 text-left shadow-2xl"
+              style={{ aspectRatio: 3 / 4, minHeight: 360 }}
+            >
+              {bgUrl ? (
+                <div
+                  className="absolute inset-0 bg-cover bg-center"
+                  style={{ backgroundImage: `url(${bgUrl})`, opacity: 0.7 }}
+                />
+              ) : null}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/92 via-black/50 to-transparent" />
+              <div className="relative flex min-h-0 flex-1 flex-col justify-end p-5">
+                <span className="inline-block w-fit rounded-md border border-white/20 bg-black/40 px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-widest text-white/90">
+                  {league}
+                </span>
+                <h3 className="mt-2 line-clamp-2 text-xl font-bold leading-tight text-white drop-shadow-lg">
+                  {match.team1} vs {match.team2}
+                </h3>
+                <p className="mt-2 flex items-center gap-2 text-xl font-bold text-green-400">
+                  <Trophy className="h-5 w-5 shrink-0" />
+                  {scoreText}
+                </p>
+                <p className="mt-0.5 text-sm font-medium text-amber-300/90">Winner: {winnerName}</p>
+                <div className="mt-4 flex h-2 overflow-hidden rounded-full bg-white/10">
+                  <div
+                    className={`h-full rounded-l-full ${winner === 1 ? 'bg-amber-500' : 'bg-red-500/80'}`}
+                    style={{ width: `${team1Pct}%` }}
+                  />
+                  <div
+                    className={`h-full rounded-r-full ${winner === 2 ? 'bg-amber-500' : 'bg-sky-500/80'}`}
+                    style={{ width: `${team2Pct}%` }}
+                  />
+                </div>
+                <p className="mt-2 text-xs font-medium uppercase tracking-wider text-white/50">
+                  {team1Pct}% – {team2Pct} · {totalVotes} votes
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
