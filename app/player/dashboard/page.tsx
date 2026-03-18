@@ -4,15 +4,16 @@ import { useState, useEffect } from 'react'
 import { Trophy, Target, TrendingUp, Award, LogOut } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import VotedMatchCard from '@/app/components/VotedMatchCard'
 
 export default function PlayerDashboard() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
-  const [matches, setMatches] = useState<any[]>([])
+  const [votedMatches, setVotedMatches] = useState<any[]>([])
 
   useEffect(() => {
     checkAuth()
-    fetchMatches()
+    fetchVotedMatches()
   }, [])
 
   const checkAuth = async () => {
@@ -27,10 +28,18 @@ export default function PlayerDashboard() {
     setUser(data.user)
   }
 
-  const fetchMatches = async () => {
-    const res = await fetch('/api/matches', { cache: 'no-store' })
-    const data = await res.json()
-    setMatches(data.matches || [])
+  const fetchVotedMatches = async () => {
+    try {
+      const res = await fetch('/api/user/votes', { cache: 'no-store' })
+      if (!res.ok) {
+        console.error('Failed to fetch voted matches - ensuring dev server is completely hot reloaded')
+        return
+      }
+      const data = await res.json()
+      setVotedMatches(data.matches || [])
+    } catch(err) {
+      console.error('Fetch error:', err)
+    }
   }
 
   const handleLogout = async () => {
@@ -121,32 +130,33 @@ export default function PlayerDashboard() {
           </div>
         </div>
 
-        {/* Active Matches */}
+        {/* Your Predictions */}
         <div className="mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold">Active Matches</h2>
-            <Link href="/" className="text-green-400 hover:text-green-300 text-sm">
-              View All →
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+               <Target className="w-6 h-6 text-cyan-400" />
+               Your Predictions
+            </h2>
+            <Link href="/" className="text-cyan-400 hover:text-cyan-300 text-sm font-bold bg-cyan-900/20 px-4 py-2 rounded-full border border-cyan-500/30 transition shadow-sm">
+              Head to Arena 🏟️
             </Link>
           </div>
-          <div className="grid md:grid-cols-2 gap-4">
-            {matches.slice(0, 4).map(match => (
-              <div key={match.id} className="bg-gray-800 rounded-lg p-4 hover:bg-gray-700/50 transition">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded">
-                    {match.sport}
-                  </span>
-                  <span className="text-xs text-gray-400">
-                    {new Date(match.match_time).toLocaleDateString()}
-                  </span>
-                </div>
-                <p className="font-bold">{match.team1} vs {match.team2}</p>
-                <div className="mt-2 flex gap-2 text-xs text-gray-400">
-                  <span>Total votes: {match.poll_team1_votes + match.poll_team2_votes}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+          
+          {votedMatches.length === 0 ? (
+             <div className="bg-gray-800/50 rounded-2xl p-8 border border-white/10 text-center">
+               <p className="text-white/60 text-lg mb-2">You haven't backed any sides yet.</p>
+               <p className="text-sm text-white/40 mb-6">Return to the arena to lock in your votes and track the live results here.</p>
+               <Link href="/" className="inline-block px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-lg font-bold text-white shadow-lg transition hover:scale-105">
+                 Explore Clashes
+               </Link>
+             </div>
+          ) : (
+             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+               {votedMatches.map(match => (
+                 <VotedMatchCard key={match.id} match={match} />
+               ))}
+             </div>
+          )}
         </div>
 
         {/* Quick Actions */}

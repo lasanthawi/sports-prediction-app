@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowRight, Bell, CalendarDays, ChevronLeft, ChevronRight, LogIn, Sparkles, Swords, Target, Trophy, Waves, X } from 'lucide-react'
 import MatchCard from './components/MatchCard'
+import VotedMatchCard from './components/VotedMatchCard'
 
 interface MatchRecord {
   id: number
@@ -41,6 +42,8 @@ export default function Home() {
   const [activeMatchId, setActiveMatchId] = useState<number | null>(null)
   const [resultDetailMatchId, setResultDetailMatchId] = useState<number | null>(null)
   const [desktopSlide, setDesktopSlide] = useState(0)
+  const [votedMatches, setVotedMatches] = useState<any[]>([])
+  const [user, setUser] = useState<any>(null)
   const voteModeCloseRequestedRef = useRef(false)
 
   useEffect(() => {
@@ -64,6 +67,18 @@ export default function Home() {
 
   async function fetchMatches() {
     try {
+      const authRes = await fetch('/api/auth/me', { cache: 'no-store' })
+      const authPayload = await authRes.json()
+      
+      if (authPayload.user) {
+         setUser(authPayload.user)
+         const votesRes = await fetch('/api/user/votes', { cache: 'no-store' })
+         if (votesRes.ok) {
+            const votesPayload = await votesRes.json()
+            setVotedMatches(votesPayload.matches || [])
+         }
+      }
+
       const res = await fetch('/api/matches', { cache: 'no-store' })
       const payload = await res.json()
 
@@ -356,14 +371,32 @@ export default function Home() {
             </section>
 
             <section className="mb-16 grid gap-6 xl:grid-cols-[1fr,320px]">
-              <div className="glass-panel p-8 text-center">
-                <h3 className="text-3xl font-black text-white md:text-4xl">Never Miss a Match</h3>
-                <p className="mx-auto mt-4 max-w-3xl text-white/70">
-                  Get notified when the biggest results are in, revisit your predictions, and stay ready for the next arena showdown.
-                </p>
-                <Link href="/login" className="mt-8 inline-flex items-center gap-2 rounded-full border border-cyan-300/40 bg-gradient-to-r from-cyan-400/20 to-fuchsia-500/25 px-8 py-4 text-lg font-bold text-white shadow-[0_0_24px_rgba(59,130,246,0.2)]">
-                  <Bell className="inline" /> Log in to Enable Notifications
-                </Link>
+              <div className="glass-panel p-8 text-center flex flex-col items-center justify-center">
+                <h3 className="text-3xl font-black text-white md:text-4xl mb-4">Never Miss a Match</h3>
+                
+                {user ? (
+                  <div className="w-full mt-4 flex flex-col items-center">
+                    <p className="font-bold tracking-[0.2em] text-cyan-300 mb-6 text-sm uppercase">Your Recent Predictions</p>
+                    {votedMatches.length === 0 ? (
+                      <p className="text-white/60 mb-6">You haven't made any predictions yet. Head to the arena and back your side!</p>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full mb-2">
+                        {votedMatches.slice(0, 3).map((match) => (
+                           <VotedMatchCard key={match.id} match={match} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <p className="mx-auto mt-2 max-w-3xl text-white/70">
+                      Get notified when the biggest results are in, revisit your predictions, and stay ready for the next arena showdown.
+                    </p>
+                    <Link href="/login" className="mt-8 inline-flex items-center gap-2 rounded-full border border-cyan-300/40 bg-gradient-to-r from-cyan-400/20 to-fuchsia-500/25 px-8 py-4 text-lg font-bold text-white shadow-[0_0_24px_rgba(59,130,246,0.2)] hover:scale-105 transition">
+                      <Bell className="inline" /> Log in to Enable Notifications
+                    </Link>
+                  </>
+                )}
               </div>
 
               <div id="how-it-works" className="glass-panel p-6">

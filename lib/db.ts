@@ -118,6 +118,16 @@ async function ensureSchemaInner() {
     )
   `
 
+  await sql`
+    CREATE TABLE IF NOT EXISTS user_votes (
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+      team SMALLINT NOT NULL CHECK (team IN (1, 2)),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, match_id)
+    )
+  `
+
   await sql`ALTER TABLE matches ADD COLUMN IF NOT EXISTS team1_captain TEXT`
   await sql`ALTER TABLE matches ADD COLUMN IF NOT EXISTS team2_captain TEXT`
   await sql`ALTER TABLE matches ADD COLUMN IF NOT EXISTS team1_palette TEXT`
@@ -227,9 +237,8 @@ async function ensureSchemaInner() {
     $$ LANGUAGE plpgsql;
   `
 
-  await sql`DROP TRIGGER IF EXISTS set_users_updated_at ON users`
   await sql`
-    CREATE TRIGGER set_users_updated_at
+    CREATE OR REPLACE TRIGGER set_users_updated_at
     BEFORE UPDATE ON users
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
@@ -268,25 +277,22 @@ async function ensureSchemaInner() {
     `
   }
 
-  await sql`DROP TRIGGER IF EXISTS set_matches_updated_at ON matches`
   await sql`
-    CREATE TRIGGER set_matches_updated_at
+    CREATE OR REPLACE TRIGGER set_matches_updated_at
     BEFORE UPDATE ON matches
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
   `
 
-  await sql`DROP TRIGGER IF EXISTS set_generated_assets_updated_at ON generated_assets`
   await sql`
-    CREATE TRIGGER set_generated_assets_updated_at
+    CREATE OR REPLACE TRIGGER set_generated_assets_updated_at
     BEFORE UPDATE ON generated_assets
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
   `
 
-  await sql`DROP TRIGGER IF EXISTS set_feed_sync_items_updated_at ON feed_sync_items`
   await sql`
-    CREATE TRIGGER set_feed_sync_items_updated_at
+    CREATE OR REPLACE TRIGGER set_feed_sync_items_updated_at
     BEFORE UPDATE ON feed_sync_items
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
