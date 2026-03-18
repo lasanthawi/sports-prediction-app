@@ -18,6 +18,7 @@ interface MatchRecord {
   poll_team1_votes: number
   poll_team2_votes: number
   result_summary?: string | null
+  winner?: number | null
   rivalry_tagline?: string | null
   team1_logo?: string | null
   team2_logo?: string | null
@@ -944,44 +945,57 @@ function MiniMatchCard({ match }: { match: MatchRecord }) {
   )
 }
 
+const RESULT_CARD_WIDTH = 300
+const RESULT_CARD_ASPECT = 3 / 4
+
 function ResultCard({ match, onClick }: { match: MatchRecord; onClick: () => void }) {
   const totalVotes = match.poll_team1_votes + match.poll_team2_votes
   const team1Pct = totalVotes > 0 ? Math.round((match.poll_team1_votes / totalVotes) * 100) : 50
   const team2Pct = totalVotes > 0 ? Math.round((match.poll_team2_votes / totalVotes) * 100) : 50
   const headline = match.league?.toUpperCase() || `${match.sport.toUpperCase()}`
   const bgUrl = match.result_artwork_url || null
+  const winner = match.winner != null ? match.winner : (team1Pct >= team2Pct ? 1 : 2)
+  const winnerName = winner === 1 ? match.team1 : match.team2
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="result-card group relative flex h-full w-[300px] shrink-0 flex-col overflow-hidden rounded-2xl border border-white/15 bg-gradient-to-b from-white/[0.08] to-black/40 text-left shadow-[0_12px_40px_rgba(0,0,0,0.35)] backdrop-blur-md transition-all duration-300 hover:scale-[1.02] hover:border-cyan-400/30 hover:shadow-[0_0_28px_rgba(34,211,238,0.18)] focus:outline-none focus:ring-2 focus:ring-cyan-400/50 focus:ring-offset-2 focus:ring-offset-[#0a081b]"
+      className="result-card group relative flex shrink-0 flex-col overflow-hidden rounded-2xl border border-white/15 bg-black/40 text-left shadow-[0_12px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm transition-all duration-300 hover:scale-[1.02] hover:border-cyan-400/30 hover:shadow-[0_0_28px_rgba(34,211,238,0.18)] focus:outline-none focus:ring-2 focus:ring-cyan-400/50 focus:ring-offset-2 focus:ring-offset-[#0a081b]"
+      style={{
+        width: RESULT_CARD_WIDTH,
+        aspectRatio: RESULT_CARD_ASPECT,
+        minHeight: Math.round(RESULT_CARD_WIDTH / RESULT_CARD_ASPECT),
+      }}
     >
       {bgUrl ? (
         <div
-          className="absolute inset-0 bg-cover bg-center opacity-25 transition-opacity group-hover:opacity-35"
-          style={{ backgroundImage: `url(${bgUrl})` }}
+          className="absolute inset-0 bg-cover bg-center transition-opacity group-hover:opacity-90"
+          style={{ backgroundImage: `url(${bgUrl})`, opacity: 0.75 }}
         />
       ) : null}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
-      <div className="relative flex flex-1 flex-col p-5">
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
+      <div className="relative flex min-h-0 flex-1 flex-col justify-end p-5">
         <span className="inline-block w-fit rounded-full border border-green-400/30 bg-green-400/10 px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-[0.2em] text-green-300">
           {headline}
         </span>
-        <h3 className="mt-3 line-clamp-2 text-lg font-black uppercase leading-tight tracking-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">
+        <h3 className="mt-3 line-clamp-2 min-h-[2.75rem] text-lg font-black uppercase leading-tight tracking-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">
           {match.team1} vs {match.team2}
         </h3>
         <p className="mt-2 inline-flex items-center gap-1.5 text-base font-bold text-green-300">
           <Trophy className="h-4 w-4 shrink-0" />
           {match.result_summary || 'FT'}
         </p>
-        <div className="mt-4 flex h-2 overflow-hidden rounded-full border border-white/10 bg-black/40">
+        <p className="mt-1 line-clamp-1 text-sm font-semibold text-amber-300/95">
+          Winner: {winnerName}
+        </p>
+        <div className="mt-4 flex h-2 shrink-0 overflow-hidden rounded-full border border-white/10 bg-black/40">
           <div
-            className="h-full rounded-l-full bg-gradient-to-r from-red-500/90 to-red-400/80 transition-all"
+            className={`h-full rounded-l-full bg-gradient-to-r transition-all ${winner === 1 ? 'from-amber-500/95 to-amber-400/90 ring-1 ring-amber-300/50' : 'from-red-500/90 to-red-400/80'}`}
             style={{ width: `${team1Pct}%` }}
           />
           <div
-            className="h-full rounded-r-full bg-gradient-to-l from-sky-500/90 to-sky-400/80 transition-all"
+            className={`h-full rounded-r-full bg-gradient-to-l transition-all ${winner === 2 ? 'from-amber-500/95 to-amber-400/90 ring-1 ring-amber-300/50' : 'from-sky-500/90 to-sky-400/80'}`}
             style={{ width: `${team2Pct}%` }}
           />
         </div>

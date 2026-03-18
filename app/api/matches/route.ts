@@ -10,7 +10,15 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const includeAll = searchParams.get('includeAll') === '1'
     const matches = includeAll ? await listMatches() : await listMatchesForPublic()
-    return NextResponse.json({ matches })
+    return NextResponse.json(
+      { matches },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          Pragma: 'no-cache',
+        },
+      }
+    )
   } catch (error: any) {
     console.error('Database error:', error)
     return NextResponse.json({
