@@ -1,4 +1,17 @@
-export async function publishToFacebookStory(assetUrl: string, caption?: string) {
+const FB_GRAPH_VERSION = 'v19.0'
+
+/**
+ * Publishes an image as a Facebook Page Story using the official two-step flow:
+ * 1. Upload photo via Page Photos API (published=false) → get photo_id
+ * 2. Publish story via Page Photo Stories API with photo_id
+ *
+ * Requires env: FB_PAGE_ID, FB_PAGE_ACCESS_TOKEN.
+ * Page token must have: pages_show_list, pages_read_engagement, pages_manage_posts.
+ *
+ * Note: Facebook Stories accept .jpeg, .bmp, .png, .gif, .tiff. If assetUrl serves
+ * SVG (image/svg+xml), the Graph API may reject it; consider serving PNG for FB.
+ */
+export async function publishToFacebookStory(assetUrl: string, _caption?: string) {
   const pageId = process.env.FB_PAGE_ID
   const accessToken = process.env.FB_PAGE_ACCESS_TOKEN
 
@@ -10,32 +23,50 @@ export async function publishToFacebookStory(assetUrl: string, caption?: string)
   console.log(`[Facebook] Publishing story to Page ${pageId}...`)
 
   try {
-    // Construct the Facebook Graph API Endpoint for posting to a Page Story
-    const endpoint = `https://graph.facebook.com/v19.0/${pageId}/photo_stories`
-    
-    // We send standard URL encoded parameters expected by Graph API
-    const params = new URLSearchParams()
-    params.append('access_token', accessToken)
-    params.append('url', assetUrl)
-    
-    // Optionally FB API can take a caption? No, for photo_stories it's generally just the media.
-    // If you need more complex stories you use ig_user_id or video_stories. Page photo_stories are fairly simple.
+    // Step 1: Upload photo to Page (unpublished) so we get a photo_id.
+    // Facebook fetches the image from assetUrl; it must be publicly accessible (HTTPS).
+    const photosEndpoint = `https://graph.facebook.com/${FB_GRAPH_VERSION}/${pageId}/photos`
+    const uploadParams = new URLSearchParams()
+    uploadParams.append('access_token', accessToken)
+    uploadParams.append('url', assetUrl)
+    uploadParams.append('published', 'false')
 
-    const response = await fetch(`${endpoint}?${params.toString()}`, {
+    const uploadRes = await fetch(photosEndpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      }
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: uploadParams.toString(),
     })
+    const uploadData = (await uploadRes.json()) as { id?: string; error?: { message?: string } }
 
-    const data = await response.json()
-
-    if (!response.ok) {
-      console.error('[Facebook] Graph API Error:', data.error?.message || data)
-      throw new Error(`Facebook API Error: ${data.error?.message || 'Unknown error'}`)
+    if (!uploadRes.ok || uploadData.error) {
+      console.error('[Facebook] Photo upload error:', uploadData.error?.message || uploadData)
+      throw new Error(`Facebook API Error: ${uploadData.error?.message || 'Upload failed'}`)
     }
 
-    console.log('[Facebook] Successfully published story ID:', data.post_id || data.id)
+    const photoId = uploadData.id
+    if (!photoId) {
+      throw new Error('Facebook did not return a photo id')
+    }
+
+    // Step 2: Publish the uploaded photo as a Page Story.
+    const storiesEndpoint = `https://graph.facebook.com/${FB_GRAPH_VERSION}/${pageId}/photo_stories`
+    const storyParams = new URLSearchParams()
+    storyParams.append('access_token', accessToken)
+    storyParams.append('photo_id', photoId)
+
+    const storyRes = await fetch(storiesEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: storyParams.toString(),
+    })
+    const storyData = (await storyRes.json()) as { post_id?: string; id?: string; success?: boolean; error?: { message?: string } }
+
+    if (!storyRes.ok || storyData.error) {
+      console.error('[Facebook] Story publish error:', storyData.error?.message || storyData)
+      throw new Error(`Facebook API Error: ${storyData.error?.message || 'Story publish failed'}`)
+    }
+
+    console.log('[Facebook] Successfully published story ID:', storyData.post_id || storyData.id)
     return true
   } catch (error) {
     console.error('[Facebook] Failed to publish story:', error)
