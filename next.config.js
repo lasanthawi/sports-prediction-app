@@ -3,6 +3,6 @@ const nextConfig = {
   images: {
     domains: ['storage.googleapis.com', 'composio-uploads.s3.amazonaws.com'],
   },
-}
+};
 
-module.exports = nextConfig
+module.exports = nextConfig;

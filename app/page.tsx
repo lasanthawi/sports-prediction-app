@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowRight, Bell, CalendarDays, ChevronLeft, ChevronRight, LogIn, Sparkles, Swords, Target, Waves } from 'lucide-react'
+import { ArrowRight, Bell, CalendarDays, ChevronLeft, ChevronRight, LogIn, Sparkles, Swords, Target, Trophy, Waves, X } from 'lucide-react'
 import MatchCard from './components/MatchCard'
 
 interface MatchRecord {
@@ -37,6 +37,7 @@ export default function Home() {
   const [error, setError] = useState('')
   const [votingMode, setVotingMode] = useState(false)
   const [activeMatchId, setActiveMatchId] = useState<number | null>(null)
+  const [resultDetailMatchId, setResultDetailMatchId] = useState<number | null>(null)
   const [desktopSlide, setDesktopSlide] = useState(0)
   const voteModeCloseRequestedRef = useRef(false)
 
@@ -339,14 +340,14 @@ export default function Home() {
                 title="Results Board"
                 copy="A snapshot of the latest finished battles so visitors can see which side won and how the arena voted."
               />
-              <div className="grid gap-4 lg:grid-cols-2">
-                {finishedMatches.slice(0, 6).map((match) => (
-                  <ResultRow key={match.id} match={match} />
-                ))}
-                {finishedMatches.length === 0 ? (
-                  <div className="glass-panel p-6 text-sm text-white/60">No results yet. Finished matches will show up here with final scorelines and vote history.</div>
-                ) : null}
-              </div>
+              {finishedMatches.length === 0 ? (
+                <div className="glass-panel p-6 text-sm text-white/60">No results yet. Finished matches will show up here with final scorelines and vote history.</div>
+              ) : (
+                <ResultsCarousel
+                  matches={finishedMatches}
+                  onCardClick={(match) => setResultDetailMatchId(match.id)}
+                />
+              )}
             </section>
 
             <section className="mb-16 grid gap-6 xl:grid-cols-[1fr,320px]">
@@ -392,6 +393,13 @@ export default function Home() {
           activeMatchId={activeMatchId}
           onClose={closeVotingMode}
           onVote={fetchMatches}
+        />
+      ) : null}
+
+      {resultDetailMatchId ? (
+        <ResultDetailModal
+          match={matches.find((m) => m.id === resultDetailMatchId) ?? null}
+          onClose={() => setResultDetailMatchId(null)}
         />
       ) : null}
     </main>
@@ -810,6 +818,95 @@ function MiniMatchCard({ match }: { match: MatchRecord }) {
           ) : (
             <span className="text-xs font-bold text-white/90">{teamInitials(match.team2)}</span>
           )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ResultCard({ match, onClick }: { match: MatchRecord; onClick: () => void }) {
+  const totalVotes = match.poll_team1_votes + match.poll_team2_votes
+  const team1Pct = totalVotes > 0 ? Math.round((match.poll_team1_votes / totalVotes) * 100) : 50
+  const team2Pct = totalVotes > 0 ? Math.round((match.poll_team2_votes / totalVotes) * 100) : 50
+  const headline = match.league?.toUpperCase() || `${match.sport.toUpperCase()}`
+  const bgUrl = match.result_artwork_url || null
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="result-card group relative flex h-full w-[300px] shrink-0 flex-col overflow-hidden rounded-2xl border border-white/15 bg-gradient-to-b from-white/[0.08] to-black/40 text-left shadow-[0_12px_40px_rgba(0,0,0,0.35)] backdrop-blur-md transition-all duration-300 hover:scale-[1.02] hover:border-cyan-400/30 hover:shadow-[0_0_28px_rgba(34,211,238,0.18)] focus:outline-none focus:ring-2 focus:ring-cyan-400/50 focus:ring-offset-2 focus:ring-offset-[#0a081b]"
+    >
+      {bgUrl ? (
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-25 transition-opacity group-hover:opacity-35"
+          style={{ backgroundImage: `url(${bgUrl})` }}
+        />
+      ) : null}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
+      <div className="relative flex flex-1 flex-col p-5">
+        <span className="inline-block w-fit rounded-full border border-green-400/30 bg-green-400/10 px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-[0.2em] text-green-300">
+          {headline}
+        </span>
+        <h3 className="mt-3 line-clamp-2 text-lg font-black uppercase leading-tight tracking-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">
+          {match.team1} vs {match.team2}
+        </h3>
+        <p className="mt-2 inline-flex items-center gap-1.5 text-base font-bold text-green-300">
+          <Trophy className="h-4 w-4 shrink-0" />
+          {match.result_summary || 'FT'}
+        </p>
+        <div className="mt-4 flex h-2 overflow-hidden rounded-full border border-white/10 bg-black/40">
+          <div
+            className="h-full rounded-l-full bg-gradient-to-r from-red-500/90 to-red-400/80 transition-all"
+            style={{ width: `${team1Pct}%` }}
+          />
+          <div
+            className="h-full rounded-r-full bg-gradient-to-l from-sky-500/90 to-sky-400/80 transition-all"
+            style={{ width: `${team2Pct}%` }}
+          />
+        </div>
+        <p className="mt-2 text-[0.7rem] font-bold uppercase tracking-wider text-white/60">
+          Arena: {team1Pct}% – {team2Pct}% · {totalVotes} votes
+        </p>
+      </div>
+    </button>
+  )
+}
+
+function ResultsCarousel({ matches, onCardClick }: { matches: MatchRecord[]; onCardClick: (match: MatchRecord) => void }) {
+  if (matches.length === 0) return null
+  const duplicated = [...matches, ...matches]
+  return (
+    <div className="relative -mx-4 overflow-hidden py-2 md:-mx-8">
+      <div className="results-carousel-track gap-6">
+        {duplicated.map((match, i) => (
+          <ResultCard key={`result-${i}`} match={match} onClick={() => onCardClick(match)} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ResultDetailModal({ match, onClose }: { match: MatchRecord | null; onClose: () => void }) {
+  if (!match) return null
+  return (
+    <div className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label="Match result detail">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
+      <div className="relative flex h-full w-full items-center justify-center p-4">
+        <div className="relative w-full max-w-[min(24rem,90vw)] md:max-w-[28rem]">
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute -top-2 right-0 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white/80 transition hover:bg-white/10 hover:text-white"
+            aria-label="Close"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <MatchCard
+            match={match}
+            interactive={false}
+            className="!aspect-[9/16] !h-auto !w-full !max-w-none shadow-2xl"
+          />
         </div>
       </div>
     </div>

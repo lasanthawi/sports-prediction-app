@@ -312,3 +312,23 @@ body {
   }
 }
 
+/* Results board infinite carousel */
+.results-carousel-track {
+  display: flex;
+  width: max-content;
+  animation: results-carousel-scroll 45s linear infinite;
+}
+
+.results-carousel-track:hover {
+  animation-play-state: paused;
+}
+
+@keyframes results-carousel-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
