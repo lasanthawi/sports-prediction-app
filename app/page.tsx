@@ -149,6 +149,8 @@ export default function Home() {
 
       <MobileArenaApp
         matches={mobileVotingMatches}
+        finishedMatches={finishedMatches}
+        upcomingMatches={upcomingMatches}
         totalVotes={totalVotes}
         liveCount={liveMatches.length}
         upcomingCount={upcomingMatches.length}
@@ -157,6 +159,7 @@ export default function Home() {
         votingMode={votingMode}
         setVotingMode={setVotingMode}
         onOpenMatch={openMatchViewer}
+        onOpenResultDetail={setResultDetailMatchId}
         onRefresh={fetchMatches}
       />
 
@@ -408,6 +411,8 @@ export default function Home() {
 
 function MobileArenaApp({
   matches,
+  finishedMatches,
+  upcomingMatches,
   totalVotes,
   liveCount,
   upcomingCount,
@@ -416,9 +421,12 @@ function MobileArenaApp({
   votingMode,
   setVotingMode,
   onOpenMatch,
+  onOpenResultDetail,
   onRefresh,
 }: {
   matches: MatchRecord[]
+  finishedMatches: MatchRecord[]
+  upcomingMatches: MatchRecord[]
   totalVotes: number
   liveCount: number
   upcomingCount: number
@@ -427,6 +435,7 @@ function MobileArenaApp({
   votingMode: boolean
   setVotingMode: (value: boolean) => void
   onOpenMatch: (matchId: number) => void
+  onOpenResultDetail: (matchId: number) => void
   onRefresh: () => Promise<void>
 }) {
   return (
@@ -434,50 +443,51 @@ function MobileArenaApp({
       <section className="mobile-arena-shell">
         <div className="mobile-arena-topbar">
           <div className="flex items-start gap-3">
-            <img src={BRAND_IMAGE} alt="Prediction Arena logo" className="h-14 w-14 rounded-2xl border border-white/10 bg-black/25 object-cover p-1 shadow-[0_0_22px_rgba(255,216,77,0.2)]" />
-            <div>
+            <img src={BRAND_IMAGE} alt="Prediction Arena logo" className="h-14 w-14 shrink-0 rounded-2xl border border-white/10 bg-black/25 object-cover p-1 shadow-[0_0_22px_rgba(255,216,77,0.2)]" />
+            <div className="min-w-0">
               <p className="text-xs font-bold uppercase tracking-[0.32em] text-green-300/80">Prediction Arena</p>
-              <h1 className="mt-2 text-3xl font-black leading-none text-white">Arena App</h1>
+              <h1 className="mt-2 text-2xl font-black leading-none text-white sm:text-3xl">Arena App</h1>
             </div>
           </div>
-          <Link href="/login" className="glass-button !rounded-2xl !px-4 !py-3 text-sm">
+          <Link href="/login" className="glass-button shrink-0 !rounded-2xl !px-4 !py-3 text-sm">
             <LogIn size={16} />
           </Link>
         </div>
 
         <div className="mobile-hero-card">
           <p className="text-xs font-bold uppercase tracking-[0.28em] text-cyan-300">Pocket Control</p>
-          <h2 className="mt-3 text-3xl font-black text-white">Enter Voting Mode</h2>
+          <h2 className="mt-3 text-2xl font-black text-white sm:text-3xl">Enter Voting Mode</h2>
           <p className="mt-3 text-sm leading-6 text-white/70">
             Full-screen battle cards, swipe navigation, and zero cramped scrolling. Built for quick picks on mobile.
           </p>
-          <div className="mt-5 grid grid-cols-3 gap-3">
+          <div className="mt-4 grid grid-cols-3 gap-2 sm:mt-5 sm:gap-3">
             <MobileStat label="Live" value={String(liveCount)} />
             <MobileStat label="Queue" value={String(upcomingCount)} />
             <MobileStat label="Votes" value={String(totalVotes)} />
           </div>
           <button
             onClick={() => setVotingMode(true)}
-            className="btn-game mt-5 flex w-full items-center justify-center gap-2 rounded-[1.35rem] py-4 text-base"
+            className="btn-game mt-4 flex w-full items-center justify-center gap-2 rounded-[1.35rem] py-3 text-base sm:mt-5 sm:py-4"
           >
             Start Voting <ArrowRight size={18} />
           </button>
         </div>
 
-        <div className="grid flex-1 grid-rows-[auto,1fr,auto] gap-4 overflow-hidden">
-          <div className="rounded-[1.75rem] border border-white/10 bg-black/25 px-4 py-3 backdrop-blur-md">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
+          <div className="shrink-0 rounded-[1.75rem] border border-white/10 bg-black/25 px-4 py-3 backdrop-blur-md">
             <div className="flex items-center justify-between gap-3">
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm font-bold text-white">Featured Tonight</p>
                 <p className="text-xs text-white/60">{matches.length} ready-to-vote cards</p>
               </div>
-              <button onClick={() => void onRefresh()} className="text-xs font-bold uppercase tracking-[0.18em] text-green-300">
+              <button onClick={() => void onRefresh()} className="shrink-0 text-xs font-bold uppercase tracking-[0.18em] text-green-300">
                 Refresh
               </button>
             </div>
           </div>
 
-          {loading ? (
+          <div className="min-h-0 flex-1 space-y-6 overflow-y-auto">
+            {loading ? (
             <div className="flex items-center justify-center rounded-[2rem] border border-white/10 bg-black/25 px-6 text-center backdrop-blur-md">
               <div>
                 <div className="mx-auto h-12 w-12 animate-spin rounded-full border-t-4 border-green-400" />
@@ -524,23 +534,79 @@ function MobileArenaApp({
                 </div>
               ))}
             </div>
-          )}
+            )}
 
-          <div className="flex items-center justify-between rounded-[1.75rem] border border-white/10 bg-black/25 px-4 py-4 text-sm text-white/70 backdrop-blur-md">
-            <div>
-              <p className="font-bold text-white">Swipe mode ready</p>
-              <p className="text-xs text-white/55">Landscape-style voting cards on your phone</p>
+            {/* Results Board — mobile responsive */}
+            <section id="results-board-mobile" className="w-full">
+              <SectionHeading
+                eyebrow="Final Whistle"
+                title="Results Board"
+                copy="Latest finished battles and how the arena voted."
+                compact
+              />
+              {finishedMatches.length === 0 ? (
+                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-5 text-center text-sm text-white/60 backdrop-blur-md">
+                  No results yet. Finished matches will show up here.
+                </div>
+              ) : (
+                <div className="-mx-1 overflow-hidden">
+                  <ResultsCarousel
+                    matches={finishedMatches}
+                    onCardClick={(match) => onOpenResultDetail(match.id)}
+                  />
+                </div>
+              )}
+            </section>
+
+            {/* Upcoming Clashes — mobile responsive */}
+            <section id="upcoming-clashes-mobile" className="w-full">
+              <SectionHeading
+                eyebrow="Clash Queue"
+                title={upcomingMatches.length > 0 ? 'Upcoming Clashes' : 'Latest Clashes'}
+                copy={upcomingMatches.length > 0
+                  ? 'Next battles and where the arena hype is building.'
+                  : 'Latest finished matches when no upcoming are scheduled.'}
+                compact
+              />
+              <div className="space-y-2">
+                {(upcomingMatches.length > 0 ? upcomingMatches.slice(0, 6) : finishedMatches.slice(0, 6)).map((match) => (
+                  <MiniMatchCard key={match.id} match={match} />
+                ))}
+                {upcomingMatches.length === 0 && finishedMatches.length === 0 && (
+                  <p className="rounded-2xl border border-white/10 bg-black/20 px-4 py-5 text-center text-sm text-white/60 backdrop-blur-md">
+                    No matches yet. New clashes will appear when scheduled.
+                  </p>
+                )}
+              </div>
+            </section>
+
+            {/* How It Works — mobile responsive */}
+            <section id="how-it-works-mobile" className="w-full">
+              <h3 className="text-lg font-bold text-white sm:text-xl">How It Works</h3>
+              <p className="mt-1 text-xs text-white/60 sm:text-sm">Three steps to join the arena.</p>
+              <div className="mt-4 space-y-3">
+                <StepRow index="01" title="Choose a clash" copy="Browse live and upcoming match cards with vote-ready calls to action." />
+                <StepRow index="02" title="Back your side" copy="Vote before kickoff and watch the community split evolve in real time." />
+                <StepRow index="03" title="Track the result" copy="Return for the result card and see how the arena called it." />
+              </div>
+            </section>
+
+            {/* Swipe mode CTA */}
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.75rem] border border-white/10 bg-black/25 px-4 py-4 text-sm text-white/70 backdrop-blur-md">
+              <div className="min-w-0">
+                <p className="font-bold text-white">Swipe mode ready</p>
+                <p className="text-xs text-white/55">Full-screen voting cards on your phone</p>
+              </div>
+              <button
+                onClick={() => setVotingMode(true)}
+                className="shrink-0 rounded-full border border-cyan-300/40 bg-cyan-400/10 px-4 py-2 font-bold text-cyan-200"
+              >
+                Open
+              </button>
             </div>
-            <button
-              onClick={() => setVotingMode(true)}
-              className="rounded-full border border-cyan-300/40 bg-cyan-400/10 px-4 py-2 font-bold text-cyan-200"
-            >
-              Open
-            </button>
           </div>
         </div>
       </section>
-
     </div>
   )
 }

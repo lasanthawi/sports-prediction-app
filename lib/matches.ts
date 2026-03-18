@@ -148,7 +148,7 @@ function matchSelectClause() {
       LIMIT 1
     ) prediction_art ON TRUE
     LEFT JOIN LATERAL (
-      SELECT id, published_status
+      SELECT id, published_status, generation_status
       FROM generated_assets
       WHERE match_id = matches.id
         AND asset_type = 'card'
@@ -197,11 +197,68 @@ export async function listVisibleMatches() {
     WHERE matches.status IN ('upcoming', 'live')
       AND prediction_card.id IS NOT NULL
       AND LOWER(TRIM(prediction_card.published_status)) = 'published'
+      AND LOWER(TRIM(COALESCE(prediction_card.generation_status, ''))) IN ('generated', 'fallback')
     ORDER BY match_time ASC, matches.id DESC
     LIMIT 60
   `)
 
   return dedupeVisibleMatches(hydrateMatches(rows)).slice(0, 20)
+}
+
+/** Finished matches for the results board. */
+export async function listFinishedMatches() {
+  await ensureSchema()
+  await refreshDerivedMatchStatuses()
+  const { rows } = await sql.query<MatchRecord>(`
+    ${matchSelectClause()}
+    WHERE matches.status = 'finished'
+    ORDER BY match_time DESC, matches.id DESC
+    LIMIT 50
+  `)
+  return hydrateMatches(rows)
+}
+
+/** For public homepage: voting matches (with generated assets) + finished matches for results board. */
+export async function listMatchesForPublic() {
+  const [voting, finished] = await Promise.all([listVisibleMatches(), listFinishedMatches()])
+  const byId = new Map(voting.map((m) => [m.id, m]))
+  for (const m of finished) {
+    if (!byId.has(m.id)) byId.set(m.id, m)
+  }
+  return Array.from(byId.values()).sort((a, b) => {
+    const aTime = new Date(a.match_time).getTime()
+    const bTime = new Date(b.match_time).getTime()
+    if (a.status === 'finished' && b.status !== 'finished') return 1
+    if (a.status !== 'finished' && b.status === 'finished') return -1
+    return aTime - bTime
+  })
+}
+
+/** Match ids that need asset generation: no card or card not generated/fallback for the active variant. */
+export async function listMatchIdsNeedingAssetGeneration(): Promise<number[]> {
+  await ensureSchema()
+  const { rows } = await sql<{ id: number }>`
+    SELECT m.id FROM matches m
+    LEFT JOIN LATERAL (
+      SELECT 1 AS ok
+      FROM generated_assets ga
+      WHERE ga.match_id = m.id AND ga.asset_type = 'card' AND ga.asset_variant = 'prediction'
+        AND LOWER(TRIM(COALESCE(ga.generation_status, ''))) IN ('generated', 'fallback')
+      LIMIT 1
+    ) pred ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT 1 AS ok
+      FROM generated_assets ga
+      WHERE ga.match_id = m.id AND ga.asset_type = 'card' AND ga.asset_variant = 'result'
+        AND LOWER(TRIM(COALESCE(ga.generation_status, ''))) IN ('generated', 'fallback')
+      LIMIT 1
+    ) res ON TRUE
+    WHERE (m.status IN ('upcoming', 'live') AND pred.ok IS NULL)
+       OR (m.status = 'finished' AND res.ok IS NULL)
+    ORDER BY m.match_time ASC
+    LIMIT 100
+  `
+  return rows.map((r) => r.id)
 }
 
 export async function createMatch(input: MatchInput) {

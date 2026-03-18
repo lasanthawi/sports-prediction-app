@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { generateAssetsForMatches } from '@/lib/automation'
 import { MatchInput } from '@/lib/types'
-import { createMatch, listMatches, listVisibleMatches } from '@/lib/matches'
+import { createMatch, listMatches, listMatchesForPublic } from '@/lib/matches'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const includeAll = searchParams.get('includeAll') === '1'
-    const matches = includeAll ? await listMatches() : await listVisibleMatches()
+    const matches = includeAll ? await listMatches() : await listMatchesForPublic()
     return NextResponse.json({ matches })
   } catch (error: any) {
     console.error('Database error:', error)

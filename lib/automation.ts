@@ -2,7 +2,7 @@ import { sql } from '@vercel/postgres'
 import { ensureSchema } from './db'
 import { fetchConfiguredFeedMatches, stageFeedMatches } from './feed'
 import { buildGeminiPrompt, generateGeminiPortraitArtwork, getPromptVersion } from './gemini'
-import { getMatch, listMatches } from './matches'
+import { getMatch, listMatches, listMatchIdsNeedingAssetGeneration } from './matches'
 import { getActivePublishStatus, isPublishedStatus } from './publish'
 import { AssetRecord, AssetVariant, MatchRecord } from './types'
 
@@ -520,37 +520,54 @@ export async function listUnpublishedMatches(): Promise<MatchRecord[]> {
   return all.filter((m) => !isPublishedStatus(getActivePublishStatus(m)))
 }
 
+/** Generate assets for matches that need them (no card or card not generated/fallback). Returns count of matches processed. */
+async function generateAssetsForMatchesNeedingThem(): Promise<{ matchCount: number; assetCount: number }> {
+  const ids = await listMatchIdsNeedingAssetGeneration()
+  if (ids.length === 0) return { matchCount: 0, assetCount: 0 }
+  const matches: MatchRecord[] = []
+  for (const id of ids) {
+    const m = await getMatch(id)
+    if (m) matches.push(m)
+  }
+  const generated = matches.length > 0 ? await generateAssetsForMatches(matches) : []
+  return { matchCount: matches.length, assetCount: generated.length }
+}
+
 /** Generate assets for all unpublished matches, then publish any ready assets. For hourly cron. */
 export async function runUnpublishedQueuePipeline() {
   await ensureSchema()
+  const { matchCount: needingMatchCount, assetCount: needingAssetCount } = await generateAssetsForMatchesNeedingThem()
   const unpublished = await listUnpublishedMatches()
   const assets = unpublished.length > 0 ? await generateAssetsForMatches(unpublished) : []
   const publish = await publishReadyAssets()
 
-  await logAutomationRun('unpublished_queue', 'success', `Processed ${unpublished.length} unpublished match(es), generated ${assets.length} assets, published ${publish.published}`, {
+  await logAutomationRun('unpublished_queue', 'success', `Generated for ${needingMatchCount} needing assets, ${unpublished.length} unpublished; published ${publish.published}`, {
+    needingGenerationCount: needingMatchCount,
     unpublishedCount: unpublished.length,
-    generatedCount: assets.length,
+    generatedCount: assets.length + needingAssetCount,
     published: publish.published,
   })
 
-  return { unpublishedCount: unpublished.length, assets: { count: assets.length }, publish }
+  return { needingGenerationCount: needingMatchCount, unpublishedCount: unpublished.length, assets: { count: assets.length + needingAssetCount }, publish }
 }
 
 export async function runAutomationPipeline() {
   await ensureSchema()
   const sync = await syncMatchesFromFeed()
+  const { matchCount: needingMatchCount, assetCount: needingAssetCount } = await generateAssetsForMatchesNeedingThem()
   const unpublished = await listUnpublishedMatches()
   const assets = unpublished.length > 0 ? await generateAssetsForMatches(unpublished) : []
   const publish = await publishReadyAssets()
 
   await logAutomationRun('run_pipeline', 'success', 'Ran sync, asset generation, and publish pipeline', {
     synced: sync.count,
+    needingGenerationCount: needingMatchCount,
     unpublishedCount: unpublished.length,
-    generated: assets.length,
+    generated: assets.length + needingAssetCount,
     published: publish.published,
   })
 
-  return { sync, unpublishedCount: unpublished.length, assets: { count: assets.length }, publish }
+  return { sync, needingGenerationCount: needingMatchCount, unpublishedCount: unpublished.length, assets: { count: assets.length + needingAssetCount }, publish }
 }
 
 export async function listAutomationRuns(limit = 10) {
