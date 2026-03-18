@@ -49,8 +49,9 @@ export async function POST(request: Request) {
       process.env.VERCEL_PROJECT_PRODUCTION_URL?.replace(/^/, 'https://') ||
       process.env.VERCEL_URL?.replace(/^/, 'https://') ||
       'http://localhost:3000'
-    ).replace(/\/$/, '')
-    const assetUrl = `${baseUrl}/api/assets/${assetId}?format=png`
+    ).replace(/\/+$/, '')
+    let assetUrl = `${baseUrl}/api/assets/${assetId}?format=png`
+    assetUrl = assetUrl.replace(/([^:]\/)\/+/g, '$1')
 
     const facebook = await publishToFacebookStory(assetUrl)
 

@@ -26,6 +26,7 @@ export async function publishToFacebookStory(assetUrl: string, _caption?: string
     return { ok: false, skipped: true, reason: 'FB_PAGE_ID or FB_PAGE_ACCESS_TOKEN not set' }
   }
 
+  assetUrl = assetUrl.replace(/([^:]\/)\/+/g, '$1')
   if (assetUrl.startsWith('http://localhost') || assetUrl.startsWith('http://127.0.0.1')) {
     console.error('[Facebook] Asset URL is localhost; Facebook’s servers cannot fetch it. Set NEXT_PUBLIC_APP_URL to a public HTTPS URL (e.g. your Vercel URL or ngrok).')
     return { ok: false, skipped: false, error: 'Asset URL must be public HTTPS. Facebook cannot fetch localhost. Set NEXT_PUBLIC_APP_URL to your deployed URL.' }
