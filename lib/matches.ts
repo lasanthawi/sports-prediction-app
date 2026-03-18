@@ -129,26 +129,17 @@ function matchSelectClause() {
   return `
     SELECT
       matches.*,
-      prediction_art.id AS prediction_artwork_asset_id,
-      prediction_art.generation_status AS prediction_asset_status,
+      prediction_card.source_asset_id AS prediction_artwork_asset_id,
+      prediction_card.generation_status AS prediction_asset_status,
       prediction_card.id AS prediction_card_asset_id,
       prediction_card.published_status AS prediction_publish_status,
-      result_art.id AS result_artwork_asset_id,
-      result_art.generation_status AS result_asset_status,
+      result_card.source_asset_id AS result_artwork_asset_id,
+      result_card.generation_status AS result_asset_status,
       result_card.id AS result_card_asset_id,
       result_card.published_status AS result_publish_status
     FROM matches
     LEFT JOIN LATERAL (
-      SELECT id, generation_status
-      FROM generated_assets
-      WHERE match_id = matches.id
-        AND asset_type = 'artwork'
-        AND asset_variant = 'prediction'
-      ORDER BY id DESC
-      LIMIT 1
-    ) prediction_art ON TRUE
-    LEFT JOIN LATERAL (
-      SELECT id, published_status, generation_status
+      SELECT id, published_status, generation_status, source_asset_id
       FROM generated_assets
       WHERE match_id = matches.id
         AND asset_type = 'card'
@@ -157,16 +148,7 @@ function matchSelectClause() {
       LIMIT 1
     ) prediction_card ON TRUE
     LEFT JOIN LATERAL (
-      SELECT id, generation_status
-      FROM generated_assets
-      WHERE match_id = matches.id
-        AND asset_type = 'artwork'
-        AND asset_variant = 'result'
-      ORDER BY id DESC
-      LIMIT 1
-    ) result_art ON TRUE
-    LEFT JOIN LATERAL (
-      SELECT id, published_status
+      SELECT id, published_status, generation_status, source_asset_id
       FROM generated_assets
       WHERE match_id = matches.id
         AND asset_type = 'card'
