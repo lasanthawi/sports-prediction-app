@@ -503,19 +503,19 @@ function MobileArenaApp({
           ) : (
             <div className="grid grid-cols-2 gap-3 overflow-hidden">
               {matches.slice(0, 4).map((match) => (
-                <div key={match.id} className="rounded-[1.75rem] border border-white/10 bg-black/20 p-2 backdrop-blur-md">
-                  <div className="mb-2 flex items-center justify-between gap-2 px-1">
-                    <p className="truncate text-sm font-black text-white">{match.team1} vs {match.team2}</p>
+                <div key={match.id} className="flex min-w-0 flex-col rounded-[1.75rem] border border-white/10 bg-black/20 p-2 backdrop-blur-md">
+                  <div className="mb-2 flex shrink-0 items-center justify-between gap-2 px-1">
+                    <p className="min-w-0 truncate text-sm font-black text-white">{match.team1} vs {match.team2}</p>
                     <span className="shrink-0 rounded-full border border-green-300/20 bg-green-300/10 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-green-200">
                       {match.status}
                     </span>
                   </div>
-                  <div className="aspect-[9/16] w-full">
+                  <div className="relative min-h-0 w-full flex-1 overflow-hidden rounded-xl" style={{ aspectRatio: '9/16' }}>
                     <MatchCard
                       match={match}
                       onVote={() => void onRefresh()}
                       onCardClick={() => onOpenMatch(match.id)}
-                      className="!h-full !min-h-0 !max-w-none"
+                      className="!h-full !min-h-0 !w-full !max-w-none"
                     />
                   </div>
                 </div>
@@ -555,7 +555,8 @@ function ArenaVotingOverlay({
 }) {
   const voteMatches = matches.length > 0 ? matches : []
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [touchStart, setTouchStart] = useState<number | null>(null)
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null)
+  const [touchOffset, setTouchOffset] = useState(0)
 
   useEffect(() => {
     if (!voteMatches.length) {
@@ -584,19 +585,48 @@ function ArenaVotingOverlay({
     setCurrentIndex((current) => (current + 1) % voteMatches.length)
   }
 
-  function handleTouchEnd(endX: number) {
+  function handleTouchStart(event: React.TouchEvent) {
+    const t = event.changedTouches[0]
+    if (t) setTouchStart({ x: t.clientX, y: t.clientY })
+    setTouchOffset(0)
+  }
+
+  function handleTouchMove(event: React.TouchEvent) {
+    if (touchStart == null) return
+    const t = event.changedTouches[0]
+    if (t) setTouchOffset(t.clientX - touchStart.x)
+  }
+
+  function handleTouchEnd(event: React.TouchEvent) {
     if (touchStart == null) {
+      setTouchStart(null)
+      setTouchOffset(0)
       return
     }
-
-    const distance = endX - touchStart
-    if (distance > 50) {
-      goToPrevious()
-    } else if (distance < -50) {
-      goToNext()
+    const t = event.changedTouches[0]
+    if (!t) {
+      setTouchStart(null)
+      setTouchOffset(0)
+      return
     }
-
+    const deltaX = t.clientX - touchStart.x
+    const deltaY = t.clientY - touchStart.y
+    const isSwipeUp = Math.abs(deltaY) > Math.abs(deltaX) && deltaY < 0
+    if (isSwipeUp && deltaY < -50) {
+      onClose()
+      setTouchStart(null)
+      setTouchOffset(0)
+      return
+    }
+    if (Math.abs(deltaX) > 50) {
+      if (deltaX > 0) {
+        goToPrevious()
+      } else {
+        goToNext()
+      }
+    }
     setTouchStart(null)
+    setTouchOffset(0)
   }
 
   useEffect(() => {
@@ -654,11 +684,39 @@ function ArenaVotingOverlay({
               >
                 <ChevronLeft size={20} />
               </button>
+              {/* Mobile: swipeable single-card strip with slide transition and swipe-up to close */}
               <div
-                className="flex h-full w-full flex-1 items-center justify-center overflow-visible"
-                onTouchStart={(event) => setTouchStart(event.changedTouches[0]?.clientX ?? null)}
-                onTouchEnd={(event) => handleTouchEnd(event.changedTouches[0]?.clientX ?? 0)}
+                className="flex h-full w-full flex-1 md:hidden"
+                style={{ overflow: 'hidden', touchAction: 'pan-y' }}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
               >
+                <div
+                  className="flex h-full w-full"
+                  style={{
+                    width: `${voteMatches.length * 100}%`,
+                    transform: `translateX(calc(-${currentIndex * (100 / voteMatches.length)}% + ${touchOffset}px))`,
+                    transition: touchStart == null ? 'transform 0.35s cubic-bezier(0.22, 1, 0.36, 1)' : 'none',
+                  }}
+                >
+                  {voteMatches.map((match) => (
+                    <div key={match.id} className="flex h-full shrink-0 items-center justify-center" style={{ width: `${100 / voteMatches.length}%` }}>
+                      <div className="h-full w-full max-w-[min(24rem,90vw)]">
+                        <MatchCard
+                          match={match}
+                          onVote={() => void onVote()}
+                          onCardClick={() => {}}
+                          interactive={voteMatches[currentIndex]?.id === match.id}
+                          className="!h-full !min-h-0 !w-full !max-w-none"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* Desktop: carousel stage with prev/current/next */}
+              <div className="hidden h-full w-full flex-1 items-center justify-center overflow-visible md:flex">
                 <MatchCarouselStage
                   matches={voteMatches}
                   currentIndex={currentIndex}
@@ -681,14 +739,6 @@ function ArenaVotingOverlay({
                 title="Next"
               >
                 <ChevronRight size={20} />
-              </button>
-            </div>
-            <div className="mt-4 flex items-center justify-center gap-2 md:hidden">
-              <button onClick={goToPrevious} disabled={!hasInfiniteVote} className="glass-button !rounded-2xl !px-4 !py-3 disabled:opacity-40" title="Previous">
-                <ChevronLeft size={18} />
-              </button>
-              <button onClick={goToNext} disabled={!hasInfiniteVote} className="glass-button !rounded-2xl !px-4 !py-3 disabled:opacity-40" title="Next">
-                <ChevronRight size={18} />
               </button>
             </div>
           </>

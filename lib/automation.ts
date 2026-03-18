@@ -2,7 +2,8 @@ import { sql } from '@vercel/postgres'
 import { ensureSchema } from './db'
 import { fetchConfiguredFeedMatches, stageFeedMatches } from './feed'
 import { buildGeminiPrompt, generateGeminiPortraitArtwork, getPromptVersion } from './gemini'
-import { getMatch } from './matches'
+import { getMatch, listMatches } from './matches'
+import { getActivePublishStatus, isPublishedStatus } from './publish'
 import { AssetRecord, AssetVariant, MatchRecord } from './types'
 
 const DEFAULT_WEBHOOK_TIMEOUT_MS = 10000
@@ -513,19 +514,43 @@ export async function publishMatchAssets(matchId: number) {
   return publishAssets(rows, 'webhook')
 }
 
+/** Returns matches whose active variant (prediction or result) is not yet published. */
+export async function listUnpublishedMatches(): Promise<MatchRecord[]> {
+  const all = await listMatches()
+  return all.filter((m) => !isPublishedStatus(getActivePublishStatus(m)))
+}
+
+/** Generate assets for all unpublished matches, then publish any ready assets. For hourly cron. */
+export async function runUnpublishedQueuePipeline() {
+  await ensureSchema()
+  const unpublished = await listUnpublishedMatches()
+  const assets = unpublished.length > 0 ? await generateAssetsForMatches(unpublished) : []
+  const publish = await publishReadyAssets()
+
+  await logAutomationRun('unpublished_queue', 'success', `Processed ${unpublished.length} unpublished match(es), generated ${assets.length} assets, published ${publish.published}`, {
+    unpublishedCount: unpublished.length,
+    generatedCount: assets.length,
+    published: publish.published,
+  })
+
+  return { unpublishedCount: unpublished.length, assets: { count: assets.length }, publish }
+}
+
 export async function runAutomationPipeline() {
   await ensureSchema()
   const sync = await syncMatchesFromFeed()
-  const assets = [] as AssetRecord[]
+  const unpublished = await listUnpublishedMatches()
+  const assets = unpublished.length > 0 ? await generateAssetsForMatches(unpublished) : []
   const publish = await publishReadyAssets()
 
   await logAutomationRun('run_pipeline', 'success', 'Ran sync, asset generation, and publish pipeline', {
     synced: sync.count,
+    unpublishedCount: unpublished.length,
     generated: assets.length,
     published: publish.published,
   })
 
-  return { sync, assets: { count: assets.length }, publish }
+  return { sync, unpublishedCount: unpublished.length, assets: { count: assets.length }, publish }
 }
 
 export async function listAutomationRuns(limit = 10) {

@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/automation/unpublished",
+      "schedule": "0 * * * *"
+    },
+    {
       "path": "/api/automation/sync",
       "schedule": "0 */6 * * *"
     },
