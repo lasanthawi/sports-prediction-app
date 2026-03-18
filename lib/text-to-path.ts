@@ -1,7 +1,10 @@
 /**
  * Replace <text> elements in SVG with <path> so sharp/librsvg renders text without system fonts.
- * Uses opentype.js and a bundled font (loaded from CDN) to convert text to paths.
+ * Uses opentype.js and a bundled font (lib/fonts/NotoSans-Regular.ttf) to avoid CDN 403 in serverless.
  */
+
+import path from 'path'
+import fs from 'fs'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const opentype = require('opentype.js') as { parse: (buf: ArrayBuffer) => { getPath: (text: string, x: number, y: number, fontSize: number) => { getBoundingBox: () => { x1: number; y1: number; x2: number; y2: number }; toPathData: (n?: number) => string } } }
@@ -9,14 +12,31 @@ const opentype = require('opentype.js') as { parse: (buf: ArrayBuffer) => { getP
 const FONT_URL =
   'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/notosans/NotoSans-Regular.ttf'
 
+/** Path to bundled font (relative to cwd at runtime). */
+function getBundledFontPath(): string {
+  return path.join(process.cwd(), 'lib', 'fonts', 'NotoSans-Regular.ttf')
+}
+
 let fontCache: ReturnType<typeof opentype.parse> | null = null
 
 async function loadFont() {
   if (fontCache) return fontCache
+
+  const bundledPath = getBundledFontPath()
+  if (fs.existsSync(bundledPath)) {
+    const buf = fs.readFileSync(bundledPath)
+    const font = opentype.parse(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength))
+    fontCache = font
+    return font
+  }
+
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 15000)
   try {
-    const res = await fetch(FONT_URL, { signal: controller.signal })
+    const res = await fetch(FONT_URL, {
+      signal: controller.signal,
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Next.js)' },
+    })
     clearTimeout(timeout)
     if (!res.ok) throw new Error(`Font fetch failed: ${res.status}`)
     const arrayBuffer = await res.arrayBuffer()
