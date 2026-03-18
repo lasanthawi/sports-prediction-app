@@ -5,6 +5,7 @@ import { buildGeminiPrompt, generateGeminiPortraitArtwork, getPromptVersion } fr
 import { getMatch, listMatches, listMatchIdsNeedingAssetGeneration } from './matches'
 import { getActivePublishStatus, isPublishedStatus } from './publish'
 import { AssetRecord, AssetVariant, MatchRecord } from './types'
+import { publishToFacebookStory } from './facebook'
 
 const DEFAULT_WEBHOOK_TIMEOUT_MS = 10000
 const RENDER_RECIPE_VERSION = 'portrait-card-v1'
@@ -461,6 +462,9 @@ async function publishAssets(rows: AssetRecord[], mode: 'queue-only' | 'webhook'
           published_at = NOW()
         WHERE id = ${asset.id}
       `
+
+      const assetUrl = `${getBaseUrl()}/api/assets/${asset.id}`
+      await publishToFacebookStory(assetUrl)
     }
 
     const message = `Published ${rows.length} card asset${rows.length === 1 ? '' : 's'} to the local app. External webhook is not configured.`
@@ -511,6 +515,8 @@ async function publishAssets(rows: AssetRecord[], mode: 'queue-only' | 'webhook'
 
     if (response.ok) {
       published += 1
+      const assetUrl = `${getBaseUrl()}/api/assets/${asset.id}`
+      await publishToFacebookStory(assetUrl)
     }
   }
 
