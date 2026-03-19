@@ -103,6 +103,9 @@ function getAttr(attrs: string, name: string): string | null {
  * Preserves fill and position (x, y, text-anchor, font-size).
  */
 export async function replaceTextWithPaths(svgString: string): Promise<string> {
+  // If there is no SVG text to replace, avoid loading the font entirely.
+  if (!/<text\b/i.test(svgString)) return svgString
+
   const font = await loadFont()
   const textRegex = /<text([^>]*)>([\s\S]*?)<\/text>/g
   let out = svgString

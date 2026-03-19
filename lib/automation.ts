@@ -114,53 +114,11 @@ const STORY_FONT =
 
 function buildRenderedCardSvg(match: MatchRecord, variant: AssetVariant, artwork: AssetRecord) {
   const artworkUrl = getAssetDataUrl(artwork)
-  const isResult = variant === 'result'
-  const totalVotes = match.poll_team1_votes + match.poll_team2_votes
-  const team1Pct = totalVotes > 0
-    ? Math.round((match.poll_team1_votes / totalVotes) * 100)
-    : 50
-  const team2Pct = 100 - team1Pct
-  const winner = match.winner != null ? match.winner : (team1Pct >= team2Pct ? 1 : 2)
-
-  if (isResult) {
-    const scoreText = match.result_summary || 'FT'
-    return `<?xml version="1.0" encoding="UTF-8"?>
-<svg width="1080" height="1920" viewBox="0 0 1080 1920" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="overlay" x1="540" y1="1100" x2="540" y2="1920" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#000000" stop-opacity="0"/>
-      <stop offset="0.4" stop-color="#000000" stop-opacity="0.5"/>
-      <stop offset="1" stop-color="#000000" stop-opacity="0.88"/>
-    </linearGradient>
-  </defs>
-  <image href="${artworkUrl}" x="0" y="0" width="1080" height="1920" preserveAspectRatio="xMidYMid slice"/>
-  <rect x="0" y="0" width="1080" height="1920" fill="url(#overlay)"/>
-  <text x="540" y="1580" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="52" font-weight="700">Who won?</text>
-  <text x="540" y="1660" fill="#FFD54F" text-anchor="middle" font-family="${STORY_FONT}" font-size="44" font-weight="800">${escapeXml(scoreText)}</text>
-  <text x="540" y="1720" fill="rgba(255,255,255,0.9)" text-anchor="middle" font-family="${STORY_FONT}" font-size="28" font-weight="700">${escapeXml(match.team1)}</text>
-  <text x="540" y="1780" fill="rgba(255,255,255,0.9)" text-anchor="middle" font-family="${STORY_FONT}" font-size="28" font-weight="700">${escapeXml(match.team2)}</text>
-  <text x="540" y="1840" fill="rgba(255,255,255,0.7)" text-anchor="middle" font-family="${STORY_FONT}" font-size="22">${team1Pct}% vs ${team2Pct}% · ${totalVotes} votes</text>
-  <text x="540" y="1895" fill="rgba(255,255,255,0.5)" text-anchor="middle" font-family="${STORY_FONT}" font-size="18">${escapeXml(match.sport)} · ${escapeXml(match.league || '')}</text>
-</svg>`
-  }
-
+  // Facebook stories should be "image-only": no overlay gradient, no <text>, no foreground UI.
+  // The story content comes entirely from the generated artwork SVG/image.
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="1080" height="1920" viewBox="0 0 1080 1920" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="overlay" x1="540" y1="1100" x2="540" y2="1920" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#000000" stop-opacity="0"/>
-      <stop offset="0.35" stop-color="#000000" stop-opacity="0.4"/>
-      <stop offset="1" stop-color="#000000" stop-opacity="0.88"/>
-    </linearGradient>
-  </defs>
   <image href="${artworkUrl}" x="0" y="0" width="1080" height="1920" preserveAspectRatio="xMidYMid slice"/>
-  <rect x="0" y="0" width="1080" height="1920" fill="url(#overlay)"/>
-  <text x="540" y="1520" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="56" font-weight="800">Who&apos;s gonna win?</text>
-  <text x="540" y="1620" fill="rgba(255,255,255,0.95)" text-anchor="middle" font-family="${STORY_FONT}" font-size="42" font-weight="700">${escapeXml(match.team1)}</text>
-  <text x="540" y="1690" fill="rgba(255,255,255,0.95)" text-anchor="middle" font-family="${STORY_FONT}" font-size="42" font-weight="700">${escapeXml(match.team2)}</text>
-  <text x="540" y="1770" fill="#FFD54F" text-anchor="middle" font-family="${STORY_FONT}" font-size="26" font-weight="700">${escapeXml(new Date(match.match_time).toLocaleString())}</text>
-  <text x="540" y="1830" fill="rgba(255,255,255,0.75)" text-anchor="middle" font-family="${STORY_FONT}" font-size="22">${team1Pct}% vs ${team2Pct} backing</text>
-  <text x="540" y="1895" fill="rgba(255,255,255,0.5)" text-anchor="middle" font-family="${STORY_FONT}" font-size="18">${escapeXml(match.sport)} · Tap to vote</text>
 </svg>`
 }
 
