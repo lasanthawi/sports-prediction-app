@@ -5,7 +5,44 @@ import { FeedMatch, FeedQueueRecord, MatchStatus } from './types'
 
 const DEFAULT_SPORTSDB_API_KEY = '123'
 // Extended: EPL, La Liga, Serie A, Bundesliga, Ligue 1, Liga Portugal — more sports/leagues via SPORTSDB_LEAGUE_IDS
-const DEFAULT_SPORTSDB_LEAGUE_IDS = ['4328', '4335', '4387', '4346', '4351', '4394']
+const DEFAULT_SPORTSDB_LEAGUE_IDS = [
+  '4328', // English Premier League
+  '4329', // English League Championship
+  '4330', // Scottish Premier League
+  '4331', // German Bundesliga
+  '4332', // Italian Serie A
+  '4334', // French Ligue 1
+  '4335', // Spanish La Liga
+  '4336', // Greek Superleague Greece
+  '4337', // Dutch Eredivisie
+  '4338', // Belgian Pro League
+  '4340', // Danish Superliga
+  '4344', // Portuguese Primeira Liga
+  '4346', // American Major League Soccer
+  '4347', // Swedish Allsvenskan
+  '4350', // Mexican Primera League
+  '4351', // Brazilian Serie A
+  '4354', // Australian A-League
+  '4355', // Japanese J League
+  '4394', // UEFA Champions League
+  '4480', // UEFA Europa League
+  '4387', // NBA
+  '4388', // WNBA
+  '4391', // NFL
+  '4424', // MLB
+  '4380', // NHL
+  '4426', // Indian Premier League
+  '4385', // Super Rugby
+  '4425', // Six Nations
+  '4370', // Formula 1
+  '4401', // UFC
+  '4419', // ATP World Tour
+  '4427', // PGA Tour
+]
+
+function unique(values: string[]) {
+  return Array.from(new Set(values))
+}
 
 function slugify(value: string | null | undefined) {
   return (value || '')
@@ -166,7 +203,7 @@ export async function fetchTheSportsDbFeed() {
     .map((value) => value.trim())
     .filter(Boolean)
 
-  const leagueIds = configuredLeagueIds?.length ? configuredLeagueIds : DEFAULT_SPORTSDB_LEAGUE_IDS
+  const leagueIds = unique(configuredLeagueIds?.length ? configuredLeagueIds : DEFAULT_SPORTSDB_LEAGUE_IDS)
   const leagueResponses = await Promise.all(leagueIds.map((leagueId) => fetchTheSportsDbLeague(leagueId, apiKey)))
 
   return leagueResponses.flatMap((events) =>
@@ -292,6 +329,7 @@ export async function stageFeedMatches(feedMatches: FeedMatch[], provider = 'fee
         last_seen_at = NOW(),
         sync_status = CASE
           WHEN feed_sync_items.sync_status = 'dismissed' THEN 'dismissed'
+          WHEN feed_sync_items.sync_status = 'imported' THEN 'imported'
           ELSE 'queued'
         END
       RETURNING *
@@ -364,6 +402,26 @@ export async function listFeedQueue() {
   `
 
   return rows
+}
+
+export async function listFeedQueueItemIdsForAutomation(limit = 100) {
+  await ensureSchema()
+  const { rows } = await sql<{ id: number }>`
+    SELECT id
+    FROM feed_sync_items
+    WHERE sync_status IN ('queued', 'imported')
+    ORDER BY
+      CASE sync_status
+        WHEN 'queued' THEN 0
+        WHEN 'imported' THEN 1
+        ELSE 2
+      END,
+      match_time ASC,
+      id ASC
+    LIMIT ${limit}
+  `
+
+  return rows.map((row) => row.id)
 }
 
 export async function importFeedQueueItem(id: number) {

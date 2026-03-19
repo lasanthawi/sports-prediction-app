@@ -45,13 +45,21 @@ The app auto-creates these tables:
 
 ## Automation Flow
 
-The automation pipeline is split into three jobs:
+The automation pipeline supports both split jobs and a full end-to-end cron flow:
 
-1. `POST /api/automation/sync`
-2. `POST /api/automation/assets`
-3. `POST /api/automation/publish`
+1. `POST /api/automation/sync` stages feed items
+2. `POST /api/automation/assets` generates assets for existing matches
+3. `POST /api/automation/publish` publishes ready card assets
+4. `GET/POST /api/unpublished-queue` runs the full hourly pipeline: sync feed, reconcile queued/imported feed items into `matches`, generate missing assets, and publish ready cards
 
 `vercel.json` includes matching cron jobs so the pipeline can run automatically after deployment.
+
+## SportsDB Coverage
+
+When `SPORTS_SYNC_PROVIDER=thesportsdb`, the app now defaults to a broader set of major
+competitions across football, basketball, baseball, hockey, cricket, rugby, motorsport,
+fighting, tennis, golf, and American football. You can still replace that scope completely
+with `SPORTSDB_LEAGUE_IDS`.
 
 ## Premium Match Card Metadata
 

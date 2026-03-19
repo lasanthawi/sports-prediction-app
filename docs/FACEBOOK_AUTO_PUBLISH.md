@@ -5,7 +5,7 @@
 Facebook Story publish runs in these cases:
 
 1. **Hourly cron (`/api/unpublished-queue`)**  
-   Runs at the start of every hour. It syncs matches, generates assets for matches that need them, then runs **publish** for all ready card assets. Each published card is also sent to Facebook (if credentials are set).
+   Runs at the start of every hour. It syncs the feed, reconciles queued/imported feed items into app matches, generates assets for matches that need them, then runs **publish** for all ready card assets. Each published card is also sent to Facebook (if credentials are set).
 
 2. **Publish cron (`/api/automation/publish`)**  
    Runs at :30 past the hour, every 6 hours. Publishes up to 20 ready card assets and posts each to Facebook.
