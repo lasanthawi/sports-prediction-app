@@ -23,7 +23,7 @@ interface MatchCardProps {
     result_artwork_url?: string | null
     card_asset_url?: string | null
   }
-  onVote?: () => void
+  onVote?: (matchId: number) => void | Promise<void>
   onCardClick?: () => void
   interactive?: boolean
   footerSlot?: ReactNode
@@ -112,7 +112,7 @@ export default function MatchCard({ match, onVote, onCardClick, interactive = tr
       setSelectedTeam(team)
       setVotedFlash(true)
       setTimeout(() => setVotedFlash(false), 450)
-      onVote?.()
+      await onVote?.(match.id)
     } catch (error: any) {
       alert(error.message || 'Failed to submit vote')
     } finally {

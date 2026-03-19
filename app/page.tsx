@@ -691,13 +691,27 @@ function ArenaVotingOverlay({
   onClose: () => void
   onVote: () => Promise<void>
 }) {
-  const voteMatches = matches.length > 0 ? matches : []
+  const [removedMatchIds, setRemovedMatchIds] = useState<number[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null)
   const [touchOffset, setTouchOffset] = useState(0)
+  const [emptyState, setEmptyState] = useState<'idle' | 'voted' | 'swiped'>('idle')
   // Throttle touchmove updates to avoid excessive re-renders on iOS Safari.
   const touchOffsetRafRef = useRef<number | null>(null)
   const touchOffsetPendingRef = useRef(0)
+  const previousActiveMatchIdRef = useRef<number | null>(null)
+
+  const voteMatches = useMemo(
+    () => matches.filter((match) => !removedMatchIds.includes(match.id)),
+    [matches, removedMatchIds]
+  )
+
+  useEffect(() => {
+    setRemovedMatchIds((current) => current.filter((id) => matches.some((match) => match.id === id)))
+    if (matches.length > 0) {
+      setEmptyState('idle')
+    }
+  }, [matches])
 
   useEffect(() => {
     if (!voteMatches.length) {
@@ -706,15 +720,28 @@ function ArenaVotingOverlay({
     }
 
     if (activeMatchId == null) {
-      setCurrentIndex(0)
+      return
+    }
+
+    if (previousActiveMatchIdRef.current === activeMatchId) {
       return
     }
 
     const nextIndex = voteMatches.findIndex((match) => match.id === activeMatchId)
     if (nextIndex >= 0) {
       setCurrentIndex(nextIndex)
+      previousActiveMatchIdRef.current = activeMatchId
     }
   }, [activeMatchId, voteMatches])
+
+  useEffect(() => {
+    if (voteMatches.length === 0) {
+      setCurrentIndex(0)
+      return
+    }
+
+    setCurrentIndex((current) => Math.min(current, voteMatches.length - 1))
+  }, [voteMatches.length])
 
   const hasInfiniteVote = voteMatches.length > 1
 
@@ -724,6 +751,32 @@ function ArenaVotingOverlay({
 
   function goToNext() {
     setCurrentIndex((current) => (current + 1) % voteMatches.length)
+  }
+
+  function removeCurrentCard(reason: 'voted' | 'swiped') {
+    const currentMatch = voteMatches[currentIndex]
+    if (!currentMatch) return
+
+    const remainingCount = voteMatches.length - 1
+    setRemovedMatchIds((current) => (current.includes(currentMatch.id) ? current : [...current, currentMatch.id]))
+    setEmptyState(reason)
+
+    if (remainingCount <= 0) {
+      setCurrentIndex(0)
+      return
+    }
+
+    setCurrentIndex((current) => Math.min(current, remainingCount - 1))
+  }
+
+  async function handleVoteMarked(matchId: number) {
+    if (voteMatches[currentIndex]?.id === matchId) {
+      removeCurrentCard('voted')
+    } else {
+      setRemovedMatchIds((current) => (current.includes(matchId) ? current : [...current, matchId]))
+    }
+
+    await onVote()
   }
 
   function handleTouchStart(event: React.TouchEvent) {
@@ -741,7 +794,9 @@ function ArenaVotingOverlay({
     const t = event.changedTouches[0]
     if (!t) return
 
-    touchOffsetPendingRef.current = t.clientX - touchStart.x
+    const deltaX = t.clientX - touchStart.x
+    const deltaY = t.clientY - touchStart.y
+    touchOffsetPendingRef.current = Math.abs(deltaY) > Math.abs(deltaX) ? 0 : deltaX
     if (touchOffsetRafRef.current != null) return
 
     touchOffsetRafRef.current = requestAnimationFrame(() => {
@@ -769,13 +824,24 @@ function ArenaVotingOverlay({
     }
     const deltaX = t.clientX - touchStart.x
     const deltaY = t.clientY - touchStart.y
-    const isSwipeUp = Math.abs(deltaY) > Math.abs(deltaX) && deltaY < 0
-    if (isSwipeUp && deltaY < -50) {
+    const isVerticalSwipe = Math.abs(deltaY) > Math.abs(deltaX)
+    const isSwipeUp = isVerticalSwipe && deltaY < 0
+    const isSwipeDown = isVerticalSwipe && deltaY > 0
+
+    if (isSwipeDown && deltaY > 70) {
       onClose()
       setTouchStart(null)
       setTouchOffset(0)
       return
     }
+
+    if (isSwipeUp && deltaY < -70) {
+      removeCurrentCard('swiped')
+      setTouchStart(null)
+      setTouchOffset(0)
+      return
+    }
+
     if (Math.abs(deltaX) > 50) {
       if (deltaX > 0) {
         goToPrevious()
@@ -837,8 +903,24 @@ function ArenaVotingOverlay({
         </div>
 
         {voteMatches.length === 0 ? (
-          <div className="flex flex-1 items-center justify-center text-center text-white/70">
-            No voting cards available right now.
+          <div className="flex flex-1 items-center justify-center px-6 text-center">
+            <div className="max-w-sm rounded-[2rem] border border-white/10 bg-black/30 px-6 py-8 backdrop-blur-md">
+              <p className="text-xs font-bold uppercase tracking-[0.3em] text-cyan-300/80">Voting Mode</p>
+              <h3 className="mt-4 text-2xl font-black text-white">
+                {emptyState === 'swiped' ? 'Arena Cleared' : 'No More Cards Right Now'}
+              </h3>
+              <p className="mt-3 text-sm leading-6 text-white/70">
+                {emptyState === 'swiped'
+                  ? 'You swiped through every available clash. Come back later for the next wave of battle cards.'
+                  : 'The current stack is finished. Fresh match cards will drop back into the arena soon.'}
+              </p>
+              <button
+                onClick={onClose}
+                className="btn-game mt-6 inline-flex items-center justify-center rounded-[1.2rem] px-5 py-3"
+              >
+                Return To Arena
+              </button>
+            </div>
           </div>
         ) : (
           <>
@@ -851,7 +933,7 @@ function ArenaVotingOverlay({
               >
                 <ChevronLeft size={20} />
               </button>
-              {/* Mobile: swipeable single-card strip with slide transition and swipe-up to close */}
+              {/* Mobile: swipeable single-card strip with swipe-down to close and swipe-up to skip */}
               <div
                 className="flex h-full w-full flex-1 md:hidden"
                 style={{ overflow: 'hidden', touchAction: 'pan-y' }}
@@ -872,7 +954,7 @@ function ArenaVotingOverlay({
                       <div className="h-full w-full max-w-[min(24rem,90vw)]">
                         <MatchCard
                           match={match}
-                          onVote={() => void onVote()}
+                          onVote={(matchId) => void handleVoteMarked(matchId)}
                           onCardClick={() => {}}
                           interactive={voteMatches[currentIndex]?.id === match.id}
                           className="!h-full !min-h-0 !w-full !max-w-none"
@@ -890,7 +972,7 @@ function ArenaVotingOverlay({
                   onPrevious={goToPrevious}
                   onNext={goToNext}
                   onSelectMatch={(_, index) => setCurrentIndex(index)}
-                  onVote={() => void onVote()}
+                  onVote={(matchId) => void handleVoteMarked(matchId)}
                   className="flex-1"
                   stageHeightClass="h-[70dvh] min-h-[30rem] md:h-[76dvh]"
                   centerWidthClass="w-[min(24rem,90vw)] md:w-[min(28rem,38vw)] xl:w-[min(30rem,30vw)]"
@@ -907,6 +989,11 @@ function ArenaVotingOverlay({
               >
                 <ChevronRight size={20} />
               </button>
+            </div>
+            <div className="mt-3 flex justify-center md:hidden">
+              <p className="rounded-full border border-white/10 bg-black/25 px-4 py-2 text-[0.65rem] font-bold uppercase tracking-[0.2em] text-white/65">
+                Swipe up to skip. Swipe down to exit.
+              </p>
             </div>
           </>
         )}
@@ -1300,7 +1387,7 @@ function MatchCarouselStage({
   onPrevious: () => void
   onNext: () => void
   onSelectMatch: (match: MatchRecord, index: number) => void
-  onVote: () => void
+  onVote: (matchId: number) => void
   className?: string
   stageHeightClass: string
   centerWidthClass: string
@@ -1363,7 +1450,7 @@ function MatchCarouselStage({
           >
             <MatchCard
               match={match}
-              onVote={() => void onVote()}
+              onVote={(matchId) => onVote(matchId)}
               onCardClick={handleSelect}
               interactive={isCurrent}
               priorityArtwork={isCurrent}
