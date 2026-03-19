@@ -9,7 +9,9 @@ import { publishToFacebookStory } from './facebook'
 import { renderTextAsSvgPath } from './text-to-path'
 
 const DEFAULT_WEBHOOK_TIMEOUT_MS = 10000
-const DEFAULT_PUBLISH_BATCH_SIZE = 2
+const DEFAULT_PUBLISH_BATCH_SIZE = 1
+const DEFAULT_FEED_RECONCILE_BATCH_SIZE = 20
+const DEFAULT_UNPUBLISHED_GENERATION_BATCH_SIZE = 10
 const RENDER_RECIPE_VERSION = 'portrait-card-v1'
 
 interface UnexpectedAssetTypeSummary {
@@ -705,18 +707,29 @@ async function generateAssetsForMatchesNeedingThem(): Promise<{ matchCount: numb
 /** Generate assets for all unpublished matches, then publish any ready assets. For hourly cron. */
 export async function runUnpublishedQueuePipeline() {
   await ensureSchema()
+  const configuredReconcileBatchSize = Number(process.env.FEED_RECONCILE_BATCH_SIZE || '')
+  const reconcileBatchSize = Number.isInteger(configuredReconcileBatchSize) && configuredReconcileBatchSize > 0
+    ? configuredReconcileBatchSize
+    : DEFAULT_FEED_RECONCILE_BATCH_SIZE
+  const configuredUnpublishedGenerationBatchSize = Number(process.env.UNPUBLISHED_GENERATION_BATCH_SIZE || '')
+  const unpublishedGenerationBatchSize =
+    Number.isInteger(configuredUnpublishedGenerationBatchSize) && configuredUnpublishedGenerationBatchSize > 0
+      ? configuredUnpublishedGenerationBatchSize
+      : DEFAULT_UNPUBLISHED_GENERATION_BATCH_SIZE
   const sync = await syncMatchesFromFeed()
-  const reconciled = await reconcileFeedQueueIntoMatches()
+  const reconciled = await reconcileFeedQueueIntoMatches(reconcileBatchSize)
   const { matchCount: needingMatchCount, assetCount: needingAssetCount } = await generateAssetsForMatchesNeedingThem()
-  const unpublished = await listUnpublishedMatches()
+  const unpublished = (await listUnpublishedMatches()).slice(0, unpublishedGenerationBatchSize)
   const assets = unpublished.length > 0 ? await generateAssetsForMatches(unpublished) : []
   const publish = await publishReadyAssets()
 
   await logAutomationRun('unpublished_queue', 'success', `Synced ${sync.count}, reconciled ${reconciled.count}, generated for ${needingMatchCount} needing assets and ${unpublished.length} unpublished matches; published ${publish.published}`, {
     syncedCount: sync.count,
     reconciledCount: reconciled.count,
+    reconcileBatchSize,
     needingGenerationCount: needingMatchCount,
     unpublishedCount: unpublished.length,
+    unpublishedGenerationBatchSize,
     generatedCount: assets.length + needingAssetCount,
     published: publish.published,
   })

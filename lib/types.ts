@@ -37,16 +37,19 @@ export interface MatchRecord {
   prediction_card_url?: string | null
   prediction_asset_status?: AssetGenerationStatus | null
   prediction_publish_status?: string | null
+  prediction_card_published_at?: string | null
   result_artwork_asset_id?: number | null
   result_artwork_url?: string | null
   result_card_asset_id?: number | null
   result_card_url?: string | null
   result_asset_status?: AssetGenerationStatus | null
   result_publish_status?: string | null
+  result_card_published_at?: string | null
   public_artwork_url?: string | null
   card_asset_url?: string | null
   asset_generation_status?: AssetGenerationStatus | null
   publish_status?: string | null
+  latest_published_at?: string | null
   created_at: string
   updated_at: string
 }

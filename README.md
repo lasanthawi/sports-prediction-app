@@ -54,7 +54,7 @@ The automation pipeline supports both split jobs and a full end-to-end cron flow
 
 `vercel.json` includes matching cron jobs so the pipeline can run automatically after deployment.
 
-If Facebook Story auto-publish is enabled, keep `PUBLISH_BATCH_SIZE` small so one cron run can finish reliably within serverless time limits.
+If Facebook Story auto-publish is enabled, keep `PUBLISH_BATCH_SIZE=1` if you want one story published per hourly cron run. You can also tune `FEED_RECONCILE_BATCH_SIZE` and `UNPUBLISHED_GENERATION_BATCH_SIZE` to keep `/api/unpublished-queue` under Vercel runtime limits while it works through backlog across multiple hourly runs.
 
 ## SportsDB Coverage
 

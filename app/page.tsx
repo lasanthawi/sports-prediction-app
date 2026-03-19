@@ -27,6 +27,7 @@ interface MatchRecord {
   result_artwork_url?: string | null
   result_card_url?: string | null
   card_asset_url?: string | null
+  latest_published_at?: string | null
 }
 
 const COSMIC_BACKGROUND = 'https://img.freepik.com/free-photo/cosmic-lightning-storm-space-background_23-2151955881.jpg?semt=ais_hybrid&w=740&q=80'
@@ -1508,6 +1509,13 @@ function sortMatchesForArena(list: MatchRecord[]) {
     const weightDifference = statusWeight(a) - statusWeight(b)
     if (weightDifference !== 0) {
       return weightDifference
+    }
+
+    const aPublished = a.latest_published_at ? new Date(a.latest_published_at).getTime() : 0
+    const bPublished = b.latest_published_at ? new Date(b.latest_published_at).getTime() : 0
+
+    if (aPublished !== bPublished) {
+      return bPublished - aPublished
     }
 
     const aTime = new Date(a.match_time).getTime()

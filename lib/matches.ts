@@ -17,6 +17,9 @@ function hydrateMatches(rows: MatchRecord[]) {
     const resultCardUrl = toAssetUrl(row.result_card_asset_id)
     const predictionArtworkUrl = toAssetUrl(row.prediction_artwork_asset_id)
     const resultArtworkUrl = toAssetUrl(row.result_artwork_asset_id)
+    const latestPublishedAt = row.status === 'finished'
+      ? row.result_card_published_at || row.prediction_card_published_at || null
+      : row.prediction_card_published_at || row.result_card_published_at || null
 
     return {
       ...row,
@@ -29,6 +32,7 @@ function hydrateMatches(rows: MatchRecord[]) {
       asset_generation_status:
         (row.status === 'finished' ? row.result_asset_status : row.prediction_asset_status) || null,
       publish_status: getActivePublishStatus(row),
+      latest_published_at: latestPublishedAt,
     }
   })
 }
@@ -133,13 +137,15 @@ function matchSelectClause() {
       prediction_card.generation_status AS prediction_asset_status,
       prediction_card.id AS prediction_card_asset_id,
       prediction_card.published_status AS prediction_publish_status,
+      prediction_card.published_at AS prediction_card_published_at,
       result_card.source_asset_id AS result_artwork_asset_id,
       result_card.generation_status AS result_asset_status,
       result_card.id AS result_card_asset_id,
       result_card.published_status AS result_publish_status
+      result_card.published_at AS result_card_published_at
     FROM matches
     LEFT JOIN LATERAL (
-      SELECT id, published_status, generation_status, source_asset_id
+      SELECT id, published_status, generation_status, source_asset_id, published_at
       FROM generated_assets
       WHERE match_id = matches.id
         AND asset_type = 'card'
@@ -148,7 +154,7 @@ function matchSelectClause() {
       LIMIT 1
     ) prediction_card ON TRUE
     LEFT JOIN LATERAL (
-      SELECT id, published_status, generation_status, source_asset_id
+      SELECT id, published_status, generation_status, source_asset_id, published_at
       FROM generated_assets
       WHERE match_id = matches.id
         AND asset_type = 'card'

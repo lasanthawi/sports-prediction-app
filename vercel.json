@@ -11,10 +11,6 @@
     {
       "path": "/api/automation/assets",
       "schedule": "15 */6 * * *"
-    },
-    {
-      "path": "/api/automation/publish",
-      "schedule": "30 */6 * * *"
     }
   ]
 }

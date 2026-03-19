@@ -409,11 +409,10 @@ export async function listFeedQueueItemIdsForAutomation(limit = 100) {
   const { rows } = await sql<{ id: number }>`
     SELECT id
     FROM feed_sync_items
-    WHERE sync_status IN ('queued', 'imported')
+    WHERE sync_status = 'queued'
     ORDER BY
       CASE sync_status
         WHEN 'queued' THEN 0
-        WHEN 'imported' THEN 1
         ELSE 2
       END,
       match_time ASC,
