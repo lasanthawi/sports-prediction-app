@@ -101,6 +101,12 @@ export default function Home() {
   const upcomingMatches = orderedMatches.filter((match) => match.status === 'upcoming')
   const finishedMatches = matches.filter((match) => match.status === 'finished')
   const votingMatches = orderedMatches.filter((match) => match.status !== 'cancelled')
+  const MAX_VOTE_MODE_CARDS = 20
+  const votedMatchIdSet = useMemo(() => new Set(votedMatches.map((m) => m.id)), [votedMatches])
+  const votingMatchesForVoteMode = useMemo(() => {
+    const filtered = votingMatches.filter((match) => !votedMatchIdSet.has(match.id))
+    return filtered.slice(0, MAX_VOTE_MODE_CARDS)
+  }, [votingMatches, votedMatchIdSet])
   const featuredMatches = votingMatches.filter((match) => match.status !== 'finished').slice(0, 8)
   const mobileVotingMatches = votingMatches.slice(0, 8)
   const totalVotes = matches.reduce((sum, match) => sum + match.poll_team1_votes + match.poll_team2_votes, 0)
@@ -130,16 +136,18 @@ export default function Home() {
       return
     }
 
-    const targetMatch = votingMatches.find((match) => match.id === targetId)
+    const targetMatch = votingMatchesForVoteMode.find((match) => match.id === targetId)
     if (!targetMatch) {
       return
     }
 
     setActiveMatchId(targetId)
     setVotingMode(true)
-  }, [loading, searchParams, votingMatches])
+  }, [loading, searchParams, votingMatchesForVoteMode])
 
   function openMatchViewer(matchId: number) {
+    // Don't open vote mode on a match the user already voted on.
+    if (votedMatchIdSet.has(matchId)) return
     setActiveMatchId(matchId)
     setVotingMode(true)
     router.push(`/?match=${matchId}`, { scroll: false })
@@ -427,7 +435,7 @@ export default function Home() {
 
       {votingMode ? (
         <ArenaVotingOverlay
-          matches={votingMatches}
+          matches={votingMatchesForVoteMode}
           activeMatchId={activeMatchId}
           onClose={closeVotingMode}
           onVote={fetchMatches}
@@ -661,6 +669,9 @@ function ArenaVotingOverlay({
   const [currentIndex, setCurrentIndex] = useState(0)
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null)
   const [touchOffset, setTouchOffset] = useState(0)
+  // Throttle touchmove updates to avoid excessive re-renders on iOS Safari.
+  const touchOffsetRafRef = useRef<number | null>(null)
+  const touchOffsetPendingRef = useRef(0)
 
   useEffect(() => {
     if (!voteMatches.length) {
@@ -692,16 +703,33 @@ function ArenaVotingOverlay({
   function handleTouchStart(event: React.TouchEvent) {
     const t = event.changedTouches[0]
     if (t) setTouchStart({ x: t.clientX, y: t.clientY })
+    if (touchOffsetRafRef.current != null) {
+      cancelAnimationFrame(touchOffsetRafRef.current)
+      touchOffsetRafRef.current = null
+    }
     setTouchOffset(0)
   }
 
   function handleTouchMove(event: React.TouchEvent) {
     if (touchStart == null) return
     const t = event.changedTouches[0]
-    if (t) setTouchOffset(t.clientX - touchStart.x)
+    if (!t) return
+
+    touchOffsetPendingRef.current = t.clientX - touchStart.x
+    if (touchOffsetRafRef.current != null) return
+
+    touchOffsetRafRef.current = requestAnimationFrame(() => {
+      touchOffsetRafRef.current = null
+      setTouchOffset(touchOffsetPendingRef.current)
+    })
   }
 
   function handleTouchEnd(event: React.TouchEvent) {
+    if (touchOffsetRafRef.current != null) {
+      cancelAnimationFrame(touchOffsetRafRef.current)
+      touchOffsetRafRef.current = null
+    }
+
     if (touchStart == null) {
       setTouchStart(null)
       setTouchOffset(0)
@@ -749,6 +777,14 @@ function ArenaVotingOverlay({
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [voteMatches.length])
+
+  useEffect(() => {
+    return () => {
+      if (touchOffsetRafRef.current != null) {
+        cancelAnimationFrame(touchOffsetRafRef.current)
+      }
+    }
+  }, [])
 
   return (
     <div className="fixed inset-0 z-50">
