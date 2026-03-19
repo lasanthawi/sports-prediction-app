@@ -136,17 +136,6 @@ function formatStoryVenueLabel(venue: string | null) {
   return clean.length > 38 ? `${clean.slice(0, 35).trimEnd()}...` : clean
 }
 
-function getTeamBadgeLabel(name: string) {
-  const parts = name
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-
-  if (parts.length === 0) return 'TM'
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase()
-}
-
 function getCompactTeamName(name: string) {
   const clean = name.trim().replace(/\s+/g, ' ')
   if (clean.length <= 16) return clean.toUpperCase()
@@ -158,13 +147,6 @@ function getCompactTeamName(name: string) {
   }
 
   return `${clean.slice(0, 15).trimEnd()}...`.toUpperCase()
-}
-
-function getTeamNameFontSize(name: string) {
-  const compact = getCompactTeamName(name)
-  if (compact.length > 18) return 34
-  if (compact.length > 14) return 38
-  return 42
 }
 
 function getStoryMatchUrl(match: MatchRecord) {
@@ -191,67 +173,48 @@ function buildRenderedCardSvg(
   const accentB = escapeXml(match.team2_palette || '#2D8CFF')
   const team1Label = escapeXml(getCompactTeamName(match.team1))
   const team2Label = escapeXml(getCompactTeamName(match.team2))
-  const team1Badge = escapeXml(getTeamBadgeLabel(match.team1))
-  const team2Badge = escapeXml(getTeamBadgeLabel(match.team2))
-  const team1FontSize = getTeamNameFontSize(match.team1)
-  const team2FontSize = getTeamNameFontSize(match.team2)
   const dateLabel = escapeXml(formatStoryDateLabel(match.match_time))
   const venueLabel = escapeXml(formatStoryVenueLabel(match.venue))
   const hostLabel = escapeXml(getStoryHostLabel(match))
   const storyUrl = escapeXml(getStoryMatchUrl(match).replace(/^https?:\/\//, ''))
+  const matchupLabel = escapeXml(`${match.team1.toUpperCase()} VS ${match.team2.toUpperCase()}`)
   const promptLabel = variant === 'result' ? 'FINAL VERDICT' : 'WHO TAKES THE WIN?'
-  const subheadLabel = variant === 'result' ? 'SEE THE RESULT AND CROWD REACTION' : 'PREDICT THE WINNER BEFORE KICKOFF'
-  const ctaTitle = variant === 'result' ? `OPEN FULL MATCH CARD ON ${hostLabel}` : `CAST YOUR PICK ON ${hostLabel}`
+  const subheadLabel = variant === 'result' ? 'SEE THE RESULT AND CROWD REACTION' : 'MATCHDAY PREDICTION'
+  const ctaTitle = variant === 'result' ? `OPEN FULL MATCH CARD ON ${hostLabel}` : `VOTE NOW ON ${hostLabel}`
   const ctaBody = variant === 'result'
     ? 'Review the outcome, momentum swing, and crowd split on the website'
-    : 'Open the match card to vote and track the live crowd split'
+    : 'Open the match card and back your winner'
   const buttonVerb = variant === 'result' ? 'VIEW' : 'PICK'
   const headline =
     headlinePathFragment != null && headlinePathFragment !== ''
       ? headlinePathFragment
-      : `<text x="540" y="514" fill="#FFE55C" text-anchor="middle" font-family="${STORY_FONT}" font-size="88" font-weight="900" stroke="#07131F" stroke-width="18" paint-order="stroke fill">${escapeXml(promptLabel)}</text>`
+      : `<text x="540" y="276" fill="#FFE55C" text-anchor="middle" font-family="${STORY_FONT}" font-size="92" font-weight="900" stroke="#07131F" stroke-width="18" paint-order="stroke fill">${escapeXml(promptLabel)}</text>`
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="1080" height="1920" viewBox="0 0 1080 1920" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="story-top" x1="540" y1="0" x2="540" y2="620" gradientUnits="userSpaceOnUse">
+    <linearGradient id="story-top" x1="540" y1="0" x2="540" y2="520" gradientUnits="userSpaceOnUse">
       <stop stop-color="#020611" stop-opacity="0.84"/>
       <stop offset="1" stop-color="#020611" stop-opacity="0"/>
     </linearGradient>
-    <linearGradient id="story-bottom" x1="540" y1="1270" x2="540" y2="1920" gradientUnits="userSpaceOnUse">
+    <linearGradient id="story-bottom" x1="540" y1="1320" x2="540" y2="1920" gradientUnits="userSpaceOnUse">
       <stop stop-color="#020611" stop-opacity="0"/>
       <stop offset="1" stop-color="#020611" stop-opacity="0.92"/>
     </linearGradient>
-    <linearGradient id="header-shell" x1="120" y1="96" x2="960" y2="436" gradientUnits="userSpaceOnUse">
-      <stop stop-color="rgba(11,17,34,0.86)"/>
-      <stop offset="1" stop-color="rgba(4,8,19,0.72)"/>
+    <linearGradient id="meta-shell" x1="170" y1="92" x2="910" y2="184" gradientUnits="userSpaceOnUse">
+      <stop stop-color="rgba(12,18,34,0.78)"/>
+      <stop offset="1" stop-color="rgba(7,11,21,0.68)"/>
     </linearGradient>
-    <linearGradient id="cta-shell" x1="84" y1="1452" x2="996" y2="1776" gradientUnits="userSpaceOnUse">
+    <linearGradient id="cta-shell" x1="88" y1="1438" x2="992" y2="1778" gradientUnits="userSpaceOnUse">
       <stop stop-color="rgba(8,14,30,0.9)"/>
       <stop offset="1" stop-color="rgba(6,10,22,0.82)"/>
     </linearGradient>
-    <linearGradient id="team-a-card" x1="116" y1="176" x2="430" y2="368" gradientUnits="userSpaceOnUse">
-      <stop stop-color="${accentA}" stop-opacity="0.52"/>
-      <stop offset="1" stop-color="#10182B" stop-opacity="0.9"/>
-    </linearGradient>
-    <linearGradient id="team-b-card" x1="650" y1="176" x2="964" y2="368" gradientUnits="userSpaceOnUse">
-      <stop stop-color="${accentB}" stop-opacity="0.52"/>
-      <stop offset="1" stop-color="#10182B" stop-opacity="0.9"/>
-    </linearGradient>
-    <linearGradient id="team-a-button" x1="118" y1="1568" x2="528" y2="1674" gradientUnits="userSpaceOnUse">
+    <linearGradient id="team-a-button" x1="118" y1="1576" x2="528" y2="1682" gradientUnits="userSpaceOnUse">
       <stop stop-color="${accentA}"/>
       <stop offset="1" stop-color="#8C1E2D"/>
     </linearGradient>
-    <linearGradient id="team-b-button" x1="552" y1="1568" x2="962" y2="1674" gradientUnits="userSpaceOnUse">
+    <linearGradient id="team-b-button" x1="552" y1="1576" x2="962" y2="1682" gradientUnits="userSpaceOnUse">
       <stop stop-color="${accentB}"/>
       <stop offset="1" stop-color="#124FA6"/>
-    </linearGradient>
-    <radialGradient id="vs-glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(540 276) rotate(90) scale(84 84)">
-      <stop stop-color="#FFE787"/>
-      <stop offset="1" stop-color="#F0B90B" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="meta-pill" x1="160" y1="386" x2="920" y2="386" gradientUnits="userSpaceOnUse">
-      <stop stop-color="rgba(255,255,255,0.18)"/>
-      <stop offset="1" stop-color="rgba(255,255,255,0.08)"/>
     </linearGradient>
     <linearGradient id="url-pill" x1="182" y1="1712" x2="898" y2="1712" gradientUnits="userSpaceOnUse">
       <stop stop-color="rgba(255,255,255,0.14)"/>
@@ -259,46 +222,27 @@ function buildRenderedCardSvg(
     </linearGradient>
   </defs>
   <image href="${artworkUrl}" x="0" y="0" width="1080" height="1920" preserveAspectRatio="xMidYMid slice"/>
-  <rect x="0" y="0" width="1080" height="620" fill="url(#story-top)"/>
-  <rect x="0" y="1270" width="1080" height="650" fill="url(#story-bottom)"/>
-  <rect x="78" y="92" width="924" height="354" rx="42" fill="url(#header-shell)" stroke="rgba(255,255,255,0.18)" stroke-width="3"/>
-  <rect x="388" y="114" width="304" height="54" rx="27" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.18)" stroke-width="2"/>
-  <text x="540" y="149" fill="#F4F7FF" text-anchor="middle" font-family="${STORY_FONT}" font-size="28" font-weight="800" letter-spacing="3">MATCHDAY PICK</text>
-
-  <rect x="116" y="188" width="314" height="156" rx="34" fill="url(#team-a-card)" stroke="rgba(255,255,255,0.18)" stroke-width="2"/>
-  <circle cx="186" cy="266" r="46" fill="${accentA}" stroke="rgba(255,255,255,0.22)" stroke-width="3"/>
-  <text x="186" y="281" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="34" font-weight="900">${team1Badge}</text>
-  <text x="274" y="252" fill="#F8FAFF" font-family="${STORY_FONT}" font-size="20" font-weight="700" letter-spacing="2">TEAM A</text>
-  <text x="274" y="300" fill="#FFFFFF" font-family="${STORY_FONT}" font-size="${team1FontSize}" font-weight="900">${team1Label}</text>
-
-  <rect x="650" y="188" width="314" height="156" rx="34" fill="url(#team-b-card)" stroke="rgba(255,255,255,0.18)" stroke-width="2"/>
-  <circle cx="894" cy="266" r="46" fill="${accentB}" stroke="rgba(255,255,255,0.22)" stroke-width="3"/>
-  <text x="894" y="281" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="34" font-weight="900">${team2Badge}</text>
-  <text x="682" y="252" fill="#F8FAFF" font-family="${STORY_FONT}" font-size="20" font-weight="700" letter-spacing="2">TEAM B</text>
-  <text x="682" y="300" fill="#FFFFFF" font-family="${STORY_FONT}" font-size="${team2FontSize}" font-weight="900">${team2Label}</text>
-
-  <circle cx="540" cy="266" r="84" fill="url(#vs-glow)"/>
-  <circle cx="540" cy="266" r="58" fill="#08111F" stroke="#F9D564" stroke-width="6"/>
-  <text x="540" y="281" fill="#FFE878" text-anchor="middle" font-family="${STORY_FONT}" font-size="42" font-weight="900">VS</text>
-
-  <rect x="148" y="352" width="784" height="104" rx="34" fill="url(#meta-pill)" stroke="rgba(255,255,255,0.16)" stroke-width="2"/>
-  <text x="540" y="396" fill="#EFF4FF" text-anchor="middle" font-family="${STORY_FONT}" font-size="28" font-weight="700">${dateLabel}</text>
-  <text x="540" y="436" fill="#C8D3EA" text-anchor="middle" font-family="${STORY_FONT}" font-size="28" font-weight="600">${venueLabel}</text>
+  <rect x="0" y="0" width="1080" height="520" fill="url(#story-top)"/>
+  <rect x="0" y="1320" width="1080" height="600" fill="url(#story-bottom)"/>
+  <rect x="170" y="92" width="740" height="92" rx="30" fill="url(#meta-shell)" stroke="rgba(255,255,255,0.16)" stroke-width="2"/>
+  <text x="540" y="128" fill="#DCE6F8" text-anchor="middle" font-family="${STORY_FONT}" font-size="20" font-weight="800" letter-spacing="3">${escapeXml(subheadLabel)}</text>
+  <text x="540" y="163" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="30" font-weight="800">${dateLabel}</text>
 
   ${headline}
-  <text x="540" y="572" fill="#E8EDF8" text-anchor="middle" font-family="${STORY_FONT}" font-size="34" font-weight="700">${escapeXml(subheadLabel)}</text>
+  <text x="540" y="334" fill="#E8EDF8" text-anchor="middle" font-family="${STORY_FONT}" font-size="28" font-weight="700">${matchupLabel}</text>
+  <text x="540" y="372" fill="#C8D3EA" text-anchor="middle" font-family="${STORY_FONT}" font-size="26" font-weight="600">${venueLabel}</text>
 
-  <rect x="84" y="1452" width="912" height="330" rx="46" fill="url(#cta-shell)" stroke="rgba(255,255,255,0.18)" stroke-width="3"/>
-  <text x="540" y="1512" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="30" font-weight="700" letter-spacing="2">${escapeXml(ctaTitle)}</text>
-  <text x="540" y="1554" fill="#B9C7E8" text-anchor="middle" font-family="${STORY_FONT}" font-size="24" font-weight="600">${escapeXml(ctaBody)}</text>
+  <rect x="88" y="1438" width="904" height="328" rx="42" fill="url(#cta-shell)" stroke="rgba(255,255,255,0.18)" stroke-width="3"/>
+  <text x="540" y="1498" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="28" font-weight="800" letter-spacing="2">${escapeXml(ctaTitle)}</text>
+  <text x="540" y="1538" fill="#B9C7E8" text-anchor="middle" font-family="${STORY_FONT}" font-size="23" font-weight="600">${escapeXml(ctaBody)}</text>
 
-  <rect x="118" y="1584" width="410" height="106" rx="34" fill="url(#team-a-button)" stroke="rgba(255,255,255,0.2)" stroke-width="3"/>
-  <text x="323" y="1628" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="22" font-weight="700" letter-spacing="2">${buttonVerb}</text>
-  <text x="323" y="1668" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="34" font-weight="900">${team1Label}</text>
+  <rect x="118" y="1576" width="410" height="106" rx="34" fill="url(#team-a-button)" stroke="rgba(255,255,255,0.2)" stroke-width="3"/>
+  <text x="323" y="1617" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="20" font-weight="700" letter-spacing="2">${buttonVerb}</text>
+  <text x="323" y="1659" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="36" font-weight="900">${team1Label}</text>
 
-  <rect x="552" y="1584" width="410" height="106" rx="34" fill="url(#team-b-button)" stroke="rgba(255,255,255,0.2)" stroke-width="3"/>
-  <text x="757" y="1628" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="22" font-weight="700" letter-spacing="2">${buttonVerb}</text>
-  <text x="757" y="1668" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="34" font-weight="900">${team2Label}</text>
+  <rect x="552" y="1576" width="410" height="106" rx="34" fill="url(#team-b-button)" stroke="rgba(255,255,255,0.2)" stroke-width="3"/>
+  <text x="757" y="1617" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="20" font-weight="700" letter-spacing="2">${buttonVerb}</text>
+  <text x="757" y="1659" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="36" font-weight="900">${team2Label}</text>
 
   <rect x="182" y="1710" width="716" height="46" rx="23" fill="url(#url-pill)" stroke="rgba(255,255,255,0.12)" stroke-width="2"/>
   <text x="540" y="1741" fill="#EEF4FF" text-anchor="middle" font-family="${STORY_FONT}" font-size="24" font-weight="700">${storyUrl}</text>
@@ -815,14 +759,14 @@ export async function getCardSvgForPublish(cardAssetId: number): Promise<Buffer 
   try {
     headlinePath = await renderTextAsSvgPath(card.asset_variant === 'result' ? 'FINAL VERDICT' : 'WHO TAKES THE WIN?', {
       x: 540,
-      y: 514,
-      fontSize: 88,
+      y: 276,
+      fontSize: 92,
       fill: '#FFE55C',
       textAnchor: 'middle',
       stroke: '#07131F',
       strokeWidth: 18,
       shadowColor: '#07131F',
-      shadowDy: 10,
+      shadowDy: 12,
       shadowOpacity: 0.45,
     })
   } catch (e) {
