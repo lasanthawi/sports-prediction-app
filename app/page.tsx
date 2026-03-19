@@ -32,6 +32,19 @@ interface MatchRecord {
 const COSMIC_BACKGROUND = 'https://img.freepik.com/free-photo/cosmic-lightning-storm-space-background_23-2151955881.jpg?semt=ais_hybrid&w=740&q=80'
 const BRAND_IMAGE = 'https://i.ibb.co/qLsG4ByG/70325951-97a2-4fb3-ad27-a3c7ba251676.png'
 
+const MATCHES_CACHE_MS = 20_000 // 20s: show cached matches immediately when revisiting home
+let matchesCache: { at: number; data: MatchRecord[] } | null = null
+
+function getCachedMatches(): MatchRecord[] | null {
+  if (!matchesCache) return null
+  if (Date.now() - matchesCache.at > MATCHES_CACHE_MS) return null
+  return matchesCache.data
+}
+
+function setCachedMatches(data: MatchRecord[]) {
+  matchesCache = { at: Date.now(), data }
+}
+
 export default function Home() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -47,6 +60,13 @@ export default function Home() {
   const voteModeCloseRequestedRef = useRef(false)
 
   useEffect(() => {
+    const cached = getCachedMatches()
+    if (cached != null && cached.length >= 0) {
+      setMatches(cached)
+      setLoading(false)
+      void fetchMatches() // Revalidate in background
+      return
+    }
     void fetchMatches()
   }, [])
 
@@ -67,27 +87,33 @@ export default function Home() {
 
   async function fetchMatches() {
     try {
-      const authRes = await fetch('/api/auth/me', { cache: 'no-store' })
-      const authPayload = await authRes.json()
-      
-      if (authPayload.user) {
-         setUser(authPayload.user)
-         const votesRes = await fetch('/api/user/votes', { cache: 'no-store' })
-         if (votesRes.ok) {
-            const votesPayload = await votesRes.json()
-            setVotedMatches(votesPayload.matches || [])
-         }
+      // Load matches and auth in parallel so the page can show matches as soon as they arrive.
+      const [matchesRes, authRes] = await Promise.all([
+        fetch('/api/matches', { cache: 'no-store' }),
+        fetch('/api/auth/me', { cache: 'no-store' }),
+      ])
+
+      const [matchesPayload, authPayload] = await Promise.all([
+        matchesRes.json(),
+        authRes.json(),
+      ])
+
+      if (!matchesRes.ok) {
+        throw new Error(matchesPayload.error || 'Failed to load matches')
       }
-
-      const res = await fetch('/api/matches', { cache: 'no-store' })
-      const payload = await res.json()
-
-      if (!res.ok) {
-        throw new Error(payload.error || 'Failed to load matches')
-      }
-
-      setMatches(payload.matches || [])
+      const matchList = matchesPayload.matches || []
+      setMatches(matchList)
+      setCachedMatches(matchList)
       setError('')
+
+      if (authPayload.user) {
+        setUser(authPayload.user)
+        const votesRes = await fetch('/api/user/votes', { cache: 'no-store' })
+        if (votesRes.ok) {
+          const votesPayload = await votesRes.json()
+          setVotedMatches(votesPayload.matches || [])
+        }
+      }
     } catch (err: any) {
       console.error('Error fetching matches:', err)
       setError(err.message || 'Failed to load matches')
@@ -1340,6 +1366,7 @@ function MatchCarouselStage({
               onVote={() => void onVote()}
               onCardClick={handleSelect}
               interactive={isCurrent}
+              priorityArtwork={isCurrent}
               className="!h-full !min-h-0 !w-full !max-w-none"
             />
           </div>

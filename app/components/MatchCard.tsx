@@ -30,6 +30,8 @@ interface MatchCardProps {
   className?: string
   /** Use for mobile 2-col grid: smaller type, line-clamp, tighter footer so card fits without overflow */
   compact?: boolean
+  /** When true, artwork image loads with priority (e.g. current carousel slide). When false, use loading="lazy". Omit for default eager. */
+  priorityArtwork?: boolean
 }
 
 interface CountdownState {
@@ -40,7 +42,7 @@ interface CountdownState {
   seconds?: number
 }
 
-export default function MatchCard({ match, onVote, onCardClick, interactive = true, footerSlot, className = '', compact = false }: MatchCardProps) {
+export default function MatchCard({ match, onVote, onCardClick, interactive = true, footerSlot, className = '', compact = false, priorityArtwork }: MatchCardProps) {
   const [voted, setVoted] = useState(false)
   const [selectedTeam, setSelectedTeam] = useState<number | null>(null)
   const [timeLeft, setTimeLeft] = useState<CountdownState>({})
@@ -133,14 +135,25 @@ export default function MatchCard({ match, onVote, onCardClick, interactive = tr
     >
       <div className="poster-noise" />
       <div className="poster-vignette" />
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{
-          backgroundImage: backgroundArtworkUrl
-            ? `linear-gradient(180deg, rgba(7,10,20,0.14), rgba(7,10,20,0.22) 20%, rgba(7,10,20,0.08) 50%, rgba(7,10,20,0.48) 100%), url(${backgroundArtworkUrl})`
-            : 'linear-gradient(145deg, rgba(18,34,64,0.96), rgba(13,18,32,0.96)), radial-gradient(circle at 22% 28%, rgba(239,68,68,0.2), transparent 26%), radial-gradient(circle at 78% 28%, rgba(59,130,246,0.22), transparent 28%), radial-gradient(circle at 50% 56%, rgba(250,204,21,0.1), transparent 22%)',
-        }}
-      />
+      {backgroundArtworkUrl ? (
+        <>
+          <img
+            src={backgroundArtworkUrl}
+            alt=""
+            loading={priorityArtwork === false ? 'lazy' : 'eager'}
+            fetchPriority={priorityArtwork === true ? 'high' : undefined}
+            className="absolute inset-0 h-full w-full object-cover object-center"
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,10,20,0.14)_0%,rgba(7,10,20,0.22)_20%,rgba(7,10,20,0.08)_50%,rgba(7,10,20,0.48)_100%)]" />
+        </>
+      ) : (
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{
+            backgroundImage: 'linear-gradient(145deg, rgba(18,34,64,0.96), rgba(13,18,32,0.96)), radial-gradient(circle at 22% 28%, rgba(239,68,68,0.2), transparent 26%), radial-gradient(circle at 78% 28%, rgba(59,130,246,0.22), transparent 28%), radial-gradient(circle at 50% 56%, rgba(250,204,21,0.1), transparent 22%)',
+          }}
+        />
+      )}
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.48)_0%,rgba(2,6,23,0.12)_24%,rgba(2,6,23,0.01)_50%,rgba(2,6,23,0.08)_72%,rgba(2,6,23,0.56)_100%)]" />
 
       <div className={`relative flex h-full min-h-0 flex-col justify-between ${compact ? 'p-2' : 'p-4 md:p-5'}`}>

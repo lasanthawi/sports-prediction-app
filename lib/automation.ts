@@ -114,11 +114,18 @@ const STORY_FONT =
 
 function buildRenderedCardSvg(match: MatchRecord, variant: AssetVariant, artwork: AssetRecord) {
   const artworkUrl = getAssetDataUrl(artwork)
-  // Facebook stories should be "image-only": no overlay gradient, no <text>, no foreground UI.
-  // The story content comes entirely from the generated artwork SVG/image.
+  // Top banner and headline for Facebook story; text is converted to paths when serving PNG.
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="1080" height="1920" viewBox="0 0 1080 1920" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="story-top" x1="540" y1="0" x2="540" y2="320" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#000000" stop-opacity="0.65"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
   <image href="${artworkUrl}" x="0" y="0" width="1080" height="1920" preserveAspectRatio="xMidYMid slice"/>
+  <rect x="0" y="0" width="1080" height="320" fill="url(#story-top)"/>
+  <text x="540" y="160" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="80" font-weight="800">Who will win?</text>
 </svg>`
 }
 

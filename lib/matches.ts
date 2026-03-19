@@ -174,7 +174,11 @@ export async function listMatches() {
 export async function listVisibleMatches() {
   await ensureSchema()
   await refreshDerivedMatchStatuses()
-  const { rows } = await sql.query<MatchRecord>(`
+  return listVisibleMatchesNoRefresh()
+}
+
+function listVisibleMatchesNoRefresh() {
+  return sql.query<MatchRecord>(`
     ${matchSelectClause()}
     WHERE matches.status IN ('upcoming', 'live')
       AND prediction_card.id IS NOT NULL
@@ -182,27 +186,30 @@ export async function listVisibleMatches() {
       AND LOWER(TRIM(COALESCE(prediction_card.generation_status, ''))) IN ('generated', 'fallback')
     ORDER BY match_time ASC, matches.id DESC
     LIMIT 60
-  `)
-
-  return dedupeVisibleMatches(hydrateMatches(rows)).slice(0, 20)
+  `).then(({ rows }) => dedupeVisibleMatches(hydrateMatches(rows)).slice(0, 20))
 }
 
 /** Finished matches for the results board. */
 export async function listFinishedMatches() {
   await ensureSchema()
   await refreshDerivedMatchStatuses()
-  const { rows } = await sql.query<MatchRecord>(`
+  return listFinishedMatchesNoRefresh()
+}
+
+function listFinishedMatchesNoRefresh() {
+  return sql.query<MatchRecord>(`
     ${matchSelectClause()}
     WHERE matches.status = 'finished'
     ORDER BY match_time DESC, matches.id DESC
     LIMIT 50
-  `)
-  return hydrateMatches(rows)
+  `).then(({ rows }) => hydrateMatches(rows))
 }
 
 /** For public homepage: voting matches (with generated assets) + finished matches for results board. */
 export async function listMatchesForPublic() {
-  const [voting, finished] = await Promise.all([listVisibleMatches(), listFinishedMatches()])
+  await ensureSchema()
+  await refreshDerivedMatchStatuses()
+  const [voting, finished] = await Promise.all([listVisibleMatchesNoRefresh(), listFinishedMatchesNoRefresh()])
   const byId = new Map(voting.map((m) => [m.id, m]))
   for (const m of finished) {
     if (!byId.has(m.id)) byId.set(m.id, m)
