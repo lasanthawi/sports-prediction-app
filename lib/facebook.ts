@@ -1,4 +1,5 @@
 const FB_GRAPH_VERSION = 'v19.0'
+const FACEBOOK_API_TIMEOUT_MS = 8000
 
 /**
  * Publishes an image as a Facebook Page Story using the official two-step flow:
@@ -47,6 +48,7 @@ export async function publishToFacebookStory(assetUrl: string, _caption?: string
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: uploadParams.toString(),
+      signal: AbortSignal.timeout(FACEBOOK_API_TIMEOUT_MS),
     })
     const uploadData = (await uploadRes.json()) as { id?: string; error?: { message?: string } }
 
@@ -70,6 +72,7 @@ export async function publishToFacebookStory(assetUrl: string, _caption?: string
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: storyParams.toString(),
+      signal: AbortSignal.timeout(FACEBOOK_API_TIMEOUT_MS),
     })
     const storyData = (await storyRes.json()) as { post_id?: string; id?: string; success?: boolean; error?: { message?: string } }
 

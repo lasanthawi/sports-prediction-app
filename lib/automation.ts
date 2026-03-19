@@ -9,6 +9,7 @@ import { publishToFacebookStory } from './facebook'
 import { renderTextAsSvgPath } from './text-to-path'
 
 const DEFAULT_WEBHOOK_TIMEOUT_MS = 10000
+const DEFAULT_PUBLISH_BATCH_SIZE = 2
 const RENDER_RECIPE_VERSION = 'portrait-card-v1'
 
 interface UnexpectedAssetTypeSummary {
@@ -640,13 +641,17 @@ async function publishAssets(rows: AssetRecord[], mode: 'queue-only' | 'webhook'
 
 export async function publishReadyAssets() {
   await ensureSchema()
+  const configuredBatchSize = Number(process.env.PUBLISH_BATCH_SIZE || '')
+  const batchSize = Number.isInteger(configuredBatchSize) && configuredBatchSize > 0
+    ? configuredBatchSize
+    : DEFAULT_PUBLISH_BATCH_SIZE
   const { rows } = await sql<AssetRecord>`
     SELECT *
     FROM generated_assets
     WHERE published_status = 'ready'
       AND asset_type = 'card'
     ORDER BY created_at ASC
-    LIMIT 20
+    LIMIT ${batchSize}
   `
 
   return publishAssets(rows, 'queue-only')

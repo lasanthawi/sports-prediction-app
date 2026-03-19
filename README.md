@@ -54,6 +54,8 @@ The automation pipeline supports both split jobs and a full end-to-end cron flow
 
 `vercel.json` includes matching cron jobs so the pipeline can run automatically after deployment.
 
+If Facebook Story auto-publish is enabled, keep `PUBLISH_BATCH_SIZE` small so one cron run can finish reliably within serverless time limits.
+
 ## SportsDB Coverage
 
 When `SPORTS_SYNC_PROVIDER=thesportsdb`, the app now defaults to a broader set of major
