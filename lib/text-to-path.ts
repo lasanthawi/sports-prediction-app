@@ -104,7 +104,19 @@ function getAttr(attrs: string, name: string): string | null {
  */
 export async function renderTextAsSvgPath(
   text: string,
-  opts: { x: number; y: number; fontSize: number; fill: string; textAnchor: 'start' | 'middle' | 'end' }
+  opts: {
+    x: number
+    y: number
+    fontSize: number
+    fill: string
+    textAnchor: 'start' | 'middle' | 'end'
+    stroke?: string
+    strokeWidth?: number
+    shadowColor?: string
+    shadowDx?: number
+    shadowDy?: number
+    shadowOpacity?: number
+  }
 ): Promise<string> {
   if (!text.trim()) return ''
   const font = await loadFont()
@@ -117,7 +129,25 @@ export async function renderTextAsSvgPath(
   else if (opts.textAnchor === 'end') ox = bbox.x2
   else ox = bbox.x1
   const fillEsc = opts.fill.replace(/"/g, '&quot;')
-  return `<g transform="translate(${opts.x},${opts.y}) scale(1,-1) translate(${-ox},${-cy})"><path d="${pathData}" fill="${fillEsc}"/></g>`
+  const strokeEsc = opts.stroke?.replace(/"/g, '&quot;')
+  const transform = `translate(${opts.x},${opts.y}) translate(${-ox},${-cy})`
+  const layers: string[] = []
+
+  if (opts.shadowColor) {
+    const shadowColorEsc = opts.shadowColor.replace(/"/g, '&quot;')
+    const shadowDx = opts.shadowDx ?? 0
+    const shadowDy = opts.shadowDy ?? 0
+    const shadowOpacity = opts.shadowOpacity ?? 0.35
+    layers.push(
+      `<path d="${pathData}" fill="${shadowColorEsc}" opacity="${shadowOpacity}" transform="translate(${shadowDx},${shadowDy})"/>`
+    )
+  }
+
+  layers.push(
+    `<path d="${pathData}" fill="${fillEsc}"${strokeEsc ? ` stroke="${strokeEsc}" stroke-width="${opts.strokeWidth ?? 0}" stroke-linejoin="round" paint-order="stroke fill"` : ''}/>`
+  )
+
+  return `<g transform="${transform}">${layers.join('')}</g>`
 }
 
 /**
@@ -151,7 +181,7 @@ export async function replaceTextWithPaths(svgString: string): Promise<string> {
     else if (textAnchor === 'end') ox = bbox.x2
     else ox = bbox.x1
     const fillEsc = fill.replace(/"/g, '&quot;')
-    const replacement = `<g transform="translate(${x},${y}) scale(1,-1) translate(${-ox},${-cy})"><path d="${pathData}" fill="${fillEsc}"/></g>`
+    const replacement = `<g transform="translate(${x},${y}) translate(${-ox},${-cy})"><path d="${pathData}" fill="${fillEsc}"/></g>`
     out = out.replace(match[0], replacement)
   }
   return out

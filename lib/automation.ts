@@ -124,7 +124,7 @@ function buildRenderedCardSvg(
   const headline =
     headlinePathFragment != null && headlinePathFragment !== ''
       ? headlinePathFragment
-      : `<text x="540" y="160" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="80" font-weight="800">Who will win?</text>`
+      : `<text x="540" y="220" fill="#FFE55C" text-anchor="middle" font-family="${STORY_FONT}" font-size="104" font-weight="900" stroke="#07131F" stroke-width="18" paint-order="stroke fill">WHO WILL WIN?</text>`
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="1080" height="1920" viewBox="0 0 1080 1920" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
@@ -647,12 +647,17 @@ export async function getCardSvgForPublish(cardAssetId: number): Promise<Buffer 
   if (!artwork) return null
   let headlinePath: string | null = null
   try {
-    headlinePath = await renderTextAsSvgPath('Who will win?', {
+    headlinePath = await renderTextAsSvgPath('WHO WILL WIN?', {
       x: 540,
-      y: 160,
-      fontSize: 80,
-      fill: '#FFFFFF',
+      y: 220,
+      fontSize: 104,
+      fill: '#FFE55C',
       textAnchor: 'middle',
+      stroke: '#07131F',
+      strokeWidth: 18,
+      shadowColor: '#07131F',
+      shadowDy: 12,
+      shadowOpacity: 0.45,
     })
   } catch (e) {
     console.warn('[automation] renderTextAsSvgPath failed, card will use fallback text:', e)
