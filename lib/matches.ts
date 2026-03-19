@@ -141,7 +141,7 @@ function matchSelectClause() {
       result_card.source_asset_id AS result_artwork_asset_id,
       result_card.generation_status AS result_asset_status,
       result_card.id AS result_card_asset_id,
-      result_card.published_status AS result_publish_status
+      result_card.published_status AS result_publish_status,
       result_card.published_at AS result_card_published_at
     FROM matches
     LEFT JOIN LATERAL (
