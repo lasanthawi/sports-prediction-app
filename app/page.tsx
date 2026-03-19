@@ -745,6 +745,7 @@ function ArenaVotingOverlay({
   }, [voteMatches.length])
 
   const hasInfiniteVote = voteMatches.length > 1
+  const currentVoteMatch = voteMatches[currentIndex] || null
 
   function goToPrevious() {
     setCurrentIndex((current) => (current - 1 + voteMatches.length) % voteMatches.length)
@@ -942,28 +943,28 @@ function ArenaVotingOverlay({
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
               >
-                <div
-                  className="flex h-full w-full"
-                  style={{
-                    width: `${voteMatches.length * 100}%`,
-                    transform: `translateX(calc(-${currentIndex * (100 / voteMatches.length)}% + ${touchOffset}px))`,
-                    transition: touchStart == null ? 'transform 0.35s cubic-bezier(0.22, 1, 0.36, 1)' : 'none',
-                  }}
-                >
-                  {voteMatches.map((match) => (
-                    <div key={match.id} className="flex h-full shrink-0 items-center justify-center" style={{ width: `${100 / voteMatches.length}%` }}>
-                      <div className="h-full w-full max-w-[min(24rem,90vw)]">
-                        <MatchCard
-                          match={match}
-                          onVote={(matchId) => void handleVoteMarked(matchId)}
-                          onCardClick={() => {}}
-                          interactive={voteMatches[currentIndex]?.id === match.id}
-                          className="!h-full !min-h-0 !w-full !max-w-none"
-                        />
-                      </div>
+                {currentVoteMatch ? (
+                  <div
+                    key={currentVoteMatch.id}
+                    className="flex h-full w-full items-center justify-center"
+                    style={{
+                      transform: `translateX(${touchOffset}px)`,
+                      transition: touchStart == null ? 'transform 0.35s cubic-bezier(0.22, 1, 0.36, 1)' : 'none',
+                    }}
+                  >
+                    <div className="h-full w-full max-w-[min(24rem,90vw)]">
+                      <MatchCard
+                        match={currentVoteMatch}
+                        onVote={(matchId) => void handleVoteMarked(matchId)}
+                        onCardClick={() => {}}
+                        interactive
+                        priorityArtwork
+                        countdownActive
+                        className="!h-full !min-h-0 !w-full !max-w-none"
+                      />
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ) : null}
               </div>
               {/* Desktop: carousel stage with prev/current/next */}
               <div className="hidden h-full w-full flex-1 items-center justify-center overflow-visible md:flex">
@@ -1455,6 +1456,7 @@ function MatchCarouselStage({
               onCardClick={handleSelect}
               interactive={isCurrent}
               priorityArtwork={isCurrent}
+              countdownActive={isCurrent}
               className="!h-full !min-h-0 !w-full !max-w-none"
             />
           </div>

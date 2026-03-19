@@ -32,6 +32,8 @@ interface MatchCardProps {
   compact?: boolean
   /** When true, artwork image loads with priority (e.g. current carousel slide). When false, use loading="lazy". Omit for default eager. */
   priorityArtwork?: boolean
+  /** Disable the live 1s countdown tick for off-screen cards to reduce mobile CPU/memory pressure. */
+  countdownActive?: boolean
 }
 
 interface CountdownState {
@@ -42,7 +44,17 @@ interface CountdownState {
   seconds?: number
 }
 
-export default function MatchCard({ match, onVote, onCardClick, interactive = true, footerSlot, className = '', compact = false, priorityArtwork }: MatchCardProps) {
+export default function MatchCard({
+  match,
+  onVote,
+  onCardClick,
+  interactive = true,
+  footerSlot,
+  className = '',
+  compact = false,
+  priorityArtwork,
+  countdownActive = true,
+}: MatchCardProps) {
   const [voted, setVoted] = useState(false)
   const [selectedTeam, setSelectedTeam] = useState<number | null>(null)
   const [timeLeft, setTimeLeft] = useState<CountdownState>({})
@@ -50,6 +62,11 @@ export default function MatchCard({ match, onVote, onCardClick, interactive = tr
   const [votedFlash, setVotedFlash] = useState(false)
 
   useEffect(() => {
+    if (!countdownActive) {
+      setTimeLeft({})
+      return
+    }
+
     const updateCountdown = () => {
       const now = Date.now()
       const matchTime = new Date(match.match_time).getTime()
@@ -71,7 +88,7 @@ export default function MatchCard({ match, onVote, onCardClick, interactive = tr
     updateCountdown()
     const timer = setInterval(updateCountdown, 1000)
     return () => clearInterval(timer)
-  }, [match.match_time])
+  }, [countdownActive, match.match_time])
 
   const totalVotes = match.poll_team1_votes + match.poll_team2_votes
   const team1Percentage = totalVotes > 0 ? Math.round((match.poll_team1_votes / totalVotes) * 100) : 50
