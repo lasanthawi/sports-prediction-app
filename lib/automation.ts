@@ -175,16 +175,11 @@ function buildRenderedCardSvg(
   const team2Label = escapeXml(getCompactTeamName(match.team2))
   const dateLabel = escapeXml(formatStoryDateLabel(match.match_time))
   const venueLabel = escapeXml(formatStoryVenueLabel(match.venue))
-  const hostLabel = escapeXml(getStoryHostLabel(match))
   const storyUrl = escapeXml(getStoryMatchUrl(match).replace(/^https?:\/\//, ''))
-  const matchupLabel = escapeXml(`${match.team1.toUpperCase()} VS ${match.team2.toUpperCase()}`)
   const promptLabel = variant === 'result' ? 'FINAL VERDICT' : 'WHO TAKES THE WIN?'
-  const subheadLabel = variant === 'result' ? 'SEE THE RESULT AND CROWD REACTION' : 'MATCHDAY PREDICTION'
-  const ctaTitle = variant === 'result' ? `OPEN FULL MATCH CARD ON ${hostLabel}` : `VOTE NOW ON ${hostLabel}`
-  const ctaBody = variant === 'result'
-    ? 'Review the outcome, momentum swing, and crowd split on the website'
-    : 'Open the match card and back your winner'
   const buttonVerb = variant === 'result' ? 'VIEW' : 'PICK'
+  const footerTitle = variant === 'result' ? 'SEE THE FINAL RESULT' : 'VOTE NOW AND BACK YOUR WINNER'
+  const openCardLabel = variant === 'result' ? 'OPEN MATCH RESULT' : 'OPEN PREDICTION CARD'
   const headline =
     headlinePathFragment != null && headlinePathFragment !== ''
       ? headlinePathFragment
@@ -200,9 +195,14 @@ function buildRenderedCardSvg(
       <stop stop-color="#020611" stop-opacity="0"/>
       <stop offset="1" stop-color="#020611" stop-opacity="0.92"/>
     </linearGradient>
-    <linearGradient id="meta-shell" x1="170" y1="92" x2="910" y2="184" gradientUnits="userSpaceOnUse">
-      <stop stop-color="rgba(12,18,34,0.78)"/>
-      <stop offset="1" stop-color="rgba(7,11,21,0.68)"/>
+    <linearGradient id="date-pill" x1="188" y1="40" x2="892" y2="114" gradientUnits="userSpaceOnUse">
+      <stop stop-color="rgba(12,18,34,0.84)"/>
+      <stop offset="1" stop-color="rgba(9,14,28,0.74)"/>
+    </linearGradient>
+    <linearGradient id="match-bar" x1="60" y1="360" x2="1020" y2="360" gradientUnits="userSpaceOnUse">
+      <stop stop-color="rgba(10,15,28,0.82)"/>
+      <stop offset="0.5" stop-color="rgba(16,22,37,0.92)"/>
+      <stop offset="1" stop-color="rgba(10,15,28,0.82)"/>
     </linearGradient>
     <linearGradient id="cta-shell" x1="88" y1="1438" x2="992" y2="1778" gradientUnits="userSpaceOnUse">
       <stop stop-color="rgba(8,14,30,0.9)"/>
@@ -216,6 +216,20 @@ function buildRenderedCardSvg(
       <stop stop-color="${accentB}"/>
       <stop offset="1" stop-color="#124FA6"/>
     </linearGradient>
+    <linearGradient id="open-button" x1="328" y1="1820" x2="752" y2="1906" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D7B163"/>
+      <stop offset="0.5" stop-color="#C9973E"/>
+      <stop offset="1" stop-color="#A97828"/>
+    </linearGradient>
+    <radialGradient id="vs-glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(540 427) rotate(90) scale(120 80)">
+      <stop stop-color="#FFD978" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#F3B33A" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="vs-badge" x1="486" y1="380" x2="594" y2="476" gradientUnits="userSpaceOnUse">
+      <stop stop-color="rgba(60,43,23,0.95)"/>
+      <stop offset="0.5" stop-color="rgba(25,31,55,0.95)"/>
+      <stop offset="1" stop-color="rgba(85,53,26,0.95)"/>
+    </linearGradient>
     <linearGradient id="url-pill" x1="182" y1="1712" x2="898" y2="1712" gradientUnits="userSpaceOnUse">
       <stop stop-color="rgba(255,255,255,0.14)"/>
       <stop offset="1" stop-color="rgba(255,255,255,0.07)"/>
@@ -224,17 +238,23 @@ function buildRenderedCardSvg(
   <image href="${artworkUrl}" x="0" y="0" width="1080" height="1920" preserveAspectRatio="xMidYMid slice"/>
   <rect x="0" y="0" width="1080" height="520" fill="url(#story-top)"/>
   <rect x="0" y="1320" width="1080" height="600" fill="url(#story-bottom)"/>
-  <rect x="170" y="92" width="740" height="92" rx="30" fill="url(#meta-shell)" stroke="rgba(255,255,255,0.16)" stroke-width="2"/>
-  <text x="540" y="128" fill="#DCE6F8" text-anchor="middle" font-family="${STORY_FONT}" font-size="20" font-weight="800" letter-spacing="3">${escapeXml(subheadLabel)}</text>
-  <text x="540" y="163" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="30" font-weight="800">${dateLabel}</text>
+  <rect x="186" y="18" width="708" height="82" rx="40" fill="url(#date-pill)" stroke="rgba(154,177,224,0.28)" stroke-width="2"/>
+  <text x="540" y="72" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="34" font-weight="700">${dateLabel}</text>
 
   ${headline}
-  <text x="540" y="334" fill="#E8EDF8" text-anchor="middle" font-family="${STORY_FONT}" font-size="28" font-weight="700">${matchupLabel}</text>
-  <text x="540" y="372" fill="#C8D3EA" text-anchor="middle" font-family="${STORY_FONT}" font-size="26" font-weight="600">${venueLabel}</text>
+  <rect x="48" y="340" width="984" height="116" rx="0" fill="url(#match-bar)" stroke="rgba(255,255,255,0.08)" stroke-width="2"/>
+  <line x1="48" y1="340" x2="1032" y2="340" stroke="rgba(255,255,255,0.14)" stroke-width="2"/>
+  <line x1="48" y1="456" x2="1032" y2="456" stroke="rgba(255,255,255,0.14)" stroke-width="2"/>
+  <text x="222" y="418" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="44" font-weight="900">${team1Label}</text>
+  <text x="858" y="418" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="44" font-weight="900">${team2Label}</text>
+  <text x="430" y="420" fill="#B99245" text-anchor="middle" font-family="${STORY_FONT}" font-size="26" font-weight="700">VS</text>
+  <circle cx="540" cy="398" r="76" fill="url(#vs-glow)"/>
+  <path d="M540 344L579 366V410L540 432L501 410V366L540 344Z" fill="url(#vs-badge)" stroke="#D9B15A" stroke-width="3"/>
+  <text x="540" y="409" fill="#FFE374" text-anchor="middle" font-family="${STORY_FONT}" font-size="36" font-weight="900">VS</text>
+  <text x="540" y="530" fill="#E6EAF3" text-anchor="middle" font-family="${STORY_FONT}" font-size="28" font-weight="500">${venueLabel}</text>
 
   <rect x="88" y="1438" width="904" height="328" rx="42" fill="url(#cta-shell)" stroke="rgba(255,255,255,0.18)" stroke-width="3"/>
-  <text x="540" y="1498" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="28" font-weight="800" letter-spacing="2">${escapeXml(ctaTitle)}</text>
-  <text x="540" y="1538" fill="#B9C7E8" text-anchor="middle" font-family="${STORY_FONT}" font-size="23" font-weight="600">${escapeXml(ctaBody)}</text>
+  <text x="540" y="1500" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="28" font-weight="700">${escapeXml(footerTitle)} *</text>
 
   <rect x="118" y="1576" width="410" height="106" rx="34" fill="url(#team-a-button)" stroke="rgba(255,255,255,0.2)" stroke-width="3"/>
   <text x="323" y="1617" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="20" font-weight="700" letter-spacing="2">${buttonVerb}</text>
@@ -243,9 +263,13 @@ function buildRenderedCardSvg(
   <rect x="552" y="1576" width="410" height="106" rx="34" fill="url(#team-b-button)" stroke="rgba(255,255,255,0.2)" stroke-width="3"/>
   <text x="757" y="1617" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="20" font-weight="700" letter-spacing="2">${buttonVerb}</text>
   <text x="757" y="1659" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="36" font-weight="900">${team2Label}</text>
+  <path d="M540 1552L583 1577V1631L540 1656L497 1631V1577L540 1552Z" fill="url(#vs-badge)" stroke="#D9B15A" stroke-width="3"/>
+  <text x="540" y="1610" fill="#FFE374" text-anchor="middle" font-family="${STORY_FONT}" font-size="34" font-weight="900">VS</text>
 
   <rect x="182" y="1710" width="716" height="46" rx="23" fill="url(#url-pill)" stroke="rgba(255,255,255,0.12)" stroke-width="2"/>
   <text x="540" y="1741" fill="#EEF4FF" text-anchor="middle" font-family="${STORY_FONT}" font-size="24" font-weight="700">${storyUrl}</text>
+  <rect x="328" y="1820" width="424" height="88" rx="24" fill="url(#open-button)" stroke="rgba(255,228,178,0.45)" stroke-width="2"/>
+  <text x="540" y="1876" fill="#151515" text-anchor="middle" font-family="${STORY_FONT}" font-size="24" font-weight="800">${escapeXml(openCardLabel)}</text>
 </svg>`
 }
 
