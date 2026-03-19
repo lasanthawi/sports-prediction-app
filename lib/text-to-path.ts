@@ -99,6 +99,28 @@ function getAttr(attrs: string, name: string): string | null {
 }
 
 /**
+ * Render a single string as an SVG <g><path> fragment (for embedding in SVGs that will be
+ * rasterized without system fonts). Use this when building card SVGs so no <text> is sent to sharp.
+ */
+export async function renderTextAsSvgPath(
+  text: string,
+  opts: { x: number; y: number; fontSize: number; fill: string; textAnchor: 'start' | 'middle' | 'end' }
+): Promise<string> {
+  if (!text.trim()) return ''
+  const font = await loadFont()
+  const path = font.getPath(text.trim(), 0, 0, opts.fontSize)
+  const bbox = path.getBoundingBox()
+  const pathData = path.toPathData(2)
+  const cy = (bbox.y1 + bbox.y2) / 2
+  let ox: number
+  if (opts.textAnchor === 'middle') ox = (bbox.x1 + bbox.x2) / 2
+  else if (opts.textAnchor === 'end') ox = bbox.x2
+  else ox = bbox.x1
+  const fillEsc = opts.fill.replace(/"/g, '&quot;')
+  return `<g transform="translate(${opts.x},${opts.y}) scale(1,-1) translate(${-ox},${-cy})"><path d="${pathData}" fill="${fillEsc}"/></g>`
+}
+
+/**
  * Replace all <text> elements in the SVG with <g><path></g> using the loaded font.
  * Preserves fill and position (x, y, text-anchor, font-size).
  */

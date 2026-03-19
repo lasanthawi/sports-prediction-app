@@ -6,6 +6,7 @@ import { getMatch, listMatches, listMatchIdsNeedingAssetGeneration } from './mat
 import { getActivePublishStatus, isPublishedStatus } from './publish'
 import { AssetRecord, AssetVariant, MatchRecord } from './types'
 import { publishToFacebookStory } from './facebook'
+import { renderTextAsSvgPath } from './text-to-path'
 
 const DEFAULT_WEBHOOK_TIMEOUT_MS = 10000
 const RENDER_RECIPE_VERSION = 'portrait-card-v1'
@@ -112,9 +113,18 @@ function buildFallbackArtwork(match: MatchRecord, variant: AssetVariant) {
 const STORY_FONT =
   'Liberation Sans, DejaVu Sans, Helvetica, Arial, sans-serif'
 
-function buildRenderedCardSvg(match: MatchRecord, variant: AssetVariant, artwork: AssetRecord) {
+/** Optional: pre-rendered headline as SVG <g><path> (from renderTextAsSvgPath). When set, no <text> is used so sharp never needs fonts. */
+function buildRenderedCardSvg(
+  match: MatchRecord,
+  variant: AssetVariant,
+  artwork: AssetRecord,
+  headlinePathFragment?: string | null
+) {
   const artworkUrl = getAssetDataUrl(artwork)
-  // Top banner and headline for Facebook story; text is converted to paths when serving PNG.
+  const headline =
+    headlinePathFragment != null && headlinePathFragment !== ''
+      ? headlinePathFragment
+      : `<text x="540" y="160" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="80" font-weight="800">Who will win?</text>`
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="1080" height="1920" viewBox="0 0 1080 1920" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
@@ -125,7 +135,7 @@ function buildRenderedCardSvg(match: MatchRecord, variant: AssetVariant, artwork
   </defs>
   <image href="${artworkUrl}" x="0" y="0" width="1080" height="1920" preserveAspectRatio="xMidYMid slice"/>
   <rect x="0" y="0" width="1080" height="320" fill="url(#story-top)"/>
-  <text x="540" y="160" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="80" font-weight="800">Who will win?</text>
+  ${headline}
 </svg>`
 }
 
@@ -621,7 +631,7 @@ export async function getAssetsForMatch(matchId: number) {
   return getMatchAssets(matchId)
 }
 
-/** Returns the card SVG rebuilt from the current template (for PNG export). Use when serving ?format=png so the latest design is used. */
+/** Returns the card SVG rebuilt from the current template (for PNG export). Headline is rendered as paths so sharp never needs fonts. */
 export async function getCardSvgForPublish(cardAssetId: number): Promise<Buffer | null> {
   await ensureSchema()
   const card = await getAsset(cardAssetId)
@@ -635,6 +645,18 @@ export async function getCardSvgForPublish(cardAssetId: number): Promise<Buffer 
   `
   const artwork = rows[0]
   if (!artwork) return null
-  const svg = buildRenderedCardSvg(match, card.asset_variant as AssetVariant, artwork)
+  let headlinePath: string | null = null
+  try {
+    headlinePath = await renderTextAsSvgPath('Who will win?', {
+      x: 540,
+      y: 160,
+      fontSize: 80,
+      fill: '#FFFFFF',
+      textAnchor: 'middle',
+    })
+  } catch (e) {
+    console.warn('[automation] renderTextAsSvgPath failed, card will use fallback text:', e)
+  }
+  const svg = buildRenderedCardSvg(match, card.asset_variant as AssetVariant, artwork, headlinePath)
   return Buffer.from(svg, 'utf8')
 }
