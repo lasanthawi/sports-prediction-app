@@ -175,7 +175,6 @@ function buildRenderedCardSvg(
   const team2Label = escapeXml(getCompactTeamName(match.team2))
   const dateLabel = escapeXml(formatStoryDateLabel(match.match_time))
   const venueLabel = escapeXml(formatStoryVenueLabel(match.venue))
-  const storyUrl = escapeXml(getStoryMatchUrl(match).replace(/^https?:\/\//, ''))
   const promptLabel = variant === 'result' ? 'FINAL VERDICT' : 'WHO TAKES THE WIN?'
   const buttonVerb = variant === 'result' ? 'VIEW' : 'PICK'
   const footerTitle = variant === 'result' ? 'SEE THE FINAL RESULT' : 'VOTE NOW AND BACK YOUR WINNER'
@@ -195,11 +194,11 @@ function buildRenderedCardSvg(
       <stop stop-color="#020611" stop-opacity="0"/>
       <stop offset="1" stop-color="#020611" stop-opacity="0.92"/>
     </linearGradient>
-    <linearGradient id="date-pill" x1="188" y1="40" x2="892" y2="114" gradientUnits="userSpaceOnUse">
+    <linearGradient id="date-pill" x1="188" y1="120" x2="892" y2="202" gradientUnits="userSpaceOnUse">
       <stop stop-color="rgba(12,18,34,0.84)"/>
       <stop offset="1" stop-color="rgba(9,14,28,0.74)"/>
     </linearGradient>
-    <linearGradient id="match-bar" x1="60" y1="360" x2="1020" y2="360" gradientUnits="userSpaceOnUse">
+    <linearGradient id="match-bar" x1="74" y1="448" x2="1006" y2="448" gradientUnits="userSpaceOnUse">
       <stop stop-color="rgba(10,15,28,0.82)"/>
       <stop offset="0.5" stop-color="rgba(16,22,37,0.92)"/>
       <stop offset="1" stop-color="rgba(10,15,28,0.82)"/>
@@ -221,55 +220,48 @@ function buildRenderedCardSvg(
       <stop offset="0.5" stop-color="#C9973E"/>
       <stop offset="1" stop-color="#A97828"/>
     </linearGradient>
-    <radialGradient id="vs-glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(540 427) rotate(90) scale(120 80)">
+    <radialGradient id="vs-glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(540 448) rotate(90) scale(134 92)">
       <stop stop-color="#FFD978" stop-opacity="0.95"/>
       <stop offset="1" stop-color="#F3B33A" stop-opacity="0"/>
     </radialGradient>
-    <linearGradient id="vs-badge" x1="486" y1="380" x2="594" y2="476" gradientUnits="userSpaceOnUse">
+    <linearGradient id="vs-badge" x1="482" y1="390" x2="598" y2="506" gradientUnits="userSpaceOnUse">
       <stop stop-color="rgba(60,43,23,0.95)"/>
       <stop offset="0.5" stop-color="rgba(25,31,55,0.95)"/>
       <stop offset="1" stop-color="rgba(85,53,26,0.95)"/>
-    </linearGradient>
-    <linearGradient id="url-pill" x1="182" y1="1712" x2="898" y2="1712" gradientUnits="userSpaceOnUse">
-      <stop stop-color="rgba(255,255,255,0.14)"/>
-      <stop offset="1" stop-color="rgba(255,255,255,0.07)"/>
     </linearGradient>
   </defs>
   <image href="${artworkUrl}" x="0" y="0" width="1080" height="1920" preserveAspectRatio="xMidYMid slice"/>
   <rect x="0" y="0" width="1080" height="520" fill="url(#story-top)"/>
   <rect x="0" y="1320" width="1080" height="600" fill="url(#story-bottom)"/>
-  <rect x="186" y="18" width="708" height="82" rx="40" fill="url(#date-pill)" stroke="rgba(154,177,224,0.28)" stroke-width="2"/>
-  <text x="540" y="72" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="34" font-weight="700">${dateLabel}</text>
+  <rect x="186" y="118" width="708" height="82" rx="40" fill="url(#date-pill)" stroke="rgba(154,177,224,0.28)" stroke-width="2"/>
+  <text x="540" y="172" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="34" font-weight="700">${dateLabel}</text>
 
   ${headline}
-  <rect x="48" y="340" width="984" height="116" rx="0" fill="url(#match-bar)" stroke="rgba(255,255,255,0.08)" stroke-width="2"/>
-  <line x1="48" y1="340" x2="1032" y2="340" stroke="rgba(255,255,255,0.14)" stroke-width="2"/>
-  <line x1="48" y1="456" x2="1032" y2="456" stroke="rgba(255,255,255,0.14)" stroke-width="2"/>
-  <text x="222" y="418" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="44" font-weight="900">${team1Label}</text>
-  <text x="858" y="418" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="44" font-weight="900">${team2Label}</text>
-  <text x="430" y="420" fill="#B99245" text-anchor="middle" font-family="${STORY_FONT}" font-size="26" font-weight="700">VS</text>
-  <circle cx="540" cy="398" r="76" fill="url(#vs-glow)"/>
-  <path d="M540 344L579 366V410L540 432L501 410V366L540 344Z" fill="url(#vs-badge)" stroke="#D9B15A" stroke-width="3"/>
-  <text x="540" y="409" fill="#FFE374" text-anchor="middle" font-family="${STORY_FONT}" font-size="36" font-weight="900">VS</text>
-  <text x="540" y="530" fill="#E6EAF3" text-anchor="middle" font-family="${STORY_FONT}" font-size="28" font-weight="500">${venueLabel}</text>
+  <text x="540" y="250" fill="#E6EAF3" text-anchor="middle" font-family="${STORY_FONT}" font-size="38" font-weight="500">${venueLabel}</text>
+  <rect x="74" y="392" width="932" height="112" rx="0" fill="url(#match-bar)" stroke="rgba(255,255,255,0.08)" stroke-width="2"/>
+  <line x1="74" y1="392" x2="1006" y2="392" stroke="rgba(255,255,255,0.14)" stroke-width="2"/>
+  <line x1="74" y1="504" x2="1006" y2="504" stroke="rgba(255,255,255,0.14)" stroke-width="2"/>
+  <text x="244" y="464" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="46" font-weight="900">${team1Label}</text>
+  <text x="836" y="464" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="46" font-weight="900">${team2Label}</text>
+  <circle cx="540" cy="448" r="84" fill="url(#vs-glow)"/>
+  <path d="M540 385L586 411V463L540 489L494 463V411L540 385Z" fill="url(#vs-badge)" stroke="#D9B15A" stroke-width="3"/>
+  <text x="540" y="454" fill="#FFE374" text-anchor="middle" font-family="${STORY_FONT}" font-size="38" font-weight="900">VS</text>
 
-  <rect x="88" y="1438" width="904" height="328" rx="42" fill="url(#cta-shell)" stroke="rgba(255,255,255,0.18)" stroke-width="3"/>
+  <rect x="88" y="1438" width="904" height="258" rx="42" fill="url(#cta-shell)" stroke="rgba(255,255,255,0.18)" stroke-width="3"/>
   <text x="540" y="1500" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="28" font-weight="700">${escapeXml(footerTitle)} *</text>
 
-  <rect x="118" y="1576" width="410" height="106" rx="34" fill="url(#team-a-button)" stroke="rgba(255,255,255,0.2)" stroke-width="3"/>
-  <text x="323" y="1617" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="20" font-weight="700" letter-spacing="2">${buttonVerb}</text>
-  <text x="323" y="1659" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="36" font-weight="900">${team1Label}</text>
+  <rect x="118" y="1570" width="410" height="106" rx="34" fill="url(#team-a-button)" stroke="rgba(255,255,255,0.2)" stroke-width="3"/>
+  <text x="323" y="1611" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="20" font-weight="700" letter-spacing="2">${buttonVerb}</text>
+  <text x="323" y="1653" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="36" font-weight="900">${team1Label}</text>
 
-  <rect x="552" y="1576" width="410" height="106" rx="34" fill="url(#team-b-button)" stroke="rgba(255,255,255,0.2)" stroke-width="3"/>
-  <text x="757" y="1617" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="20" font-weight="700" letter-spacing="2">${buttonVerb}</text>
-  <text x="757" y="1659" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="36" font-weight="900">${team2Label}</text>
-  <path d="M540 1552L583 1577V1631L540 1656L497 1631V1577L540 1552Z" fill="url(#vs-badge)" stroke="#D9B15A" stroke-width="3"/>
-  <text x="540" y="1610" fill="#FFE374" text-anchor="middle" font-family="${STORY_FONT}" font-size="34" font-weight="900">VS</text>
+  <rect x="552" y="1570" width="410" height="106" rx="34" fill="url(#team-b-button)" stroke="rgba(255,255,255,0.2)" stroke-width="3"/>
+  <text x="757" y="1611" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="20" font-weight="700" letter-spacing="2">${buttonVerb}</text>
+  <text x="757" y="1653" fill="#FFFFFF" text-anchor="middle" font-family="${STORY_FONT}" font-size="36" font-weight="900">${team2Label}</text>
+  <path d="M540 1544L586 1570V1622L540 1648L494 1622V1570L540 1544Z" fill="url(#vs-badge)" stroke="#D9B15A" stroke-width="3"/>
+  <text x="540" y="1613" fill="#FFE374" text-anchor="middle" font-family="${STORY_FONT}" font-size="34" font-weight="900">VS</text>
 
-  <rect x="182" y="1710" width="716" height="46" rx="23" fill="url(#url-pill)" stroke="rgba(255,255,255,0.12)" stroke-width="2"/>
-  <text x="540" y="1741" fill="#EEF4FF" text-anchor="middle" font-family="${STORY_FONT}" font-size="24" font-weight="700">${storyUrl}</text>
-  <rect x="328" y="1820" width="424" height="88" rx="24" fill="url(#open-button)" stroke="rgba(255,228,178,0.45)" stroke-width="2"/>
-  <text x="540" y="1876" fill="#151515" text-anchor="middle" font-family="${STORY_FONT}" font-size="24" font-weight="800">${escapeXml(openCardLabel)}</text>
+  <rect x="328" y="1750" width="424" height="88" rx="24" fill="url(#open-button)" stroke="rgba(255,228,178,0.45)" stroke-width="2"/>
+  <text x="540" y="1806" fill="#151515" text-anchor="middle" font-family="${STORY_FONT}" font-size="24" font-weight="800">${escapeXml(openCardLabel)}</text>
 </svg>`
 }
 
