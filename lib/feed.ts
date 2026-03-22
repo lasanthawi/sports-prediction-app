@@ -204,9 +204,25 @@ export async function fetchTheSportsDbFeed() {
     .filter(Boolean)
 
   const leagueIds = unique(configuredLeagueIds?.length ? configuredLeagueIds : DEFAULT_SPORTSDB_LEAGUE_IDS)
-  const leagueResponses = await Promise.all(leagueIds.map((leagueId) => fetchTheSportsDbLeague(leagueId, apiKey)))
+  const leagueResponses = await Promise.allSettled(leagueIds.map((leagueId) => fetchTheSportsDbLeague(leagueId, apiKey)))
+  const successfulResponses = leagueResponses
+    .filter((result): result is PromiseFulfilledResult<Array<Record<string, unknown>>> => result.status === 'fulfilled')
+    .map((result) => result.value)
 
-  return leagueResponses.flatMap((events) =>
+  const failedResponses = leagueResponses
+    .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+    .map((result) => result.reason)
+
+  if (successfulResponses.length === 0) {
+    const primaryError = failedResponses[0]
+    throw primaryError instanceof Error ? primaryError : new Error('TheSportsDB returned no successful league responses')
+  }
+
+  if (failedResponses.length > 0) {
+    console.warn(`[feed] TheSportsDB skipped ${failedResponses.length} league request(s):`, failedResponses.map((error) => error instanceof Error ? error.message : String(error)))
+  }
+
+  return successfulResponses.flatMap((events) =>
     events.map((event): FeedMatch => {
       const team1 = String(event.strHomeTeam || '').trim()
       const team2 = String(event.strAwayTeam || '').trim()

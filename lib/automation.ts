@@ -428,6 +428,23 @@ export async function fetchFeedMatches() {
   return fetchConfiguredFeedMatches()
 }
 
+async function syncMatchesFromFeedSafely() {
+  try {
+    const result = await syncMatchesFromFeed()
+    return { ...result, error: null as string | null }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Feed sync failed'
+    console.warn('[automation] Continuing pipeline after sync failure:', message)
+    await logAutomationRun('sync_matches', 'failed', message, { count: 0, continued: true })
+    return {
+      count: 0,
+      staged: [] as unknown[],
+      skipped: true,
+      error: message,
+    }
+  }
+}
+
 export async function syncMatchesFromFeed() {
   await ensureSchema()
   const feedMatches = await fetchFeedMatches()
@@ -704,7 +721,7 @@ export async function runUnpublishedQueuePipeline() {
   const reconcileBatchSize = Number.isInteger(configuredReconcileBatchSize) && configuredReconcileBatchSize > 0
     ? configuredReconcileBatchSize
     : DEFAULT_FEED_RECONCILE_BATCH_SIZE
-  const sync = await syncMatchesFromFeed()
+  const sync = await syncMatchesFromFeedSafely()
   const reconciled = await reconcileFeedQueueIntoMatches(reconcileBatchSize)
   const { matchCount: needingMatchCount, assetCount: needingAssetCount } = await generateAssetsForMatchesNeedingThem()
   const unpublished = await listUnpublishedMatches()
@@ -712,6 +729,7 @@ export async function runUnpublishedQueuePipeline() {
 
   await logAutomationRun('unpublished_queue', 'success', `Synced ${sync.count}, reconciled ${reconciled.count}, generated for ${needingMatchCount} matches needing assets, ${unpublished.length} unpublished remain; published ${publish.published}`, {
     syncedCount: sync.count,
+    syncError: sync.error,
     reconciledCount: reconciled.count,
     reconcileBatchSize,
     needingGenerationCount: needingMatchCount,
@@ -732,7 +750,7 @@ export async function runUnpublishedQueuePipeline() {
 
 export async function runAutomationPipeline() {
   await ensureSchema()
-  const sync = await syncMatchesFromFeed()
+  const sync = await syncMatchesFromFeedSafely()
   const reconciled = await reconcileFeedQueueIntoMatches()
   const { matchCount: needingMatchCount, assetCount: needingAssetCount } = await generateAssetsForMatchesNeedingThem()
   const unpublished = await listUnpublishedMatches()
@@ -740,6 +758,7 @@ export async function runAutomationPipeline() {
 
   await logAutomationRun('run_pipeline', 'success', 'Ran sync, asset generation, and publish pipeline', {
     synced: sync.count,
+    syncError: sync.error,
     reconciled: reconciled.count,
     needingGenerationCount: needingMatchCount,
     unpublishedCount: unpublished.length,
