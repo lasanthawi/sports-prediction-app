@@ -54,9 +54,7 @@ export default function Login() {
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <div className="mb-4 flex flex-col items-center justify-center gap-4">
-            <div className="rounded-[1.75rem] border border-white/10 bg-black/20 p-3 shadow-[0_0_28px_rgba(255,216,77,0.18)]">
-              <img src={BRAND.logoUrl} alt={`${BRAND.name} logo`} className="h-20 w-20 object-contain" />
-            </div>
+            <img src={BRAND.logoUrl} alt={`${BRAND.name} logo`} className="h-28 w-28 object-contain drop-shadow-[0_0_28px_rgba(255,216,77,0.18)]" />
             <h1 className="text-glow bg-gradient-to-r from-green-400 to-pink-500 bg-clip-text text-4xl font-black text-transparent">
               {BRAND.name.toUpperCase()}
             </h1>
