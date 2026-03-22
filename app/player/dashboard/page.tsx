@@ -5,6 +5,7 @@ import { Trophy, Target, TrendingUp, Award, LogOut, Hexagon, Crosshair, ChevronR
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import VotedMatchCard from '@/app/components/VotedMatchCard'
+import { BRAND } from '@/lib/brand'
 
 export default function PlayerDashboard() {
   const router = useRouter()
@@ -97,7 +98,7 @@ export default function PlayerDashboard() {
           
           <div className="flex gap-4 z-10 w-full md:w-auto mt-4 md:mt-0">
              <Link href="/" className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 bg-white/5 hover:bg-cyan-500/20 hover:border-cyan-400/50 border border-white/10 text-cyan-50 font-bold rounded-xl transition shadow-[inset_0_1px_rgba(255,255,255,0.1)]">
-               <Zap className="w-4 h-4 text-cyan-400" /> To Arena
+               <Zap className="w-4 h-4 text-cyan-400" /> To {BRAND.shortName}
              </Link>
              <button onClick={handleLogout} className="flex items-center justify-center p-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-xl transition group">
                <LogOut className="w-5 h-5 group-hover:animate-bounce" />
@@ -165,7 +166,7 @@ export default function PlayerDashboard() {
                  <Hexagon className="w-16 h-16 text-white/10 mb-4" strokeWidth={1} />
                  <p className="text-white/40 text-sm font-bold tracking-widest uppercase mb-4">No active deployments</p>
                  <Link href="/" className="px-6 py-3 bg-cyan-500/10 text-cyan-400 font-bold tracking-wider rounded-xl border border-cyan-500/20 hover:bg-cyan-500/20 transition uppercase text-[10px]">
-                   Access Arena
+                   Open Vote League
                  </Link>
                </div>
             ) : (

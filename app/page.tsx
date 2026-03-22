@@ -5,7 +5,9 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowRight, Bell, CalendarDays, ChevronLeft, ChevronRight, LogIn, Sparkles, Swords, Target, Trophy, Waves, X } from 'lucide-react'
 import MatchCard from './components/MatchCard'
+import SiteFooter from './components/SiteFooter'
 import VotedMatchCard from './components/VotedMatchCard'
+import { BRAND } from '@/lib/brand'
 
 interface MatchRecord {
   id: number
@@ -31,7 +33,6 @@ interface MatchRecord {
 }
 
 const COSMIC_BACKGROUND = 'https://img.freepik.com/free-photo/cosmic-lightning-storm-space-background_23-2151955881.jpg?semt=ais_hybrid&w=740&q=80'
-const BRAND_IMAGE = 'https://i.ibb.co/qLsG4ByG/70325951-97a2-4fb3-ad27-a3c7ba251676.png'
 
 const MATCHES_CACHE_MS = 20_000 // 20s: show cached matches immediately when revisiting home
 let matchesCache: { at: number; data: MatchRecord[] } | null = null
@@ -243,21 +244,21 @@ export default function Home() {
 
           <div className="mx-auto max-w-5xl text-center">
             <div className="mb-5 flex justify-center">
-              <img
-                src={BRAND_IMAGE}
-                alt="Prediction Arena logo"
-                className="h-32 w-32 object-contain drop-shadow-[0_0_28px_rgba(255,216,77,0.35)] md:h-40 md:w-40"
-              />
-            </div>
-            <div className="mb-4 inline-flex items-center gap-3 rounded-full border border-white/10 bg-black/25 px-5 py-2 text-sm font-bold uppercase tracking-[0.24em] text-white/80 backdrop-blur-sm">
-              Prediction Arena
-            </div>
-            <h1 className="text-glow bg-gradient-to-r from-green-300 via-yellow-300 to-pink-300 bg-clip-text text-5xl font-black uppercase tracking-[0.04em] text-transparent md:text-7xl">
-              Prediction Arena
-            </h1>
-            <p className="mx-auto mt-4 max-w-2xl text-lg text-white/80 md:text-2xl">
-              Predict. Vote. Win Glory.
-            </p>
+                <img
+                  src={BRAND.logoUrl}
+                  alt={`${BRAND.name} logo`}
+                  className="h-32 w-32 object-contain drop-shadow-[0_0_28px_rgba(255,216,77,0.35)] md:h-40 md:w-40"
+                />
+              </div>
+              <div className="mb-4 inline-flex items-center gap-3 rounded-full border border-white/10 bg-black/25 px-5 py-2 text-sm font-bold uppercase tracking-[0.24em] text-white/80 backdrop-blur-sm">
+                {BRAND.shortName}
+              </div>
+              <h1 className="text-glow bg-gradient-to-r from-green-300 via-yellow-300 to-pink-300 bg-clip-text text-5xl font-black uppercase tracking-[0.04em] text-transparent md:text-7xl">
+                {BRAND.name}
+              </h1>
+              <p className="mx-auto mt-4 max-w-2xl text-lg text-white/80 md:text-2xl">
+                {BRAND.tagline}
+              </p>
             <p className="mx-auto mt-5 max-w-3xl text-sm leading-7 text-white/65 md:text-base">
               Follow live clashes, back your side before kickoff, track the community split, and relive the biggest results with cinematic match cards built for battle-night energy.
             </p>
@@ -273,7 +274,7 @@ export default function Home() {
         {loading ? (
           <div className="py-16 text-center">
             <div className="mx-auto h-16 w-16 animate-spin rounded-full border-t-4 border-green-400" />
-            <p className="mt-4 text-white/70">Loading the arena...</p>
+            <p className="mt-4 text-white/70">Loading Vote League...</p>
           </div>
         ) : error ? (
           <div className="glass-panel mx-auto max-w-3xl p-10 text-center">
@@ -288,7 +289,7 @@ export default function Home() {
               <SectionHeading
                 eyebrow="Main Event"
                 title="Live Matches"
-                copy="The hottest prediction cards in the arena right now. Live and upcoming clashes are front and center so players can jump in fast."
+                copy="The hottest prediction cards in Vote League right now. Live and upcoming clashes are front and center so players can jump in fast."
               />
               {featuredMatches.length === 0 ? (
                 <EmptyState />
@@ -370,7 +371,7 @@ export default function Home() {
                   eyebrow="Clash Queue"
                   title={upcomingMatches.length > 0 ? 'Upcoming Clashes' : 'Latest Clashes'}
                   copy={upcomingMatches.length > 0
-                    ? 'Scan the next wave of battles, see where the arena hype is building, and lock in predictions before the clock hits zero.'
+                    ? 'Scan the next wave of battles, see where league momentum is building, and lock in predictions before the clock hits zero.'
                     : 'Latest finished matches. New upcoming clashes will appear here when scheduled.'}
                   compact
                 />
@@ -388,7 +389,7 @@ export default function Home() {
 
               <div className="glass-panel p-6 md:p-8">
                 <SectionHeading
-                  eyebrow="Arena Intel"
+                  eyebrow="League Intel"
                   title="What Happens Here"
                   copy="Every match gets a cinematic battle card, a live community split, and a result recap when the final whistle blows."
                   compact
@@ -396,7 +397,7 @@ export default function Home() {
                 <div className="grid gap-4">
                   <FeatureCard icon={<Swords className="h-5 w-5" />} title="Battle Posters" copy="Each match is framed like a headline clash with high-energy visuals and clear vote calls." />
                   <FeatureCard icon={<Sparkles className="h-5 w-5" />} title="Live Community Split" copy="See where the crowd is leaning and how close the duel really is before kickoff." />
-                  <FeatureCard icon={<Waves className="h-5 w-5" />} title="Result Recaps" copy="Finished matches transition into result cards so the arena stays alive after game time." />
+                  <FeatureCard icon={<Waves className="h-5 w-5" />} title="Result Recaps" copy="Finished matches transition into result cards so the league story stays alive after game time." />
                 </div>
               </div>
             </section>
@@ -405,7 +406,7 @@ export default function Home() {
               <SectionHeading
                 eyebrow="Final Whistle"
                 title="Results Board"
-                copy="A snapshot of the latest finished battles so visitors can see which side won and how the arena voted."
+                copy="A snapshot of the latest finished battles so visitors can see which side won and how the league voted."
               />
               {finishedMatches.length === 0 ? (
                 <div className="glass-panel p-6 text-sm text-white/60">No results yet. Finished matches will show up here with final scorelines and vote history.</div>
@@ -425,7 +426,7 @@ export default function Home() {
                   <div className="w-full mt-4 flex flex-col items-center">
                     <p className="font-bold tracking-[0.2em] text-cyan-300 mb-6 text-sm uppercase">Your Recent Predictions</p>
                     {votedMatches.length === 0 ? (
-                      <p className="text-white/60 mb-6">You haven't made any predictions yet. Head to the arena and back your side!</p>
+                      <p className="text-white/60 mb-6">You haven't made any predictions yet. Head to Vote League and back your side.</p>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full mb-2">
                         {votedMatches.slice(0, 3).map((match) => (
@@ -437,7 +438,7 @@ export default function Home() {
                 ) : (
                   <>
                     <p className="mx-auto mt-2 max-w-3xl text-white/70">
-                      Get notified when the biggest results are in, revisit your predictions, and stay ready for the next arena showdown.
+                      Get notified when the biggest results are in, revisit your predictions, and stay ready for the next Vote League showdown.
                     </p>
                     <Link href="/login" className="mt-8 inline-flex items-center gap-2 rounded-full border border-cyan-300/40 bg-gradient-to-r from-cyan-400/20 to-fuchsia-500/25 px-8 py-4 text-lg font-bold text-white shadow-[0_0_24px_rgba(59,130,246,0.2)] hover:scale-105 transition">
                       <Bell className="inline" /> Log in to Enable Notifications
@@ -451,25 +452,14 @@ export default function Home() {
                 <div className="mt-4 space-y-4 text-sm text-white/70">
                   <StepRow index="01" title="Choose a clash" copy="Browse live and upcoming match cards with vote-ready calls to action." />
                   <StepRow index="02" title="Back your side" copy="Vote before kickoff and watch the community split evolve in real time." />
-                  <StepRow index="03" title="Track the result" copy="Return for the result card and see how the arena called it." />
+                  <StepRow index="03" title="Track the result" copy="Return for the result card and see how the league called it." />
                 </div>
               </div>
             </section>
           </>
         )}
 
-        <footer className="glass-panel flex flex-col gap-6 px-6 py-8 text-center text-sm text-white/60 md:flex-row md:items-center md:justify-between md:text-left">
-          <div>
-            <p className="font-bold uppercase tracking-[0.2em] text-white/80">Prediction Arena</p>
-            <p className="mt-2">Built for match-night energy, community rivalry, and high-contrast battle cards.</p>
-          </div>
-          <div className="flex flex-wrap justify-center gap-4 md:justify-end">
-            <a href="#live-matches" className="hover:text-white">Live Matches</a>
-            <a href="#upcoming-clashes" className="hover:text-white">Upcoming</a>
-            <a href="#results-board" className="hover:text-white">Results</a>
-            <a href="#how-it-works" className="hover:text-white">How It Works</a>
-          </div>
-        </footer>
+        <SiteFooter />
       </div>
 
       {votingMode ? (
@@ -525,10 +515,10 @@ function MobileArenaApp({
       <section className="mobile-arena-shell">
         <div className="mobile-arena-topbar">
           <div className="flex items-start gap-3">
-            <img src={BRAND_IMAGE} alt="Prediction Arena logo" className="h-14 w-14 shrink-0 rounded-2xl border border-white/10 bg-black/25 object-cover p-1 shadow-[0_0_22px_rgba(255,216,77,0.2)]" />
+            <img src={BRAND.logoUrl} alt={`${BRAND.name} logo`} className="h-14 w-14 shrink-0 rounded-2xl border border-white/10 bg-black/25 object-cover p-1 shadow-[0_0_22px_rgba(255,216,77,0.2)]" />
             <div className="min-w-0">
-              <p className="text-xs font-bold uppercase tracking-[0.32em] text-green-300/80">Prediction Arena</p>
-              <h1 className="mt-2 text-2xl font-black leading-none text-white sm:text-3xl">Arena App</h1>
+              <p className="text-xs font-bold uppercase tracking-[0.32em] text-green-300/80">{BRAND.shortName}</p>
+              <h1 className="mt-2 text-2xl font-black leading-none text-white sm:text-3xl">League App</h1>
             </div>
           </div>
           <Link href="/login" className="glass-button shrink-0 !rounded-2xl !px-4 !py-3 text-sm">
@@ -573,7 +563,7 @@ function MobileArenaApp({
             <div className="flex items-center justify-center rounded-[2rem] border border-white/10 bg-black/25 px-6 text-center backdrop-blur-md">
               <div>
                 <div className="mx-auto h-12 w-12 animate-spin rounded-full border-t-4 border-green-400" />
-                <p className="mt-4 text-sm text-white/70">Loading the arena...</p>
+              <p className="mt-4 text-sm text-white/70">Loading Vote League...</p>
               </div>
             </div>
           ) : error ? (
@@ -623,7 +613,7 @@ function MobileArenaApp({
               <SectionHeading
                 eyebrow="Final Whistle"
                 title="Results Board"
-                copy="Latest finished battles and how the arena voted."
+                copy="Latest finished battles and how the league voted."
                 compact
               />
               {finishedMatches.length === 0 ? (
@@ -646,7 +636,7 @@ function MobileArenaApp({
                 eyebrow="Clash Queue"
                 title={upcomingMatches.length > 0 ? 'Upcoming Clashes' : 'Latest Clashes'}
                 copy={upcomingMatches.length > 0
-                  ? 'Next battles and where the arena hype is building.'
+                  ? 'Next battles and where league momentum is building.'
                   : 'Latest finished matches when no upcoming are scheduled.'}
                 compact
               />
@@ -665,11 +655,11 @@ function MobileArenaApp({
             {/* How It Works — mobile responsive */}
             <section id="how-it-works-mobile" className="w-full">
               <h3 className="text-lg font-bold text-white sm:text-xl">How It Works</h3>
-              <p className="mt-1 text-xs text-white/60 sm:text-sm">Three steps to join the arena.</p>
+              <p className="mt-1 text-xs text-white/60 sm:text-sm">Three steps to join Vote League.</p>
               <div className="mt-4 space-y-3">
                 <StepRow index="01" title="Choose a clash" copy="Browse live and upcoming match cards with vote-ready calls to action." />
                 <StepRow index="02" title="Back your side" copy="Vote before kickoff and watch the community split evolve in real time." />
-                <StepRow index="03" title="Track the result" copy="Return for the result card and see how the arena called it." />
+                <StepRow index="03" title="Track the result" copy="Return for the result card and see how the league called it." />
               </div>
             </section>
 
@@ -921,18 +911,18 @@ function ArenaVotingOverlay({
             <div className="max-w-sm rounded-[2rem] border border-white/10 bg-black/30 px-6 py-8 backdrop-blur-md">
               <p className="text-xs font-bold uppercase tracking-[0.3em] text-cyan-300/80">Voting Mode</p>
               <h3 className="mt-4 text-2xl font-black text-white">
-                {emptyState === 'swiped' ? 'Arena Cleared' : 'No More Cards Right Now'}
+          {emptyState === 'swiped' ? 'League Queue Cleared' : 'No More Cards Right Now'}
               </h3>
               <p className="mt-3 text-sm leading-6 text-white/70">
                 {emptyState === 'swiped'
                   ? 'You swiped through every available clash. Come back later for the next wave of battle cards.'
-                  : 'The current stack is finished. Fresh match cards will drop back into the arena soon.'}
+            : 'The current stack is finished. Fresh match cards will drop back into Vote League soon.'}
               </p>
               <button
                 onClick={onClose}
                 className="btn-game mt-6 inline-flex items-center justify-center rounded-[1.2rem] px-5 py-3"
               >
-                Return To Arena
+              Return To Vote League
               </button>
             </div>
           </div>
@@ -1377,7 +1367,7 @@ function EmptyState() {
   return (
     <div className="glass-panel p-12 text-center">
       <p className="text-2xl text-white/75">No featured matches yet</p>
-      <p className="mt-3 text-white/55">New clashes will appear here as soon as the arena schedule goes live.</p>
+                <p className="mt-3 text-white/55">New clashes will appear here as soon as the Vote League schedule goes live.</p>
     </div>
   )
 }

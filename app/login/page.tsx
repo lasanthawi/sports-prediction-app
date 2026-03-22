@@ -2,8 +2,8 @@
 
 import { useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
-
-const BRAND_IMAGE = 'https://i.ibb.co/qLsG4ByG/70325951-97a2-4fb3-ad27-a3c7ba251676.png'
+import SiteFooter from '@/app/components/SiteFooter'
+import { BRAND } from '@/lib/brand'
 
 export default function Login() {
   const router = useRouter()
@@ -49,18 +49,19 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
+    <div className="flex min-h-screen flex-col">
+      <div className="flex flex-1 items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <div className="mb-4 flex flex-col items-center justify-center gap-4">
             <div className="rounded-[1.75rem] border border-white/10 bg-black/20 p-3 shadow-[0_0_28px_rgba(255,216,77,0.18)]">
-              <img src={BRAND_IMAGE} alt="Prediction Arena logo" className="h-20 w-20 object-contain" />
+              <img src={BRAND.logoUrl} alt={`${BRAND.name} logo`} className="h-20 w-20 object-contain" />
             </div>
             <h1 className="text-glow bg-gradient-to-r from-green-400 to-pink-500 bg-clip-text text-4xl font-black text-transparent">
-              PREDICTION ARENA
+              {BRAND.name.toUpperCase()}
             </h1>
           </div>
-          <p className="text-gray-400">Login to your account</p>
+          <p className="text-gray-400">Log in to your {BRAND.shortName} account</p>
         </div>
 
         <div className="card-glow rounded-xl bg-gray-800 p-8">
@@ -133,10 +134,12 @@ export default function Login() {
 
         <div className="mt-6 text-center">
           <a href="/" className="text-sm text-green-400 hover:text-green-300">
-            Back to Arena
+            Back to Vote League
           </a>
         </div>
       </div>
+      </div>
+      <SiteFooter />
     </div>
   )
 }
