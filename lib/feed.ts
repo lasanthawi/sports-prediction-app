@@ -77,6 +77,10 @@ function normalizeText(value: string | null | undefined) {
   return value?.trim() || null
 }
 
+function hasNamedCompetitors(team1: string | null | undefined, team2: string | null | undefined) {
+  return Boolean(team1?.trim() && team2?.trim())
+}
+
 function normalizeSport(value: string | null | undefined) {
   if (!value) {
     return 'Football'
@@ -167,7 +171,8 @@ export async function fetchConfiguredFeedMatches() {
       throw new Error('Feed response must be an array or an object with a matches array')
     }
 
-    return rawItems.map((item: Record<string, unknown>, index: number): FeedMatch => ({
+    return rawItems
+      .map((item: Record<string, unknown>, index: number): FeedMatch => ({
       externalId: buildStableExternalId(item, index),
       source: String(item.source || 'feed'),
       sport: String(item.sport || 'Football'),
@@ -190,7 +195,8 @@ export async function fetchConfiguredFeedMatches() {
       status: (item.status as FeedMatch['status']) || 'upcoming',
       winner: typeof item.winner === 'number' ? item.winner : null,
       resultSummary: item.resultSummary ? String(item.resultSummary) : null,
-    }))
+      }))
+      .filter((item) => hasNamedCompetitors(item.team1, item.team2))
   }
 
   return fetchTheSportsDbFeed()
@@ -252,7 +258,7 @@ export async function fetchTheSportsDbFeed() {
         resultSummary: null,
       }
     })
-  )
+  ).filter((item) => hasNamedCompetitors(item.team1, item.team2))
 }
 
 export async function stageFeedMatches(feedMatches: FeedMatch[], provider = 'feed') {

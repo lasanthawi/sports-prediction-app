@@ -7,12 +7,18 @@ function normalizeText(value: string | null | undefined) {
   return value?.trim() || null
 }
 
+function hasNamedCompetitors(team1: string | null | undefined, team2: string | null | undefined) {
+  return Boolean(team1?.trim() && team2?.trim())
+}
+
 function toAssetUrl(id?: number | null) {
   return id ? `/api/assets/${id}` : null
 }
 
 function hydrateMatches(rows: MatchRecord[]) {
-  return rows.map((row) => {
+  return rows
+    .filter((row) => hasNamedCompetitors(row.team1, row.team2))
+    .map((row) => {
     const predictionCardUrl = toAssetUrl(row.prediction_card_asset_id)
     const resultCardUrl = toAssetUrl(row.result_card_asset_id)
     const predictionArtworkUrl = toAssetUrl(row.prediction_artwork_asset_id)
@@ -34,7 +40,7 @@ function hydrateMatches(rows: MatchRecord[]) {
       publish_status: getActivePublishStatus(row),
       latest_published_at: latestPublishedAt,
     }
-  })
+    })
 }
 
 function normalizeMatchKeyPart(value: string | null | undefined) {
