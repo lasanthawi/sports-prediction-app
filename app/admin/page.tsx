@@ -864,7 +864,7 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {feedQueue.slice(0, 15).map((item) => {
+                  {feedQueue.slice(0, 50).map((item) => {
                     const queueAssetStatus = item.status === 'finished'
                       ? item.result_asset_status || null
                       : item.prediction_asset_status || null

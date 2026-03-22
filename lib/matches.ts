@@ -165,13 +165,13 @@ function matchSelectClause() {
   `
 }
 
-export async function listMatches() {
+export async function listMatches(limit = 200) {
   await ensureSchema()
   await refreshDerivedMatchStatuses()
   const { rows } = await sql.query<MatchRecord>(`
     ${matchSelectClause()}
     ORDER BY match_time ASC, matches.id DESC
-    LIMIT 50
+    LIMIT ${limit}
   `)
 
   return hydrateMatches(rows)
@@ -191,8 +191,8 @@ function listVisibleMatchesNoRefresh() {
       AND LOWER(TRIM(prediction_card.published_status)) = 'published'
       AND LOWER(TRIM(COALESCE(prediction_card.generation_status, ''))) IN ('generated', 'fallback')
     ORDER BY match_time ASC, matches.id DESC
-    LIMIT 60
-  `).then(({ rows }) => dedupeVisibleMatches(hydrateMatches(rows)).slice(0, 20))
+    LIMIT 200
+  `).then(({ rows }) => dedupeVisibleMatches(hydrateMatches(rows)).slice(0, 60))
 }
 
 /** Finished matches for the results board. */
@@ -207,7 +207,7 @@ function listFinishedMatchesNoRefresh() {
     ${matchSelectClause()}
     WHERE matches.status = 'finished'
     ORDER BY match_time DESC, matches.id DESC
-    LIMIT 50
+    LIMIT 100
   `).then(({ rows }) => hydrateMatches(rows))
 }
 

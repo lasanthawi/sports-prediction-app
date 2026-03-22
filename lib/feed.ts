@@ -357,7 +357,7 @@ export async function stageFeedMatches(feedMatches: FeedMatch[], provider = 'fee
   return rows
 }
 
-export async function listFeedQueue() {
+export async function listFeedQueue(limit = 200) {
   await ensureSchema()
   const { rows } = await sql<FeedQueueRecord>`
     SELECT
@@ -414,7 +414,7 @@ export async function listFeedQueue() {
       END,
       feed_sync_items.match_time ASC,
       feed_sync_items.id DESC
-    LIMIT 50
+    LIMIT ${limit}
   `
 
   return rows

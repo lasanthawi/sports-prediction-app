@@ -132,8 +132,20 @@ export default function Home() {
   const votedMatchIdSet = useMemo(() => new Set(votedMatches.map((m) => m.id)), [votedMatches])
   const votingMatchesForVoteMode = useMemo(() => {
     const filtered = votingMatches.filter((match) => !votedMatchIdSet.has(match.id))
-    return filtered.slice(0, MAX_VOTE_MODE_CARDS)
-  }, [votingMatches, votedMatchIdSet])
+    const base = filtered.slice(0, MAX_VOTE_MODE_CARDS)
+    const targetId = Number(searchParams.get('match'))
+
+    if (!Number.isFinite(targetId) || base.some((match) => match.id === targetId)) {
+      return base
+    }
+
+    const targetMatch = filtered.find((match) => match.id === targetId)
+    if (!targetMatch) {
+      return base
+    }
+
+    return [targetMatch, ...base.slice(0, MAX_VOTE_MODE_CARDS - 1)]
+  }, [searchParams, votingMatches, votedMatchIdSet])
   const featuredMatches = votingMatches.filter((match) => match.status !== 'finished').slice(0, 8)
   const mobileVotingMatches = votingMatches.slice(0, 8)
   const totalVotes = matches.reduce((sum, match) => sum + match.poll_team1_votes + match.poll_team2_votes, 0)
@@ -1500,11 +1512,18 @@ function getCarouselPosition(
 }
 
 function sortMatchesForArena(list: MatchRecord[]) {
+  const now = Date.now()
+  const freshLiveWindowMs = 1000 * 60 * 60 * 12
+
   const statusWeight = (match: MatchRecord) => {
-    if (match.status === 'live') return 0
+    const matchTime = new Date(match.match_time).getTime()
+    const isStaleLive = match.status === 'live' && Number.isFinite(matchTime) && now - matchTime > freshLiveWindowMs
+
+    if (match.status === 'live' && !isStaleLive) return 0
     if (match.status === 'upcoming') return 1
-    if (match.status === 'finished') return 2
-    return 3
+    if (match.status === 'live') return 2
+    if (match.status === 'finished') return 3
+    return 4
   }
 
   return [...list].sort((a, b) => {
