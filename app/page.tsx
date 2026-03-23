@@ -5,5 +5,5 @@ export const dynamic = 'force-dynamic'
 
 export default async function Home() {
   const initialData = await getHomePageData()
-  return <HomeClient initialData={initialData} />
+  return <HomeClient initialData={initialData} initialNowMs={Date.now()} />
 }

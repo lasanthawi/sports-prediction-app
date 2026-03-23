@@ -33,7 +33,13 @@ const MOBILE_SECTION_STYLE = {
   containIntrinsicSize: '700px',
 } as const
 
-export default function HomeClient({ initialData }: { initialData: HomePageData }) {
+export default function HomeClient({
+  initialData,
+  initialNowMs,
+}: {
+  initialData: HomePageData
+  initialNowMs: number
+}) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [homeData, setHomeData] = useState<HomePageData>(initialData)
@@ -45,7 +51,7 @@ export default function HomeClient({ initialData }: { initialData: HomePageData 
   const [desktopSlide, setDesktopSlide] = useState(0)
   const [votedMatches, setVotedMatches] = useState<any[]>([])
   const [user, setUser] = useState<any>(null)
-  const [nowMs, setNowMs] = useState(() => Date.now())
+  const [nowMs, setNowMs] = useState(initialNowMs)
   const voteModeCloseRequestedRef = useRef(false)
 
   useReportWebVitals((metric) => {

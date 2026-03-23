@@ -61,10 +61,15 @@ export default function MatchCard({
   currentTimeMs,
   floating = false,
 }: MatchCardProps) {
+  const [mounted, setMounted] = useState(false)
   const [voted, setVoted] = useState(false)
   const [selectedTeam, setSelectedTeam] = useState<number | null>(null)
   const [voting, setVoting] = useState(false)
   const [votedFlash, setVotedFlash] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const totalVotes = match.poll_team1_votes + match.poll_team2_votes
   const team1Percentage = totalVotes > 0 ? Math.round((match.poll_team1_votes / totalVotes) * 100) : 50
@@ -78,7 +83,7 @@ export default function MatchCard({
     match.status === 'finished'
       ? match.result_summary || 'Result locked in'
       : match.rivalry_tagline || `Who wins the battle of ${match.team1} and ${match.team2}?`
-  const timeLeft = getCountdownState(match.match_time, countdownActive ? currentTimeMs : undefined)
+  const timeLeft = mounted && countdownActive ? getCountdownState(match.match_time, currentTimeMs) : null
 
   async function handleVote(team: number) {
     if (!isVotingOpen || voting) {
@@ -205,7 +210,9 @@ export default function MatchCard({
             {match.status === 'upcoming' ? (
               <div className={`flex items-center justify-center gap-1 text-white/80 ${compact ? 'text-[0.5rem]' : 'mt-1 text-[0.58rem]'} font-bold uppercase tracking-[0.16em]`}>
                 <Clock3 size={compact ? 10 : 12} />
-                <span className="truncate">{formatCountdown(timeLeft)}</span>
+                <span className="truncate" suppressHydrationWarning>
+                  {timeLeft ? formatCountdown(timeLeft) : 'Kickoff scheduled'}
+                </span>
               </div>
             ) : match.status === 'finished' ? (
               <div className={`text-center text-green-300 ${compact ? 'text-[0.5rem]' : 'mt-1 text-[0.58rem]'} font-bold uppercase tracking-[0.18em]`}>
