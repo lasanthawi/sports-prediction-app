@@ -4,6 +4,46 @@ import { getSocialPublicationSvg } from '@/lib/social-publications'
 
 const FEED_IMAGE_SIZE = 1200
 
+async function inlineEmbeddedImagesAsPng(svg: string): Promise<Buffer> {
+  let output = svg
+  const attrs = ['href', 'xlink:href']
+
+  for (const attr of attrs) {
+    const pattern = new RegExp(
+      `${attr.replace(':', '\\:')}="(data:image/([^;]+);(base64|utf8),)([^"]+)"`,
+      'g'
+    )
+    const matches = Array.from(output.matchAll(pattern))
+
+    for (const match of matches) {
+      const encoding = match[3]
+      const payload = match[4]
+      let input: Buffer
+
+      if (encoding === 'base64') {
+        input = Buffer.from(payload, 'base64')
+      } else {
+        try {
+          input = Buffer.from(decodeURIComponent(payload), 'utf8')
+        } catch {
+          continue
+        }
+      }
+
+      let png: Buffer
+      try {
+        png = await sharp(input).png().toBuffer()
+      } catch {
+        continue
+      }
+
+      output = output.replace(match[0], `${attr}="data:image/png;base64,${png.toString('base64')}"`)
+    }
+  }
+
+  return Buffer.from(output, 'utf8')
+}
+
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
@@ -20,7 +60,8 @@ export async function GET(
 
   const format = new URL(request.url).searchParams.get('format')
   if (format === 'png') {
-    const png = await sharp(Buffer.from(svg, 'utf8'))
+    const svgBuffer = await inlineEmbeddedImagesAsPng(svg)
+    const png = await sharp(svgBuffer)
       .resize(FEED_IMAGE_SIZE, FEED_IMAGE_SIZE)
       .png()
       .toBuffer()

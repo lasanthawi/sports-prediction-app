@@ -1,10 +1,11 @@
 import sharp from 'sharp'
 import { sql } from '@vercel/postgres'
 import { ensureSchema } from './db'
+import { BRAND } from './brand'
 import { publishFacebookPagePhoto, publishFacebookPageText } from './facebook'
 import { listMatches } from './matches'
 import { getActivePublishStatus, isPublishedStatus } from './publish'
-import { AssetVariant, MatchRecord, SocialPostType, SocialPublicationRecord } from './types'
+import { AssetRecord, AssetVariant, MatchRecord, SocialPostType, SocialPublicationRecord } from './types'
 
 const DEFAULT_DAILY_POST_MATCH_LIMIT = 5
 const DEFAULT_DAILY_SCHEDULE_WINDOW_HOURS = 24
@@ -263,20 +264,16 @@ function buildResultsCaption(matches: RankedMatch[]) {
   ].join('\n')
 }
 
-function buildMatchPostTitle(match: MatchRecord, variant: AssetVariant) {
-  return variant === 'result'
-    ? `${match.team1} vs ${match.team2}`
-    : `${match.team1} vs ${match.team2}`
+function buildMatchPostTitle(_match: MatchRecord, variant: AssetVariant) {
+  return variant === 'result' ? 'FINAL VERDICT' : 'MATCH SPOTLIGHT'
 }
 
-function buildMatchPostDescription(match: MatchRecord, variant: AssetVariant) {
-  const timeVenueLine = [formatMatchTime(match.match_time), match.venue?.trim()].filter(Boolean).join(' • ')
-
+function buildMatchPostTagline(match: MatchRecord, variant: AssetVariant) {
   if (variant === 'result') {
-    return match.result_summary?.trim() || resultLine(match)
+    return 'Who Called It Right?'
   }
 
-  return timeVenueLine || 'Vote now on the latest matchup.'
+  return match.status === 'live' ? 'Who Owns This Clash Right Now?' : 'Who Are You Backing Tonight?'
 }
 
 function buildMatchPostBadge(match: MatchRecord, variant: AssetVariant) {
@@ -403,52 +400,65 @@ function buildSummarySvg(postType: DailyPostKind, matches: RankedMatch[]) {
 }
 
 function buildMatchPostSvg(match: MatchRecord, variant: AssetVariant) {
-  const badge = buildMatchPostBadge(match, variant)
   const title = buildMatchPostTitle(match, variant)
-  const description = buildMatchPostDescription(match, variant)
+  const tagline = buildMatchPostTagline(match, variant)
   const meta = [match.league || match.sport, formatMatchTime(match.match_time)].filter(Boolean).join(' • ')
   const accentLeft = match.team1_palette || '#58F4A7'
   const accentRight = match.team2_palette || '#FF5CA8'
-  const footer = variant === 'result' ? 'See the final verdict on Vote League' : 'Comment your pick on Vote League'
-  const titleLines = wrapSvgLines(title, 20, 2)
-  const descriptionLines = wrapSvgLines(description, 30, 3)
+  const footer = variant === 'result' ? 'Results are in on Vote League' : 'The arena is open on Vote League'
+  const titleLines = wrapSvgLines(title, 14, 2)
+  const taglineLines = wrapSvgLines(tagline, 24, 2)
+  const teamLines = wrapSvgLines(`${match.team1} vs ${match.team2}`, 28, 2)
   const titleSvg = titleLines
-    .map((line, index) => `<text x="116" y="${256 + index * 76}" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="78" font-weight="900">${svgEscape(line)}</text>`)
+    .map((line, index) => `<text x="600" y="${154 + index * 92}" fill="#FFF9EC" text-anchor="middle" font-family="Arial, sans-serif" font-size="88" font-style="italic" font-weight="900">${svgEscape(line)}</text>`)
     .join('')
-  const descriptionSvg = descriptionLines
-    .map((line, index) => `<text x="116" y="${556 + index * 66}" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="56" font-weight="700">${svgEscape(line)}</text>`)
+  const taglineSvg = taglineLines
+    .map((line, index) => `<text x="600" y="${284 + index * 56}" fill="#FFD45B" text-anchor="middle" font-family="Arial, sans-serif" font-size="54" font-style="italic" font-weight="700">${svgEscape(line)}</text>`)
+    .join('')
+  const teamSvg = teamLines
+    .map((line, index) => `<text x="600" y="${930 + index * 48}" fill="#FFFFFF" text-anchor="middle" font-family="Arial, sans-serif" font-size="42" font-weight="800">${svgEscape(line)}</text>`)
     .join('')
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="1200" height="1200" viewBox="0 0 1200 1200" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bg" x1="84" y1="92" x2="1112" y2="1118" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#0B1321"/>
-      <stop offset="0.55" stop-color="#121E36"/>
-      <stop offset="1" stop-color="#0A0F18"/>
+    <linearGradient id="topShade" x1="600" y1="0" x2="600" y2="456" gradientUnits="userSpaceOnUse">
+      <stop stop-color="rgba(6,10,22,0.82)"/>
+      <stop offset="1" stop-color="rgba(6,10,22,0)"/>
     </linearGradient>
-    <linearGradient id="accent" x1="116" y1="1012" x2="1084" y2="1012" gradientUnits="userSpaceOnUse">
+    <linearGradient id="bottomShade" x1="600" y1="756" x2="600" y2="1200" gradientUnits="userSpaceOnUse">
+      <stop stop-color="rgba(6,10,22,0)"/>
+      <stop offset="1" stop-color="rgba(6,10,22,0.88)"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="144" y1="1030" x2="1056" y2="1030" gradientUnits="userSpaceOnUse">
       <stop stop-color="${svgEscape(accentLeft)}"/>
       <stop offset="1" stop-color="${svgEscape(accentRight)}"/>
     </linearGradient>
   </defs>
   <rect width="1200" height="1200" fill="#08111F"/>
-  <circle cx="188" cy="178" r="240" fill="${svgEscape(accentLeft)}" fill-opacity="0.18"/>
-  <circle cx="1012" cy="224" r="286" fill="${svgEscape(accentRight)}" fill-opacity="0.16"/>
-  <rect x="56" y="56" width="1088" height="1088" rx="44" fill="url(#bg)" stroke="rgba(255,255,255,0.08)" stroke-width="2"/>
-  <rect x="116" y="116" width="234" height="56" rx="28" fill="rgba(88,244,167,0.14)" stroke="rgba(88,244,167,0.38)" stroke-width="2"/>
-  <text x="233" y="152" fill="#D6FFE9" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="800">${svgEscape(badge)}</text>
+  <image href="__ARTWORK_DATA_URL__" x="0" y="0" width="1200" height="1200" preserveAspectRatio="xMidYMid slice"/>
+  <rect width="1200" height="1200" fill="rgba(7,12,24,0.18)"/>
+  <rect width="1200" height="456" fill="url(#topShade)"/>
+  <rect y="756" width="1200" height="444" fill="url(#bottomShade)"/>
+  <circle cx="208" cy="212" r="220" fill="${svgEscape(accentLeft)}" fill-opacity="0.1"/>
+  <circle cx="990" cy="210" r="248" fill="${svgEscape(accentRight)}" fill-opacity="0.12"/>
+  <text x="600" y="88" fill="#9EE9C5" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="800" letter-spacing="5">${svgEscape(BRAND.name.toUpperCase())}</text>
   ${titleSvg}
-  <text x="116" y="328" fill="#B8C4E0" font-family="Arial, sans-serif" font-size="30" font-weight="600">${svgEscape(meta)}</text>
-  <rect x="116" y="396" width="968" height="334" rx="34" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.08)" stroke-width="2"/>
-  <text x="116" y="470" fill="#FFE57D" font-family="Arial, sans-serif" font-size="28" font-weight="800">${svgEscape(variant === 'result' ? 'SUMMARY' : 'DETAILS')}</text>
-  ${descriptionSvg}
-  <text x="116" y="876" fill="#7F8DAA" font-family="Arial, sans-serif" font-size="30" font-weight="600">${svgEscape(match.team1)}</text>
-  <text x="600" y="876" fill="#FFE57D" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" font-weight="900">VS</text>
-  <text x="1084" y="876" fill="#7F8DAA" text-anchor="end" font-family="Arial, sans-serif" font-size="30" font-weight="600">${svgEscape(match.team2)}</text>
-  <rect x="116" y="972" width="968" height="92" rx="28" fill="url(#accent)"/>
-  <text x="600" y="1030" fill="#08111F" text-anchor="middle" font-family="Arial, sans-serif" font-size="30" font-weight="900">${svgEscape(footer)}</text>
+  ${taglineSvg}
+  <rect x="118" y="846" width="964" height="188" rx="34" fill="rgba(6,10,22,0.46)" stroke="rgba(255,255,255,0.14)" stroke-width="2"/>
+  ${teamSvg}
+  <text x="600" y="1012" fill="#B7C3DB" text-anchor="middle" font-family="Arial, sans-serif" font-size="26" font-weight="700">${svgEscape(meta)}</text>
+  <rect x="144" y="1062" width="912" height="74" rx="24" fill="url(#accent)" opacity="0.95"/>
+  <text x="600" y="1110" fill="#08111F" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="900">${svgEscape(footer)}</text>
 </svg>`
+}
+
+function getAssetDataUrl(asset: Pick<AssetRecord, 'mime_type' | 'content_encoding' | 'content'>) {
+  if (asset.content_encoding === 'base64') {
+    return `data:${asset.mime_type};base64,${asset.content}`
+  }
+
+  return `data:${asset.mime_type};utf8,${encodeURIComponent(asset.content)}`
 }
 
 async function assertRenderable(svg: string) {
@@ -533,19 +543,29 @@ async function selectNextMatchPostCandidate() {
     asset_variant: AssetVariant
     asset_caption: string | null
     asset_published_at: string
+    artwork_mime_type: string
+    artwork_content_encoding: AssetRecord['content_encoding']
+    artwork_content: string
   })>`
     SELECT
       m.*,
       ga.id AS asset_id,
       ga.asset_variant AS asset_variant,
       ga.publication_caption AS asset_caption,
-      ga.published_at AS asset_published_at
+      ga.published_at AS asset_published_at,
+      artwork.mime_type AS artwork_mime_type,
+      artwork.content_encoding AS artwork_content_encoding,
+      artwork.content AS artwork_content
     FROM generated_assets ga
     INNER JOIN matches m
       ON m.id = ga.match_id
+    INNER JOIN generated_assets artwork
+      ON artwork.id = ga.source_asset_id
     WHERE LOWER(TRIM(ga.published_status)) = 'published'
       AND ga.asset_type = 'card'
       AND LOWER(TRIM(COALESCE(ga.generation_status, ''))) = 'generated'
+      AND artwork.asset_type = 'artwork'
+      AND LOWER(TRIM(COALESCE(artwork.generation_status, ''))) = 'generated'
       AND ga.published_at IS NOT NULL
       AND ga.published_at >= NOW() - (${recencyHours} * INTERVAL '1 hour')
       AND m.status <> 'cancelled'
@@ -838,7 +858,12 @@ export async function generateFacebookMatchPost(): Promise<MatchFacebookPostResu
   }
 
   const caption = candidate.asset_caption?.trim() || getMatchPostCaption(candidate, candidate.asset_variant)
-  const assetUrl = `${getBaseUrl()}/api/assets/${candidate.asset_id}?format=png`
+  const artworkDataUrl = getAssetDataUrl({
+    mime_type: candidate.artwork_mime_type,
+    content_encoding: candidate.artwork_content_encoding,
+    content: candidate.artwork_content,
+  })
+  const svg = buildMatchPostSvg(candidate, candidate.asset_variant).replace('__ARTWORK_DATA_URL__', artworkDataUrl)
   const publication = await createPendingPublication({
     postType: 'match_post',
     dedupeKey,
@@ -847,20 +872,31 @@ export async function generateFacebookMatchPost(): Promise<MatchFacebookPostResu
       assetId: candidate.asset_id,
       assetVariant: candidate.asset_variant,
       caption,
-      imageMode: 'published-card',
-      assetUrl,
+      svg,
+      imageMode: 'facebook-match-artwork',
     },
   })
-  await updatePublicationAsset(publication.id, assetUrl, {
-    matchId: candidate.id,
-    assetId: candidate.asset_id,
-    assetVariant: candidate.asset_variant,
-    caption,
-    imageMode: 'published-card',
-    assetUrl,
-  })
+  let assetUrl: string | null = null
+  let canRenderImage = false
+  try {
+    await assertRenderable(svg)
+    assetUrl = buildAssetUrl(publication.id)
+    await updatePublicationAsset(publication.id, assetUrl, {
+      matchId: candidate.id,
+      assetId: candidate.asset_id,
+      assetVariant: candidate.asset_variant,
+      caption,
+      svg,
+      imageMode: 'facebook-match-artwork',
+    })
+    canRenderImage = true
+  } catch (error) {
+    console.warn('[social] Match page post image render failed, falling back to text post:', error)
+  }
 
-  const facebook = await publishFacebookPagePhoto({ imageUrl: assetUrl, caption })
+  const facebook = canRenderImage && assetUrl
+    ? await publishFacebookPagePhoto({ imageUrl: assetUrl, caption })
+    : await publishFacebookPageText({ message: caption })
 
   if (facebook.ok) {
     await finalizePublication(publication.id, {
@@ -873,8 +909,8 @@ export async function generateFacebookMatchPost(): Promise<MatchFacebookPostResu
         assetId: candidate.asset_id,
         assetVariant: candidate.asset_variant,
         caption,
-        imageMode: 'published-card',
-        assetUrl,
+        svg: canRenderImage ? svg : null,
+        imageMode: canRenderImage ? 'facebook-match-artwork' : 'text-fallback',
       },
     })
 
@@ -906,8 +942,8 @@ export async function generateFacebookMatchPost(): Promise<MatchFacebookPostResu
         assetId: candidate.asset_id,
         assetVariant: candidate.asset_variant,
         caption,
-        imageMode: 'published-card',
-        assetUrl,
+        svg: canRenderImage ? svg : null,
+        imageMode: canRenderImage ? 'facebook-match-artwork' : 'text-fallback',
         facebook,
       },
   })
