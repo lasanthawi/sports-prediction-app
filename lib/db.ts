@@ -208,14 +208,22 @@ async function ensureSchemaInner() {
   `
 
   await sql`
-    ALTER TABLE social_publications
-    DROP CONSTRAINT IF EXISTS social_publications_post_type_check
-  `
-
-  await sql`
-    ALTER TABLE social_publications
-    ADD CONSTRAINT social_publications_post_type_check
-    CHECK (post_type IN ('daily_schedule', 'daily_results', 'story', 'match_post'))
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'social_publications_post_type_check'
+          AND conrelid = 'social_publications'::regclass
+      ) THEN
+        ALTER TABLE social_publications
+        ADD CONSTRAINT social_publications_post_type_check
+        CHECK (post_type IN ('daily_schedule', 'daily_results', 'story', 'match_post'));
+      END IF;
+    EXCEPTION
+      WHEN duplicate_object THEN
+        NULL;
+    END $$;
   `
 
   await sql`
