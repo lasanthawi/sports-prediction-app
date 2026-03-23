@@ -545,6 +545,7 @@ async function selectNextMatchPostCandidate() {
       ON m.id = ga.match_id
     WHERE LOWER(TRIM(ga.published_status)) = 'published'
       AND ga.asset_type = 'card'
+      AND LOWER(TRIM(COALESCE(ga.generation_status, ''))) = 'generated'
       AND ga.published_at IS NOT NULL
       AND ga.published_at >= NOW() - (${recencyHours} * INTERVAL '1 hour')
       AND m.status <> 'cancelled'

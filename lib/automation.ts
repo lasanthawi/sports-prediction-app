@@ -26,6 +26,7 @@ interface FacebookPublishSummary {
   success: number
   failed: number
   skipped: boolean
+  skippedFallback: number
   errors: string[]
   postIds: string[]
 }
@@ -536,7 +537,7 @@ async function publishAssets(rows: AssetRecord[], mode: 'queue-only' | 'webhook'
 
   const webhookUrl = process.env.PUBLISH_WEBHOOK_URL
   const baseUrl = getBaseUrl()
-  const facebookSummary: FacebookPublishSummary = { attempted: 0, success: 0, failed: 0, skipped: false, errors: [], postIds: [] }
+  const facebookSummary: FacebookPublishSummary = { attempted: 0, success: 0, failed: 0, skipped: false, skippedFallback: 0, errors: [], postIds: [] }
 
   if (!webhookUrl) {
     for (const asset of rows) {
@@ -548,6 +549,14 @@ async function publishAssets(rows: AssetRecord[], mode: 'queue-only' | 'webhook'
           published_at = NOW()
         WHERE id = ${asset.id}
       `
+
+      if (asset.generation_status !== 'generated') {
+        facebookSummary.skipped = true
+        facebookSummary.skippedFallback += 1
+        const reason = 'Skipped Facebook story publish for fallback card artwork.'
+        if (!facebookSummary.errors.includes(reason)) facebookSummary.errors.push(reason)
+        continue
+      }
 
       const assetUrl = `${baseUrl}/api/assets/${asset.id}?format=png`
       const fb = await publishToFacebookStory(assetUrl)
@@ -614,6 +623,14 @@ async function publishAssets(rows: AssetRecord[], mode: 'queue-only' | 'webhook'
 
     if (response.ok) {
       published += 1
+      if (asset.generation_status !== 'generated') {
+        facebookSummary.skipped = true
+        facebookSummary.skippedFallback += 1
+        const reason = 'Skipped Facebook story publish for fallback card artwork.'
+        if (!facebookSummary.errors.includes(reason)) facebookSummary.errors.push(reason)
+        continue
+      }
+
       const assetUrl = `${getBaseUrl()}/api/assets/${asset.id}?format=png`
       const fb = await publishToFacebookStory(assetUrl)
       facebookSummary.attempted += 1
