@@ -51,10 +51,19 @@ The automation pipeline supports both split jobs and a full end-to-end cron flow
 2. `POST /api/automation/assets` generates assets for existing matches
 3. `POST /api/automation/publish` publishes ready card assets
 4. `GET/POST /api/unpublished-queue` runs the full hourly pipeline: sync feed, reconcile queued/imported feed items into `matches`, generate missing assets, and publish ready cards
+5. `GET/POST /api/automation/facebook/daily-schedule` publishes the daily Vote League schedule post
+6. `GET/POST /api/automation/facebook/daily-results` publishes the daily final-results post
 
 `vercel.json` includes matching cron jobs so the pipeline can run automatically after deployment.
 
 If Facebook Story auto-publish is enabled, keep `PUBLISH_BATCH_SIZE=1` if you want one story published per hourly cron run. You can also tune `FEED_RECONCILE_BATCH_SIZE` and `UNPUBLISHED_GENERATION_BATCH_SIZE` to keep `/api/unpublished-queue` under Vercel runtime limits while it works through backlog across multiple hourly runs.
+
+Default social cadence after deployment:
+
+- Website match sync + website publishing: hourly via `/api/unpublished-queue`
+- Facebook Stories: hourly as part of the same publish flow, one story per run when `PUBLISH_BATCH_SIZE=1`
+- Facebook Page daily schedule post: `02:30 UTC` daily, which is `08:00` in Sri Lanka (`Asia/Colombo`)
+- Facebook Page daily results post: `14:30 UTC` daily, which is `20:00` in Sri Lanka (`Asia/Colombo`)
 
 ## SportsDB Coverage
 

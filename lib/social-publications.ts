@@ -402,6 +402,12 @@ export async function getSocialPublication(id: number) {
   return rows[0] || null
 }
 
+export async function getSocialPublicationSvg(id: number) {
+  const publication = await getSocialPublication(id)
+  const svg = typeof (publication?.payload as any)?.svg === 'string' ? (publication?.payload as any)?.svg : null
+  return svg
+}
+
 function buildAssetUrl(publicationId: number) {
   return `${getBaseUrl()}/api/social-publications/${publicationId}/asset?format=png`
 }
@@ -554,4 +560,44 @@ export async function generateDailySchedulePost() {
 
 export async function generateDailyResultsPost() {
   return runDailyPost('daily_results')
+}
+
+export async function runDailyFacebookPosts() {
+  const enabled = String(process.env.FB_DAILY_POSTS_ENABLED ?? 'true').trim().toLowerCase()
+  if (enabled === 'false' || enabled === '0' || enabled === 'off') {
+    return {
+      enabled: false,
+      schedule: {
+        postType: 'daily_schedule' as const,
+        selectedMatchIds: [],
+        selectedCount: 0,
+        dedupeKey: '',
+        skipped: true,
+        skipReason: 'FB_DAILY_POSTS_ENABLED is disabled',
+        message: 'Daily Facebook posts disabled.',
+        status: 'skipped' as const,
+      },
+      results: {
+        postType: 'daily_results' as const,
+        selectedMatchIds: [],
+        selectedCount: 0,
+        dedupeKey: '',
+        skipped: true,
+        skipReason: 'FB_DAILY_POSTS_ENABLED is disabled',
+        message: 'Daily Facebook posts disabled.',
+        status: 'skipped' as const,
+      },
+    }
+  }
+
+  const [schedule, results] = await Promise.all([
+    generateDailySchedulePost(),
+    generateDailyResultsPost(),
+  ])
+
+  return {
+    enabled: true,
+    schedule,
+    results,
+  }
 }

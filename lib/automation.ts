@@ -6,6 +6,7 @@ import { getMatch, listMatches, listMatchIdsNeedingAssetGeneration } from './mat
 import { getActivePublishStatus, isPublishedStatus } from './publish'
 import { AssetRecord, AssetVariant, MatchRecord } from './types'
 import { publishToFacebookStory } from './facebook'
+import { generateDailyResultsPost, generateDailySchedulePost, runDailyFacebookPosts } from './social-publications'
 import { renderTextAsSvgPath } from './text-to-path'
 
 const DEFAULT_WEBHOOK_TIMEOUT_MS = 10000
@@ -774,6 +775,39 @@ export async function runAutomationPipeline() {
     assets: { count: needingAssetCount },
     publish,
   }
+}
+
+export async function runDailyScheduleFacebookPost() {
+  const result = await generateDailySchedulePost()
+  await logAutomationRun(
+    'facebook_daily_schedule',
+    result.status === 'failed' ? 'failed' : result.skipped ? 'skipped' : 'success',
+    result.message,
+    result
+  )
+  return result
+}
+
+export async function runDailyResultsFacebookPost() {
+  const result = await generateDailyResultsPost()
+  await logAutomationRun(
+    'facebook_daily_results',
+    result.status === 'failed' ? 'failed' : result.skipped ? 'skipped' : 'success',
+    result.message,
+    result
+  )
+  return result
+}
+
+export async function runAllDailyFacebookPosts() {
+  const result = await runDailyFacebookPosts()
+  await logAutomationRun(
+    'facebook_daily_posts',
+    result.enabled ? 'success' : 'skipped',
+    result.enabled ? 'Ran daily Facebook schedule and results posts' : 'Daily Facebook posts disabled',
+    result
+  )
+  return result
 }
 
 export async function listAutomationRuns(limit = 10) {
