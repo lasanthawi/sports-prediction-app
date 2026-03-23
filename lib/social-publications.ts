@@ -837,7 +837,7 @@ export async function generateFacebookMatchPost(): Promise<MatchFacebookPostResu
   }
 
   const caption = candidate.asset_caption?.trim() || getMatchPostCaption(candidate, candidate.asset_variant)
-  const svg = buildMatchPostSvg(candidate, candidate.asset_variant)
+  const assetUrl = `${getBaseUrl()}/api/assets/${candidate.asset_id}?format=png`
   const publication = await createPendingPublication({
     postType: 'match_post',
     dedupeKey,
@@ -846,31 +846,20 @@ export async function generateFacebookMatchPost(): Promise<MatchFacebookPostResu
       assetId: candidate.asset_id,
       assetVariant: candidate.asset_variant,
       caption,
-      svg,
+      imageMode: 'published-card',
+      assetUrl,
     },
   })
+  await updatePublicationAsset(publication.id, assetUrl, {
+    matchId: candidate.id,
+    assetId: candidate.asset_id,
+    assetVariant: candidate.asset_variant,
+    caption,
+    imageMode: 'published-card',
+    assetUrl,
+  })
 
-  let assetUrl: string | null = null
-  let canRenderImage = false
-  try {
-    await assertRenderable(svg)
-    assetUrl = buildAssetUrl(publication.id)
-    await updatePublicationAsset(publication.id, assetUrl, {
-      matchId: candidate.id,
-      assetId: candidate.asset_id,
-      assetVariant: candidate.asset_variant,
-      caption,
-      svg,
-      imageMode: 'simple-page-post',
-    })
-    canRenderImage = true
-  } catch (error) {
-    console.warn('[social] Match page post image render failed, falling back to text post:', error)
-  }
-
-  const facebook = canRenderImage && assetUrl
-    ? await publishFacebookPagePhoto({ imageUrl: assetUrl, caption })
-    : await publishFacebookPageText({ message: caption })
+  const facebook = await publishFacebookPagePhoto({ imageUrl: assetUrl, caption })
 
   if (facebook.ok) {
     await finalizePublication(publication.id, {
@@ -883,8 +872,8 @@ export async function generateFacebookMatchPost(): Promise<MatchFacebookPostResu
         assetId: candidate.asset_id,
         assetVariant: candidate.asset_variant,
         caption,
-        svg: canRenderImage ? svg : null,
-        imageMode: canRenderImage ? 'simple-page-post' : 'text-fallback',
+        imageMode: 'published-card',
+        assetUrl,
       },
     })
 
@@ -911,15 +900,15 @@ export async function generateFacebookMatchPost(): Promise<MatchFacebookPostResu
     status: facebook.skipped ? 'skipped' : 'failed',
     message,
     assetUrl,
-    payload: {
-      matchId: candidate.id,
-      assetId: candidate.asset_id,
-      assetVariant: candidate.asset_variant,
-      caption,
-      svg: canRenderImage ? svg : null,
-      imageMode: canRenderImage ? 'simple-page-post' : 'text-fallback',
-      facebook,
-    },
+      payload: {
+        matchId: candidate.id,
+        assetId: candidate.asset_id,
+        assetVariant: candidate.asset_variant,
+        caption,
+        imageMode: 'published-card',
+        assetUrl,
+        facebook,
+      },
   })
 
   return {
