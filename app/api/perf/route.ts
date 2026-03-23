@@ -4,8 +4,7 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {
-    const payload = await request.json()
-    console.info('[Perf]', payload)
+    await request.json()
     return NextResponse.json({ ok: true })
   } catch (error) {
     console.error('[Perf] Failed to record metric:', error)

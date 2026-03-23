@@ -37,6 +37,34 @@ export interface HomePageData {
   finishedMatches: HomePageMatchRecord[]
 }
 
+export function buildArenaMatchStack({
+  votingMatches,
+  finishedMatches,
+  votedMatchIds = [],
+  limit = 20,
+}: {
+  votingMatches: HomePageMatchRecord[]
+  finishedMatches: HomePageMatchRecord[]
+  votedMatchIds?: Iterable<number>
+  limit?: number
+}) {
+  const votedSet = new Set(votedMatchIds)
+  const prioritizedVotingMatches = votingMatches.filter((match) => !votedSet.has(match.id))
+  const arenaMatches = [...prioritizedVotingMatches]
+
+  for (const match of finishedMatches) {
+    if (arenaMatches.length >= limit) {
+      break
+    }
+
+    if (!arenaMatches.some((existing) => existing.id === match.id)) {
+      arenaMatches.push(match)
+    }
+  }
+
+  return arenaMatches.slice(0, limit)
+}
+
 function toHomePageMatchRecord(match: Awaited<ReturnType<typeof listMatchesForPublic>>[number]): HomePageMatchRecord {
   return {
     id: match.id,

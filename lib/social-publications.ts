@@ -263,6 +263,66 @@ function buildResultsCaption(matches: RankedMatch[]) {
   ].join('\n')
 }
 
+function buildMatchPostTitle(match: MatchRecord, variant: AssetVariant) {
+  return variant === 'result'
+    ? `${match.team1} vs ${match.team2}`
+    : `${match.team1} vs ${match.team2}`
+}
+
+function buildMatchPostDescription(match: MatchRecord, variant: AssetVariant) {
+  const timeVenueLine = [formatMatchTime(match.match_time), match.venue?.trim()].filter(Boolean).join(' • ')
+
+  if (variant === 'result') {
+    return match.result_summary?.trim() || resultLine(match)
+  }
+
+  return timeVenueLine || 'Vote now on the latest matchup.'
+}
+
+function buildMatchPostBadge(match: MatchRecord, variant: AssetVariant) {
+  if (variant === 'result') {
+    return 'FINAL RESULT'
+  }
+
+  return match.status === 'live' ? 'LIVE NOW' : 'MATCH PREVIEW'
+}
+
+function wrapSvgLines(text: string, maxCharsPerLine: number, maxLines: number) {
+  const words = text.trim().split(/\s+/).filter(Boolean)
+  if (words.length === 0) return []
+
+  const lines: string[] = []
+  let current = ''
+
+  for (const word of words) {
+    const next = current ? `${current} ${word}` : word
+    if (next.length <= maxCharsPerLine) {
+      current = next
+      continue
+    }
+
+    if (current) {
+      lines.push(current)
+      if (lines.length === maxLines) return lines
+    }
+
+    current = word
+  }
+
+  if (current && lines.length < maxLines) {
+    lines.push(current)
+  }
+
+  if (lines.length === maxLines && words.join(' ').length > lines.join(' ').length) {
+    const last = lines[maxLines - 1]
+    lines[maxLines - 1] = last.length > maxCharsPerLine - 3
+      ? `${last.slice(0, Math.max(0, maxCharsPerLine - 3)).trimEnd()}...`
+      : `${last}...`
+  }
+
+  return lines
+}
+
 function initials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean)
   return parts.slice(0, 2).map((part) => part[0]?.toUpperCase() || '').join('') || 'VL'
@@ -339,6 +399,55 @@ function buildSummarySvg(postType: DailyPostKind, matches: RankedMatch[]) {
   ${rows}
   <rect x="110" y="1052" width="980" height="88" rx="28" fill="url(#footer)" opacity="0.95"/>
   <text x="600" y="1107" fill="#09111E" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="900">${svgEscape(footer)}</text>
+</svg>`
+}
+
+function buildMatchPostSvg(match: MatchRecord, variant: AssetVariant) {
+  const badge = buildMatchPostBadge(match, variant)
+  const title = buildMatchPostTitle(match, variant)
+  const description = buildMatchPostDescription(match, variant)
+  const meta = [match.league || match.sport, formatMatchTime(match.match_time)].filter(Boolean).join(' • ')
+  const accentLeft = match.team1_palette || '#58F4A7'
+  const accentRight = match.team2_palette || '#FF5CA8'
+  const footer = variant === 'result' ? 'See the final verdict on Vote League' : 'Comment your pick on Vote League'
+  const titleLines = wrapSvgLines(title, 20, 2)
+  const descriptionLines = wrapSvgLines(description, 30, 3)
+  const titleSvg = titleLines
+    .map((line, index) => `<text x="116" y="${256 + index * 76}" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="78" font-weight="900">${svgEscape(line)}</text>`)
+    .join('')
+  const descriptionSvg = descriptionLines
+    .map((line, index) => `<text x="116" y="${556 + index * 66}" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="56" font-weight="700">${svgEscape(line)}</text>`)
+    .join('')
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1200" height="1200" viewBox="0 0 1200 1200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="84" y1="92" x2="1112" y2="1118" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0B1321"/>
+      <stop offset="0.55" stop-color="#121E36"/>
+      <stop offset="1" stop-color="#0A0F18"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="116" y1="1012" x2="1084" y2="1012" gradientUnits="userSpaceOnUse">
+      <stop stop-color="${svgEscape(accentLeft)}"/>
+      <stop offset="1" stop-color="${svgEscape(accentRight)}"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="1200" fill="#08111F"/>
+  <circle cx="188" cy="178" r="240" fill="${svgEscape(accentLeft)}" fill-opacity="0.18"/>
+  <circle cx="1012" cy="224" r="286" fill="${svgEscape(accentRight)}" fill-opacity="0.16"/>
+  <rect x="56" y="56" width="1088" height="1088" rx="44" fill="url(#bg)" stroke="rgba(255,255,255,0.08)" stroke-width="2"/>
+  <rect x="116" y="116" width="234" height="56" rx="28" fill="rgba(88,244,167,0.14)" stroke="rgba(88,244,167,0.38)" stroke-width="2"/>
+  <text x="233" y="152" fill="#D6FFE9" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="800">${svgEscape(badge)}</text>
+  ${titleSvg}
+  <text x="116" y="328" fill="#B8C4E0" font-family="Arial, sans-serif" font-size="30" font-weight="600">${svgEscape(meta)}</text>
+  <rect x="116" y="396" width="968" height="334" rx="34" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.08)" stroke-width="2"/>
+  <text x="116" y="470" fill="#FFE57D" font-family="Arial, sans-serif" font-size="28" font-weight="800">${svgEscape(variant === 'result' ? 'SUMMARY' : 'DETAILS')}</text>
+  ${descriptionSvg}
+  <text x="116" y="876" fill="#7F8DAA" font-family="Arial, sans-serif" font-size="30" font-weight="600">${svgEscape(match.team1)}</text>
+  <text x="600" y="876" fill="#FFE57D" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" font-weight="900">VS</text>
+  <text x="1084" y="876" fill="#7F8DAA" text-anchor="end" font-family="Arial, sans-serif" font-size="30" font-weight="600">${svgEscape(match.team2)}</text>
+  <rect x="116" y="972" width="968" height="92" rx="28" fill="url(#accent)"/>
+  <text x="600" y="1030" fill="#08111F" text-anchor="middle" font-family="Arial, sans-serif" font-size="30" font-weight="900">${svgEscape(footer)}</text>
 </svg>`
 }
 
@@ -728,7 +837,7 @@ export async function generateFacebookMatchPost(): Promise<MatchFacebookPostResu
   }
 
   const caption = candidate.asset_caption?.trim() || getMatchPostCaption(candidate, candidate.asset_variant)
-  const assetUrl = `${getBaseUrl()}/api/assets/${candidate.asset_id}?format=png`
+  const svg = buildMatchPostSvg(candidate, candidate.asset_variant)
   const publication = await createPendingPublication({
     postType: 'match_post',
     dedupeKey,
@@ -737,15 +846,36 @@ export async function generateFacebookMatchPost(): Promise<MatchFacebookPostResu
       assetId: candidate.asset_id,
       assetVariant: candidate.asset_variant,
       caption,
+      svg,
     },
   })
 
-  const facebook = await publishFacebookPagePhoto({ imageUrl: assetUrl, caption })
+  let assetUrl: string | null = null
+  let canRenderImage = false
+  try {
+    await assertRenderable(svg)
+    assetUrl = buildAssetUrl(publication.id)
+    await updatePublicationAsset(publication.id, assetUrl, {
+      matchId: candidate.id,
+      assetId: candidate.asset_id,
+      assetVariant: candidate.asset_variant,
+      caption,
+      svg,
+      imageMode: 'simple-page-post',
+    })
+    canRenderImage = true
+  } catch (error) {
+    console.warn('[social] Match page post image render failed, falling back to text post:', error)
+  }
+
+  const facebook = canRenderImage && assetUrl
+    ? await publishFacebookPagePhoto({ imageUrl: assetUrl, caption })
+    : await publishFacebookPageText({ message: caption })
 
   if (facebook.ok) {
     await finalizePublication(publication.id, {
       status: 'published',
-      message: `Published ${candidate.asset_variant} card post to Facebook.`,
+      message: `Published ${candidate.asset_variant} match post to Facebook.`,
       externalPostId: facebook.postId,
       assetUrl,
       payload: {
@@ -753,6 +883,8 @@ export async function generateFacebookMatchPost(): Promise<MatchFacebookPostResu
         assetId: candidate.asset_id,
         assetVariant: candidate.asset_variant,
         caption,
+        svg: canRenderImage ? svg : null,
+        imageMode: canRenderImage ? 'simple-page-post' : 'text-fallback',
       },
     })
 
@@ -766,7 +898,7 @@ export async function generateFacebookMatchPost(): Promise<MatchFacebookPostResu
       facebookPostId: facebook.postId,
       publicationId: publication.id,
       assetUrl,
-      message: `Published ${candidate.asset_variant} card post to Facebook.`,
+      message: `Published ${candidate.asset_variant} match post to Facebook.`,
       status: 'published',
     }
   }
@@ -784,6 +916,8 @@ export async function generateFacebookMatchPost(): Promise<MatchFacebookPostResu
       assetId: candidate.asset_id,
       assetVariant: candidate.asset_variant,
       caption,
+      svg: canRenderImage ? svg : null,
+      imageMode: canRenderImage ? 'simple-page-post' : 'text-fallback',
       facebook,
     },
   })

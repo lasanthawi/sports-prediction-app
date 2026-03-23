@@ -11,7 +11,7 @@ import SiteFooter from '@/app/components/SiteFooter'
 import VotedMatchCard from '@/app/components/VotedMatchCard'
 import { BRAND } from '@/lib/brand'
 import type { HomePageData, HomePageMatchRecord } from '@/lib/homepage'
-import { sortMatchesForArena } from '@/lib/homepage'
+import { buildArenaMatchStack, sortMatchesForArena } from '@/lib/homepage'
 
 const ArenaVotingOverlay = dynamic(
   () => import('./HomeOverlays').then((mod) => mod.ArenaVotingOverlay),
@@ -53,8 +53,15 @@ export default function HomeClient({
   const [user, setUser] = useState<any>(null)
   const [nowMs, setNowMs] = useState(initialNowMs)
   const voteModeCloseRequestedRef = useRef(false)
+  const reportedMetricIdsRef = useRef(new Set<string>())
 
   useReportWebVitals((metric) => {
+    if (reportedMetricIdsRef.current.has(metric.id)) {
+      return
+    }
+
+    reportedMetricIdsRef.current.add(metric.id)
+
     const payload = JSON.stringify({
       id: metric.id,
       name: metric.name,
@@ -148,26 +155,35 @@ export default function HomeClient({
   const upcomingMatches = homeData.upcomingMatches
   const finishedMatches = homeData.finishedMatches
   const votedMatchIdSet = useMemo(() => new Set(votedMatches.map((match) => match.id)), [votedMatches])
+  const arenaMatches = useMemo(
+    () =>
+      buildArenaMatchStack({
+        votingMatches,
+        finishedMatches,
+        votedMatchIds: votedMatchIdSet,
+        limit: 20,
+      }),
+    [finishedMatches, votedMatchIdSet, votingMatches]
+  )
   const votingMatchesForVoteMode = useMemo(() => {
-    const filtered = votingMatches.filter((match) => !votedMatchIdSet.has(match.id))
-    const base = filtered.slice(0, 20)
+    const base = arenaMatches
     const targetId = Number(searchParams.get('match'))
 
     if (!Number.isFinite(targetId) || base.some((match) => match.id === targetId)) {
       return base
     }
 
-    const targetMatch = filtered.find((match) => match.id === targetId)
+    const targetMatch = [...votingMatches, ...finishedMatches].find((match) => match.id === targetId)
     if (!targetMatch) {
       return base
     }
 
     return [targetMatch, ...base.slice(0, 19)]
-  }, [searchParams, votedMatchIdSet, votingMatches])
-  const mobileVotingMatches = votingMatches.slice(0, 8)
+  }, [arenaMatches, finishedMatches, searchParams, votingMatches])
+  const mobileVotingMatches = arenaMatches.slice(0, 8)
   const spotlightResult = [...finishedMatches].sort((a, b) => (b.poll_team1_votes + b.poll_team2_votes) - (a.poll_team1_votes + a.poll_team2_votes))[0]
-  const maxDesktopSlide = Math.max(0, featuredMatches.length - 1)
-  const hasInfiniteSlider = featuredMatches.length > 1
+  const maxDesktopSlide = Math.max(0, arenaMatches.length - 1)
+  const hasInfiniteSlider = arenaMatches.length > 1
 
   useEffect(() => {
     setDesktopSlide((current) => Math.min(current, maxDesktopSlide))
@@ -321,32 +337,32 @@ export default function HomeClient({
 
         <section id="live-matches" className="mb-16">
           <SectionHeading eyebrow="Main Event" title="Live And Upcoming Battle Cards" copy="The public arena only shows published cards, so the live count always matches what visitors can actually open and vote on." />
-          {featuredMatches.length === 0 ? (
+          {arenaMatches.length === 0 ? (
             <EmptyState />
           ) : (
             <div className="space-y-6">
               <div className="mb-[5rem] flex items-center justify-between gap-4 pb-5 md:mb-[7rem]">
                 <p className="text-sm uppercase tracking-[0.2em] text-white/60">Slide through live and upcoming battle cards</p>
                 <div className="flex items-center gap-3">
-                  <span className="text-xs font-bold uppercase tracking-[0.18em] text-white/50">{desktopSlide + 1} / {featuredMatches.length}</span>
-                  <button onClick={() => setDesktopSlide((current) => (current - 1 + featuredMatches.length) % featuredMatches.length)} disabled={!hasInfiniteSlider} className="glass-button !rounded-2xl !px-4 !py-3 disabled:opacity-40" title="Previous match">
+                  <span className="text-xs font-bold uppercase tracking-[0.18em] text-white/50">{desktopSlide + 1} / {arenaMatches.length}</span>
+                  <button onClick={() => setDesktopSlide((current) => (current - 1 + arenaMatches.length) % arenaMatches.length)} disabled={!hasInfiniteSlider} className="glass-button !rounded-2xl !px-4 !py-3 disabled:opacity-40" title="Previous match">
                     <ChevronLeft size={18} />
                   </button>
-                  <button onClick={() => setDesktopSlide((current) => (current + 1) % featuredMatches.length)} disabled={!hasInfiniteSlider} className="glass-button !rounded-2xl !px-4 !py-3 disabled:opacity-40" title="Next match">
+                  <button onClick={() => setDesktopSlide((current) => (current + 1) % arenaMatches.length)} disabled={!hasInfiniteSlider} className="glass-button !rounded-2xl !px-4 !py-3 disabled:opacity-40" title="Next match">
                     <ChevronRight size={18} />
                   </button>
                 </div>
               </div>
 
               <div className="flex min-h-0 w-full items-center justify-center gap-4 pb-[5rem] md:gap-6 md:pb-[7rem]">
-                <button type="button" onClick={() => setDesktopSlide((current) => (current - 1 + featuredMatches.length) % featuredMatches.length)} disabled={!hasInfiniteSlider} className="glass-button hidden !rounded-2xl !px-4 !py-4 disabled:opacity-40 md:inline-flex" aria-label="Previous match">
+                <button type="button" onClick={() => setDesktopSlide((current) => (current - 1 + arenaMatches.length) % arenaMatches.length)} disabled={!hasInfiniteSlider} className="glass-button hidden !rounded-2xl !px-4 !py-4 disabled:opacity-40 md:inline-flex" aria-label="Previous match">
                   <ChevronLeft size={20} />
                 </button>
                 <MatchCarouselStage
-                  matches={featuredMatches}
+                  matches={arenaMatches}
                   currentIndex={desktopSlide}
-                  onPrevious={() => setDesktopSlide((current) => (current - 1 + featuredMatches.length) % featuredMatches.length)}
-                  onNext={() => setDesktopSlide((current) => (current + 1) % featuredMatches.length)}
+                  onPrevious={() => setDesktopSlide((current) => (current - 1 + arenaMatches.length) % arenaMatches.length)}
+                  onNext={() => setDesktopSlide((current) => (current + 1) % arenaMatches.length)}
                   onSelectMatch={(match, index) => {
                     setDesktopSlide(index)
                     openMatchViewer(match.id)
@@ -358,7 +374,7 @@ export default function HomeClient({
                   centerWidthClass="w-[min(23.5rem,27vw)] lg:w-[min(25.5rem,28vw)] xl:w-[min(26.5rem,27vw)]"
                   sideWidthClass="w-[20rem] lg:w-[22rem] xl:w-[23rem]"
                 />
-                <button type="button" onClick={() => setDesktopSlide((current) => (current + 1) % featuredMatches.length)} disabled={!hasInfiniteSlider} className="glass-button hidden !rounded-2xl !px-4 !py-4 disabled:opacity-40 md:inline-flex" aria-label="Next match">
+                <button type="button" onClick={() => setDesktopSlide((current) => (current + 1) % arenaMatches.length)} disabled={!hasInfiniteSlider} className="glass-button hidden !rounded-2xl !px-4 !py-4 disabled:opacity-40 md:inline-flex" aria-label="Next match">
                   <ChevronRight size={20} />
                 </button>
               </div>

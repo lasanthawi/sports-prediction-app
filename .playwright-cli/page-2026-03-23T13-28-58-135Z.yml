@@ -1,0 +1,568 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - navigation [ref=e7]:
+            - link "Live Matches" [ref=e8] [cursor=pointer]:
+              - /url: "#live-matches"
+            - link "Upcoming Clashes" [ref=e9] [cursor=pointer]:
+              - /url: "#upcoming-clashes"
+            - link "Results" [ref=e10] [cursor=pointer]:
+              - /url: "#results-board"
+            - link "How It Works" [ref=e11] [cursor=pointer]:
+              - /url: "#how-it-works"
+          - generic [ref=e12]:
+            - button "Refresh" [ref=e13] [cursor=pointer]:
+              - img [ref=e14]
+              - text: Refresh
+            - link "Login" [ref=e17] [cursor=pointer]:
+              - /url: /login
+              - img [ref=e18]
+              - text: Login
+        - generic [ref=e21]:
+          - img "Vote League logo" [ref=e23]
+          - generic [ref=e24]: Vote League
+          - heading "Vote League" [level=1] [ref=e25]
+          - paragraph [ref=e26]: Predict. Vote. Track the league pulse.
+          - paragraph [ref=e27]: Follow live clashes, back your side before kickoff, track the community split, and relive the biggest results with cinematic match cards built for battle-night energy.
+      - generic [ref=e28]:
+        - generic [ref=e30]:
+          - generic [ref=e31]:
+            - paragraph [ref=e32]: Live Matches
+            - paragraph [ref=e33]: "0"
+            - paragraph [ref=e34]: 4 upcoming battles
+          - img [ref=e36]
+        - generic [ref=e39]:
+          - generic [ref=e40]:
+            - paragraph [ref=e41]: Visible Cards
+            - paragraph [ref=e42]: "101"
+            - paragraph [ref=e43]: Only published cards are shown on the arena
+          - img [ref=e45]
+        - generic [ref=e50]:
+          - generic [ref=e51]:
+            - paragraph [ref=e52]: Total Votes
+            - paragraph [ref=e53]: "32"
+            - paragraph [ref=e54]: "Top result: Memphis Hustle vs Stockton Kings"
+          - img [ref=e56]
+      - generic [ref=e59]:
+        - generic [ref=e60]:
+          - paragraph [ref=e61]: Main Event
+          - heading "Live And Upcoming Battle Cards" [level=2] [ref=e62]
+          - paragraph [ref=e63]: The public arena only shows published cards, so the live count always matches what visitors can actually open and vote on.
+        - generic [ref=e64]:
+          - generic [ref=e65]:
+            - paragraph [ref=e66]: Slide through live and upcoming battle cards
+            - generic [ref=e67]:
+              - generic [ref=e68]: 1 / 20
+              - button "Previous match" [ref=e69] [cursor=pointer]:
+                - img [ref=e70]
+              - button "Next match" [ref=e72] [cursor=pointer]:
+                - img [ref=e73]
+          - generic [ref=e75]:
+            - button "Previous match" [ref=e76] [cursor=pointer]:
+              - img [ref=e77]
+            - generic [ref=e79]:
+              - button "UEFA CHAMPIONS LEAGUE SPORTING CP VS ARSENAL Sporting CP vs Arsenal. One crown. Sporting CP logo Vote Sporting CP 0% Arsenal logo Vote Arsenal 100% Estádio José Alvalade Wed, Apr 08, 12:30 AM 15d 05h 31m 03s 1 picks upcoming" [ref=e81] [cursor=pointer]:
+                - generic [ref=e84]:
+                  - generic [ref=e85]:
+                    - generic [ref=e86]:
+                      - paragraph [ref=e87]: UEFA CHAMPIONS LEAGUE
+                      - heading "SPORTING CP VS ARSENAL" [level=3] [ref=e88]
+                    - paragraph [ref=e90]: Sporting CP vs Arsenal. One crown.
+                  - generic [ref=e92]:
+                    - generic [ref=e93]:
+                      - button "Sporting CP logo Vote Sporting CP 0%" [ref=e94]:
+                        - generic [ref=e96]:
+                          - img "Sporting CP logo" [ref=e98]
+                          - generic [ref=e99]:
+                            - generic [ref=e100]: Vote
+                            - generic [ref=e101]: Sporting CP
+                          - generic [ref=e103]: 0%
+                      - button "Arsenal logo Vote Arsenal 100%" [ref=e104]:
+                        - generic [ref=e106]:
+                          - img "Arsenal logo" [ref=e108]
+                          - generic [ref=e109]:
+                            - generic [ref=e110]: Vote
+                            - generic [ref=e111]: Arsenal
+                          - generic [ref=e113]: 100%
+                    - generic [ref=e114]:
+                      - generic [ref=e115]:
+                        - img [ref=e116]
+                        - generic [ref=e119]: Estádio José Alvalade
+                      - generic [ref=e120]: Wed, Apr 08, 12:30 AM
+                      - generic [ref=e121]:
+                        - img [ref=e122]
+                        - generic [ref=e125]: 15d 05h 31m 03s
+                      - generic [ref=e126]:
+                        - generic [ref=e127]:
+                          - img [ref=e128]
+                          - text: 1 picks
+                        - generic [ref=e131]:
+                          - img [ref=e132]
+                          - text: upcoming
+              - button "SWEDISH ALLSVENSKAN DEGERFORS VS SIRIUS Degerfors vs Sirius. One crown. Degerfors logo Preview Degerfors 0% Sirius logo Preview Sirius 100% Stora Valla Sat, Apr 04, 06:30 PM Kickoff scheduled 1 picks upcoming" [ref=e135] [cursor=pointer]:
+                - generic [ref=e138]:
+                  - generic [ref=e139]:
+                    - generic [ref=e140]:
+                      - paragraph [ref=e141]: SWEDISH ALLSVENSKAN
+                      - heading "DEGERFORS VS SIRIUS" [level=3] [ref=e142]
+                    - paragraph [ref=e144]: Degerfors vs Sirius. One crown.
+                  - generic [ref=e146]:
+                    - generic [ref=e147]:
+                      - button "Degerfors logo Preview Degerfors 0%" [disabled] [ref=e148]:
+                        - generic [ref=e150]:
+                          - img "Degerfors logo" [ref=e152]
+                          - generic [ref=e153]:
+                            - generic [ref=e154]: Preview
+                            - generic [ref=e155]: Degerfors
+                          - generic [ref=e157]: 0%
+                      - button "Sirius logo Preview Sirius 100%" [disabled] [ref=e158]:
+                        - generic [ref=e160]:
+                          - img "Sirius logo" [ref=e162]
+                          - generic [ref=e163]:
+                            - generic [ref=e164]: Preview
+                            - generic [ref=e165]: Sirius
+                          - generic [ref=e167]: 100%
+                    - generic [ref=e168]:
+                      - generic [ref=e169]:
+                        - img [ref=e170]
+                        - generic [ref=e173]: Stora Valla
+                      - generic [ref=e174]: Sat, Apr 04, 06:30 PM
+                      - generic [ref=e175]:
+                        - img [ref=e176]
+                        - generic [ref=e179]: Kickoff scheduled
+                      - generic [ref=e180]:
+                        - generic [ref=e181]:
+                          - img [ref=e182]
+                          - text: 1 picks
+                        - generic [ref=e185]:
+                          - img [ref=e186]
+                          - text: upcoming
+              - button "SWEDISH HOCKEY LEAGUE LULEÅ HF VS ÖREBRO HK Result locked in Luleå HF logo Preview Luleå HF 50% Örebro HK logo Preview Örebro HK 50% Coop Norrbotten Arena Thu, Mar 19, 11:30 PM Result in 0 picks finished" [ref=e189] [cursor=pointer]:
+                - generic [ref=e192]:
+                  - generic [ref=e193]:
+                    - generic [ref=e194]:
+                      - paragraph [ref=e195]: SWEDISH HOCKEY LEAGUE
+                      - heading "LULEÅ HF VS ÖREBRO HK" [level=3] [ref=e196]
+                    - paragraph [ref=e198]: Result locked in
+                  - generic [ref=e200]:
+                    - generic [ref=e201]:
+                      - button "Luleå HF logo Preview Luleå HF 50%" [disabled] [ref=e202]:
+                        - generic [ref=e204]:
+                          - img "Luleå HF logo" [ref=e206]
+                          - generic [ref=e207]:
+                            - generic [ref=e208]: Preview
+                            - generic [ref=e209]: Luleå HF
+                          - generic [ref=e211]: 50%
+                      - button "Örebro HK logo Preview Örebro HK 50%" [disabled] [ref=e212]:
+                        - generic [ref=e214]:
+                          - img "Örebro HK logo" [ref=e216]
+                          - generic [ref=e217]:
+                            - generic [ref=e218]: Preview
+                            - generic [ref=e219]: Örebro HK
+                          - generic [ref=e221]: 50%
+                    - generic [ref=e222]:
+                      - generic [ref=e223]:
+                        - img [ref=e224]
+                        - generic [ref=e227]: Coop Norrbotten Arena
+                      - generic [ref=e228]: Thu, Mar 19, 11:30 PM
+                      - generic [ref=e229]: Result in
+                      - generic [ref=e230]:
+                        - generic [ref=e231]:
+                          - img [ref=e232]
+                          - text: 0 picks
+                        - generic [ref=e235]:
+                          - img [ref=e236]
+                          - text: finished
+            - button "Next match" [ref=e238] [cursor=pointer]:
+              - img [ref=e239]
+      - generic [ref=e241]:
+        - generic [ref=e242]:
+          - generic [ref=e243]:
+            - paragraph [ref=e244]: Clash Queue
+            - heading "Upcoming Clashes" [level=2] [ref=e245]
+            - paragraph [ref=e246]: Scan the next wave of battles, see where league momentum is building, and lock in predictions before the clock hits zero.
+          - generic [ref=e247]:
+            - generic [ref=e250]:
+              - paragraph [ref=e251]: VS
+              - paragraph [ref=e252]: Sporting CP vs Arsenal
+              - paragraph [ref=e253]: Football · UEFA Champions League · Estádio José Alvalade
+              - paragraph [ref=e254]: Wed, Apr 8, 12:30 AM
+              - paragraph [ref=e255]: 1 picks
+            - generic [ref=e259]:
+              - paragraph [ref=e260]: VS
+              - paragraph [ref=e261]: Degerfors vs Sirius
+              - paragraph [ref=e262]: Football · Swedish Allsvenskan · Stora Valla
+              - paragraph [ref=e263]: Sat, Apr 4, 6:30 PM
+              - paragraph [ref=e264]: 1 picks
+            - generic [ref=e268]:
+              - paragraph [ref=e269]: VS
+              - paragraph [ref=e270]: Svay Rieng vs Manila Digger
+              - paragraph [ref=e271]: Football · AFC Challenge League · Morodok Techo National Stadium
+              - paragraph [ref=e272]: Thu, Apr 9, 8:30 PM
+              - paragraph [ref=e273]: 1 picks
+            - generic [ref=e277]:
+              - paragraph [ref=e278]: VS
+              - paragraph [ref=e279]: Abahani Ltd Dhaka vs Dhaka Mohammedan
+              - paragraph [ref=e280]: Football · Bangladesh Premier League · Comilla Stadium
+              - paragraph [ref=e281]: Fri, Apr 10, 3:00 PM
+              - paragraph [ref=e282]: 1 picks
+        - generic [ref=e284]:
+          - generic [ref=e285]:
+            - paragraph [ref=e286]: League Intel
+            - heading "What Happens Here" [level=2] [ref=e287]
+            - paragraph [ref=e288]: Every match gets a cinematic battle card, a live community split, and a result recap when the final whistle blows.
+          - generic [ref=e289]:
+            - generic [ref=e290]:
+              - img [ref=e292]
+              - heading "Battle Posters" [level=4] [ref=e301]
+              - paragraph [ref=e302]: Each match is framed like a headline clash with high-energy visuals and clear vote calls.
+            - generic [ref=e303]:
+              - img [ref=e305]
+              - heading "Live Community Split" [level=4] [ref=e308]
+              - paragraph [ref=e309]: See where the crowd is leaning and how close the duel really is before kickoff.
+            - generic [ref=e310]:
+              - img [ref=e312]
+              - heading "Result Recaps" [level=4] [ref=e316]
+              - paragraph [ref=e317]: Finished matches transition into result cards so the league story stays alive after game time.
+      - generic [ref=e318]:
+        - generic [ref=e319]:
+          - paragraph [ref=e320]: Final Whistle
+          - heading "Results Board" [level=2] [ref=e321]
+          - paragraph [ref=e322]: A snapshot of the latest finished battles so visitors can see which side won and how the league voted.
+        - generic [ref=e324]:
+          - 'button "MEXICAN PRIMERA LEAGUE FC Juarez vs Tigres FT Winner: FC Juarez 50% - 50% · 0 votes" [ref=e325] [cursor=pointer]':
+            - generic [ref=e328]:
+              - generic [ref=e329]: MEXICAN PRIMERA LEAGUE
+              - heading "FC Juarez vs Tigres" [level=3] [ref=e330]
+              - paragraph [ref=e331]:
+                - img [ref=e332]
+                - text: FT
+              - paragraph [ref=e338]: "Winner: FC Juarez"
+              - paragraph [ref=e342]: 50% - 50% · 0 votes
+          - 'button "UKRAINIAN PREMIER LEAGUE Kryvbas Kryvyi Rih vs Epitsentr Kamianets-Podilsky FT Winner: Kryvbas Kryvyi Rih 50% - 50% · 0 votes" [ref=e343] [cursor=pointer]':
+            - generic [ref=e346]:
+              - generic [ref=e347]: UKRAINIAN PREMIER LEAGUE
+              - heading "Kryvbas Kryvyi Rih vs Epitsentr Kamianets-Podilsky" [level=3] [ref=e348]
+              - paragraph [ref=e349]:
+                - img [ref=e350]
+                - text: FT
+              - paragraph [ref=e356]: "Winner: Kryvbas Kryvyi Rih"
+              - paragraph [ref=e360]: 50% - 50% · 0 votes
+          - 'button "MEXICAN PRIMERA LEAGUE Necaxa vs Tijuana FT Winner: Necaxa 50% - 50% · 0 votes" [ref=e361] [cursor=pointer]':
+            - generic [ref=e364]:
+              - generic [ref=e365]: MEXICAN PRIMERA LEAGUE
+              - heading "Necaxa vs Tijuana" [level=3] [ref=e366]
+              - paragraph [ref=e367]:
+                - img [ref=e368]
+                - text: FT
+              - paragraph [ref=e374]: "Winner: Necaxa"
+              - paragraph [ref=e378]: 50% - 50% · 0 votes
+          - 'button "SWEDISH HOCKEY LEAGUE HV71 vs Leksands IF FT Winner: HV71 50% - 50% · 0 votes" [ref=e379] [cursor=pointer]':
+            - generic [ref=e382]:
+              - generic [ref=e383]: SWEDISH HOCKEY LEAGUE
+              - heading "HV71 vs Leksands IF" [level=3] [ref=e384]
+              - paragraph [ref=e385]:
+                - img [ref=e386]
+                - text: FT
+              - paragraph [ref=e392]: "Winner: HV71"
+              - paragraph [ref=e396]: 50% - 50% · 0 votes
+          - 'button "MLB Milwaukee Brewers vs Texas Rangers FT Winner: Milwaukee Brewers 50% - 50% · 0 votes" [ref=e397] [cursor=pointer]':
+            - generic [ref=e400]:
+              - generic [ref=e401]: MLB
+              - heading "Milwaukee Brewers vs Texas Rangers" [level=3] [ref=e402]
+              - paragraph [ref=e403]:
+                - img [ref=e404]
+                - text: FT
+              - paragraph [ref=e410]: "Winner: Milwaukee Brewers"
+              - paragraph [ref=e414]: 50% - 50% · 0 votes
+          - 'button "BRAZILIAN SERIE A Chapecoense vs Corinthians FT Winner: Chapecoense 50% - 50% · 0 votes" [ref=e415] [cursor=pointer]':
+            - generic [ref=e418]:
+              - generic [ref=e419]: BRAZILIAN SERIE A
+              - heading "Chapecoense vs Corinthians" [level=3] [ref=e420]
+              - paragraph [ref=e421]:
+                - img [ref=e422]
+                - text: FT
+              - paragraph [ref=e428]: "Winner: Chapecoense"
+              - paragraph [ref=e432]: 50% - 50% · 0 votes
+          - 'button "NHL Nashville Predators vs Seattle Kraken FT Winner: Nashville Predators 50% - 50% · 0 votes" [ref=e433] [cursor=pointer]':
+            - generic [ref=e436]:
+              - generic [ref=e437]: NHL
+              - heading "Nashville Predators vs Seattle Kraken" [level=3] [ref=e438]
+              - paragraph [ref=e439]:
+                - img [ref=e440]
+                - text: FT
+              - paragraph [ref=e446]: "Winner: Nashville Predators"
+              - paragraph [ref=e450]: 50% - 50% · 0 votes
+          - 'button "NBA G LEAGUE Long Island Nets vs Maine Celtics FT Winner: Long Island Nets 50% - 50% · 0 votes" [ref=e451] [cursor=pointer]':
+            - generic [ref=e454]:
+              - generic [ref=e455]: NBA G LEAGUE
+              - heading "Long Island Nets vs Maine Celtics" [level=3] [ref=e456]
+              - paragraph [ref=e457]:
+                - img [ref=e458]
+                - text: FT
+              - paragraph [ref=e464]: "Winner: Long Island Nets"
+              - paragraph [ref=e468]: 50% - 50% · 0 votes
+          - 'button "NBA San Antonio Spurs vs Phoenix Suns FT Winner: San Antonio Spurs 50% - 50% · 0 votes" [ref=e469] [cursor=pointer]':
+            - generic [ref=e472]:
+              - generic [ref=e473]: NBA
+              - heading "San Antonio Spurs vs Phoenix Suns" [level=3] [ref=e474]
+              - paragraph [ref=e475]:
+                - img [ref=e476]
+                - text: FT
+              - paragraph [ref=e482]: "Winner: San Antonio Spurs"
+              - paragraph [ref=e486]: 50% - 50% · 0 votes
+          - 'button "ANGOLAN GIRABOLA Guelson vs Luanda City FT Winner: Guelson 50% - 50% · 0 votes" [ref=e487] [cursor=pointer]':
+            - generic [ref=e490]:
+              - generic [ref=e491]: ANGOLAN GIRABOLA
+              - heading "Guelson vs Luanda City" [level=3] [ref=e492]
+              - paragraph [ref=e493]:
+                - img [ref=e494]
+                - text: FT
+              - paragraph [ref=e500]: "Winner: Guelson"
+              - paragraph [ref=e504]: 50% - 50% · 0 votes
+          - 'button "ITALIAN SERIE B Padova vs Palermo FT Winner: Padova 50% - 50% · 0 votes" [ref=e505] [cursor=pointer]':
+            - generic [ref=e508]:
+              - generic [ref=e509]: ITALIAN SERIE B
+              - heading "Padova vs Palermo" [level=3] [ref=e510]
+              - paragraph [ref=e511]:
+                - img [ref=e512]
+                - text: FT
+              - paragraph [ref=e518]: "Winner: Padova"
+              - paragraph [ref=e522]: 50% - 50% · 0 votes
+          - 'button "RUSSIAN FOOTBALL PREMIER LEAGUE Akhmat Grozny vs Rostov FT Winner: Akhmat Grozny 50% - 50% · 0 votes" [ref=e523] [cursor=pointer]':
+            - generic [ref=e526]:
+              - generic [ref=e527]: RUSSIAN FOOTBALL PREMIER LEAGUE
+              - heading "Akhmat Grozny vs Rostov" [level=3] [ref=e528]
+              - paragraph [ref=e529]:
+                - img [ref=e530]
+                - text: FT
+              - paragraph [ref=e536]: "Winner: Akhmat Grozny"
+              - paragraph [ref=e540]: 50% - 50% · 0 votes
+          - 'button "MEXICAN PRIMERA LEAGUE FC Juarez vs Tigres FT Winner: FC Juarez 50% - 50% · 0 votes" [ref=e541] [cursor=pointer]':
+            - generic [ref=e544]:
+              - generic [ref=e545]: MEXICAN PRIMERA LEAGUE
+              - heading "FC Juarez vs Tigres" [level=3] [ref=e546]
+              - paragraph [ref=e547]:
+                - img [ref=e548]
+                - text: FT
+              - paragraph [ref=e554]: "Winner: FC Juarez"
+              - paragraph [ref=e558]: 50% - 50% · 0 votes
+          - 'button "UKRAINIAN PREMIER LEAGUE Kryvbas Kryvyi Rih vs Epitsentr Kamianets-Podilsky FT Winner: Kryvbas Kryvyi Rih 50% - 50% · 0 votes" [ref=e559] [cursor=pointer]':
+            - generic [ref=e562]:
+              - generic [ref=e563]: UKRAINIAN PREMIER LEAGUE
+              - heading "Kryvbas Kryvyi Rih vs Epitsentr Kamianets-Podilsky" [level=3] [ref=e564]
+              - paragraph [ref=e565]:
+                - img [ref=e566]
+                - text: FT
+              - paragraph [ref=e572]: "Winner: Kryvbas Kryvyi Rih"
+              - paragraph [ref=e576]: 50% - 50% · 0 votes
+          - 'button "MEXICAN PRIMERA LEAGUE Necaxa vs Tijuana FT Winner: Necaxa 50% - 50% · 0 votes" [ref=e577] [cursor=pointer]':
+            - generic [ref=e580]:
+              - generic [ref=e581]: MEXICAN PRIMERA LEAGUE
+              - heading "Necaxa vs Tijuana" [level=3] [ref=e582]
+              - paragraph [ref=e583]:
+                - img [ref=e584]
+                - text: FT
+              - paragraph [ref=e590]: "Winner: Necaxa"
+              - paragraph [ref=e594]: 50% - 50% · 0 votes
+          - 'button "SWEDISH HOCKEY LEAGUE HV71 vs Leksands IF FT Winner: HV71 50% - 50% · 0 votes" [ref=e595] [cursor=pointer]':
+            - generic [ref=e598]:
+              - generic [ref=e599]: SWEDISH HOCKEY LEAGUE
+              - heading "HV71 vs Leksands IF" [level=3] [ref=e600]
+              - paragraph [ref=e601]:
+                - img [ref=e602]
+                - text: FT
+              - paragraph [ref=e608]: "Winner: HV71"
+              - paragraph [ref=e612]: 50% - 50% · 0 votes
+          - 'button "MLB Milwaukee Brewers vs Texas Rangers FT Winner: Milwaukee Brewers 50% - 50% · 0 votes" [ref=e613] [cursor=pointer]':
+            - generic [ref=e616]:
+              - generic [ref=e617]: MLB
+              - heading "Milwaukee Brewers vs Texas Rangers" [level=3] [ref=e618]
+              - paragraph [ref=e619]:
+                - img [ref=e620]
+                - text: FT
+              - paragraph [ref=e626]: "Winner: Milwaukee Brewers"
+              - paragraph [ref=e630]: 50% - 50% · 0 votes
+          - 'button "BRAZILIAN SERIE A Chapecoense vs Corinthians FT Winner: Chapecoense 50% - 50% · 0 votes" [ref=e631] [cursor=pointer]':
+            - generic [ref=e634]:
+              - generic [ref=e635]: BRAZILIAN SERIE A
+              - heading "Chapecoense vs Corinthians" [level=3] [ref=e636]
+              - paragraph [ref=e637]:
+                - img [ref=e638]
+                - text: FT
+              - paragraph [ref=e644]: "Winner: Chapecoense"
+              - paragraph [ref=e648]: 50% - 50% · 0 votes
+          - 'button "NHL Nashville Predators vs Seattle Kraken FT Winner: Nashville Predators 50% - 50% · 0 votes" [ref=e649] [cursor=pointer]':
+            - generic [ref=e652]:
+              - generic [ref=e653]: NHL
+              - heading "Nashville Predators vs Seattle Kraken" [level=3] [ref=e654]
+              - paragraph [ref=e655]:
+                - img [ref=e656]
+                - text: FT
+              - paragraph [ref=e662]: "Winner: Nashville Predators"
+              - paragraph [ref=e666]: 50% - 50% · 0 votes
+          - 'button "NBA G LEAGUE Long Island Nets vs Maine Celtics FT Winner: Long Island Nets 50% - 50% · 0 votes" [ref=e667] [cursor=pointer]':
+            - generic [ref=e670]:
+              - generic [ref=e671]: NBA G LEAGUE
+              - heading "Long Island Nets vs Maine Celtics" [level=3] [ref=e672]
+              - paragraph [ref=e673]:
+                - img [ref=e674]
+                - text: FT
+              - paragraph [ref=e680]: "Winner: Long Island Nets"
+              - paragraph [ref=e684]: 50% - 50% · 0 votes
+          - 'button "NBA San Antonio Spurs vs Phoenix Suns FT Winner: San Antonio Spurs 50% - 50% · 0 votes" [ref=e685] [cursor=pointer]':
+            - generic [ref=e688]:
+              - generic [ref=e689]: NBA
+              - heading "San Antonio Spurs vs Phoenix Suns" [level=3] [ref=e690]
+              - paragraph [ref=e691]:
+                - img [ref=e692]
+                - text: FT
+              - paragraph [ref=e698]: "Winner: San Antonio Spurs"
+              - paragraph [ref=e702]: 50% - 50% · 0 votes
+          - 'button "ANGOLAN GIRABOLA Guelson vs Luanda City FT Winner: Guelson 50% - 50% · 0 votes" [ref=e703] [cursor=pointer]':
+            - generic [ref=e706]:
+              - generic [ref=e707]: ANGOLAN GIRABOLA
+              - heading "Guelson vs Luanda City" [level=3] [ref=e708]
+              - paragraph [ref=e709]:
+                - img [ref=e710]
+                - text: FT
+              - paragraph [ref=e716]: "Winner: Guelson"
+              - paragraph [ref=e720]: 50% - 50% · 0 votes
+          - 'button "ITALIAN SERIE B Padova vs Palermo FT Winner: Padova 50% - 50% · 0 votes" [ref=e721] [cursor=pointer]':
+            - generic [ref=e724]:
+              - generic [ref=e725]: ITALIAN SERIE B
+              - heading "Padova vs Palermo" [level=3] [ref=e726]
+              - paragraph [ref=e727]:
+                - img [ref=e728]
+                - text: FT
+              - paragraph [ref=e734]: "Winner: Padova"
+              - paragraph [ref=e738]: 50% - 50% · 0 votes
+          - 'button "RUSSIAN FOOTBALL PREMIER LEAGUE Akhmat Grozny vs Rostov FT Winner: Akhmat Grozny 50% - 50% · 0 votes" [ref=e739] [cursor=pointer]':
+            - generic [ref=e742]:
+              - generic [ref=e743]: RUSSIAN FOOTBALL PREMIER LEAGUE
+              - heading "Akhmat Grozny vs Rostov" [level=3] [ref=e744]
+              - paragraph [ref=e745]:
+                - img [ref=e746]
+                - text: FT
+              - paragraph [ref=e752]: "Winner: Akhmat Grozny"
+              - paragraph [ref=e756]: 50% - 50% · 0 votes
+      - generic [ref=e757]:
+        - generic [ref=e758]:
+          - heading "Never Miss A Match" [level=3] [ref=e759]
+          - paragraph [ref=e760]: The player dashboard now reflects your vote history accurately, including final result summaries once a match closes.
+          - generic [ref=e761]:
+            - paragraph [ref=e762]: Sign in to track your predictions, view result summaries, and compare your hit rate with the rest of Vote League.
+            - link "Log In" [ref=e763] [cursor=pointer]:
+              - /url: /login
+              - text: Log In
+              - img [ref=e764]
+        - generic [ref=e766]:
+          - paragraph [ref=e767]: Network Ranking
+          - generic [ref=e768]:
+            - paragraph [ref=e769]: Current Ladder Position
+            - generic [ref=e770]: "#1"
+            - paragraph [ref=e771]: Vote League
+            - paragraph [ref=e772]: Community pulse
+          - generic [ref=e773]:
+            - paragraph [ref=e774]: Upcoming Rivals
+            - generic [ref=e775]:
+              - generic [ref=e776]:
+                - generic [ref=e777]: "#2"
+                - generic [ref=e778]: NeonGamer
+              - generic [ref=e779]: "950"
+            - generic [ref=e780]:
+              - generic [ref=e781]:
+                - generic [ref=e782]: "#3"
+                - generic [ref=e783]: CryptoKing
+              - generic [ref=e784]: "820"
+      - generic [ref=e785]:
+        - generic [ref=e786]:
+          - generic [ref=e787]:
+            - paragraph [ref=e788]: Game Loop
+            - heading "How Vote League Works" [level=2] [ref=e789]
+            - paragraph [ref=e790]: The homepage now ships a slimmer payload, server-renders the opening state, and keeps the vote overlay hot only when you need it.
+          - generic [ref=e791]:
+            - generic [ref=e793]:
+              - generic [ref=e794]: "01"
+              - generic [ref=e795]:
+                - paragraph [ref=e796]: Cards Go Live
+                - paragraph [ref=e797]: Once a prediction card is published, it becomes visible in the public arena and counts toward the live total instantly.
+            - generic [ref=e799]:
+              - generic [ref=e800]: "02"
+              - generic [ref=e801]:
+                - paragraph [ref=e802]: Crowd Picks A Side
+                - paragraph [ref=e803]: Fans open voting mode, choose a side, and the community split updates in real time.
+            - generic [ref=e805]:
+              - generic [ref=e806]: "03"
+              - generic [ref=e807]:
+                - paragraph [ref=e808]: Results Lock In
+                - paragraph [ref=e809]: Finished battles move onto the results board with their summary, winner, and vote percentages.
+        - generic [ref=e810]:
+          - generic [ref=e811]:
+            - paragraph [ref=e812]: Quality Bar
+            - heading "What We Optimized" [level=2] [ref=e813]
+            - paragraph [ref=e814]: Vote League now avoids shipping admin-only fields to the homepage and tones down the effects that hurt scroll smoothness.
+          - generic [ref=e815]:
+            - generic [ref=e816]:
+              - img [ref=e818]
+              - heading "Slim Home Feed" [level=4] [ref=e821]
+              - paragraph [ref=e822]: The public homepage now uses a dedicated lightweight response instead of the full match payload.
+            - generic [ref=e823]:
+              - img [ref=e825]
+              - heading "Visible Live Count" [level=4] [ref=e829]
+              - paragraph [ref=e830]: Live totals reflect only cards the public can actually see, so the count and carousel stay in sync.
+            - generic [ref=e831]:
+              - img [ref=e833]
+              - heading "Shared Ticker" [level=4] [ref=e835]
+              - paragraph [ref=e836]: Countdowns use one shared clock rather than spinning an interval inside every visible card.
+            - generic [ref=e837]:
+              - img [ref=e839]
+              - heading "Lower Motion Cost" [level=4] [ref=e842]
+              - paragraph [ref=e843]: Only the active hero card floats, side cards lazy-load, and below-fold sections render on demand.
+      - generic [ref=e845]:
+        - generic [ref=e846]:
+          - generic [ref=e847]:
+            - generic [ref=e848]:
+              - img "Vote League logo" [ref=e849]
+              - generic [ref=e850]:
+                - paragraph [ref=e851]: Vote League
+                - heading "Vote League" [level=2] [ref=e852]
+            - paragraph [ref=e853]: Vote League is a cinematic fan-voting platform for live and upcoming sports matchups, community predictions, and premium match visuals.
+          - generic [ref=e854]:
+            - paragraph [ref=e855]: Platform
+            - generic [ref=e856]:
+              - link "Home" [ref=e857] [cursor=pointer]:
+                - /url: /
+              - link "How It Works" [ref=e858] [cursor=pointer]:
+                - /url: /guide
+              - link "About Vote League" [ref=e859] [cursor=pointer]:
+                - /url: /about
+              - link "Support" [ref=e860] [cursor=pointer]:
+                - /url: /contact
+          - generic [ref=e861]:
+            - paragraph [ref=e862]: Legal & Trust
+            - generic [ref=e863]:
+              - link "About" [ref=e864] [cursor=pointer]:
+                - /url: /about
+              - link "Guide" [ref=e865] [cursor=pointer]:
+                - /url: /guide
+              - link "Terms" [ref=e866] [cursor=pointer]:
+                - /url: /terms
+              - link "Privacy" [ref=e867] [cursor=pointer]:
+                - /url: /privacy
+              - link "Cookies" [ref=e868] [cursor=pointer]:
+                - /url: /cookies
+              - link "Community Guidelines" [ref=e869] [cursor=pointer]:
+                - /url: /community-guidelines
+              - link "Compliance" [ref=e870] [cursor=pointer]:
+                - /url: /compliance
+              - link "Disclaimer" [ref=e871] [cursor=pointer]:
+                - /url: /disclaimer
+              - link "Contact" [ref=e872] [cursor=pointer]:
+                - /url: /contact
+        - generic [ref=e873]:
+          - paragraph [ref=e874]: Vote League © 2026
+          - paragraph [ref=e875]: Predict. Vote. Track the league pulse.
+  - alert [ref=e876]
