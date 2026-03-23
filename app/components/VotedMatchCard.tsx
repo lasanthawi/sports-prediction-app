@@ -8,30 +8,45 @@ interface VotedMatchCardProps {
 
 export default function VotedMatchCard({ match, className = '' }: VotedMatchCardProps) {
   const isFinished = match.status === 'finished'
+  const isLive = match.status === 'live'
   const isCancelled = match.status === 'cancelled'
   const votedTeamName = match.voted_team === 1 ? match.team1 : match.team2
+  const winnerName = match.winner === 1 ? match.team1 : match.winner === 2 ? match.team2 : null
   
   let resultText = 'Match Pending'
   let resultColor = 'text-white'
   let resultBg = 'bg-black/40'
+  let summaryText = match.result_summary || 'Awaiting final result'
   
   if (isCancelled) {
-     resultText = 'Cancelled'
+     resultText = 'Match Cancelled'
      resultColor = 'text-yellow-400'
+     resultBg = 'bg-yellow-900/40 border-yellow-500/30'
+     summaryText = 'This fixture was cancelled before a final result was recorded.'
+  } else if (isLive) {
+     resultText = 'Match Live'
+     resultColor = 'text-cyan-300'
+     resultBg = 'bg-cyan-900/40 border-cyan-500/30'
+     summaryText = match.result_summary || 'Voting is closed once the final result is confirmed.'
   } else if (isFinished) {
      const won = match.winner === match.voted_team
-     const draw = match.winner === null || match.winner === undefined
+     const hasWinner = match.winner === 1 || match.winner === 2
      
-     if (draw) {
-        resultText = 'Draw'
+     if (!hasWinner) {
+        resultText = 'Result Recorded'
+        resultColor = 'text-amber-300'
+        resultBg = 'bg-amber-900/40 border-amber-500/30'
+        summaryText = match.result_summary || 'The match finished without a winner recorded yet.'
      } else if (won) {
         resultText = 'Prediction Correct'
         resultColor = 'text-green-300'
         resultBg = 'bg-green-900/60 border-green-500/40'
+        summaryText = match.result_summary || `${winnerName} won the match.`
      } else {
         resultText = 'Prediction Incorrect'
         resultColor = 'text-red-300'
         resultBg = 'bg-red-900/60 border-red-500/40'
+        summaryText = match.result_summary || `${winnerName} won the match.`
      }
   }
 
@@ -86,6 +101,7 @@ export default function VotedMatchCard({ match, className = '' }: VotedMatchCard
           <div className={`rounded-xl border border-white/10 p-3 text-center backdrop-blur-md transition-colors ${resultBg}`}>
              <p className="text-[10px] uppercase tracking-[0.15em] font-bold text-white/70 mb-1">Your Pick: <span className="text-white">{votedTeamName}</span></p>
              <p className={`text-[11px] font-black uppercase tracking-wider ${resultColor}`}>{resultText}</p>
+             <p className="mt-1 text-[11px] font-medium leading-relaxed text-white/70">{summaryText}</p>
           </div>
         </div>
       </div>

@@ -133,6 +133,17 @@ export async function refreshDerivedMatchStatuses() {
     WHERE status = 'upcoming'
       AND match_time <= NOW()
   `
+
+  await sql`
+    UPDATE matches
+    SET status = 'finished'
+    WHERE status = 'live'
+      AND (
+        winner IS NOT NULL
+        OR NULLIF(TRIM(COALESCE(result_summary, '')), '') IS NOT NULL
+        OR match_time <= NOW() - INTERVAL '12 hours'
+      )
+  `
 }
 
 function matchSelectClause() {
