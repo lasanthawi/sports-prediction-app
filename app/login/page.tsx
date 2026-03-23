@@ -43,11 +43,6 @@ export default function Login() {
     }
   }
 
-  function quickLogin(testEmail: string, testPassword: string) {
-    setEmail(testEmail)
-    setPassword(testPassword)
-  }
-
   return (
     <div className="flex min-h-screen flex-col">
       <div className="flex flex-1 items-center justify-center p-4">
@@ -99,34 +94,8 @@ export default function Login() {
             </button>
           </form>
 
-          <div className="mt-6 border-t border-gray-700 pt-6">
-            <p className="mb-3 text-center text-xs text-gray-400">Quick Login (Test Accounts)</p>
-            <div className="space-y-2">
-              <button
-                onClick={() => quickLogin('admin@sports.com', 'admin123')}
-                className="w-full rounded bg-purple-500/20 p-2 text-sm text-purple-300 transition hover:bg-purple-500/30"
-              >
-                Admin Account
-              </button>
-              <button
-                onClick={() => quickLogin('player1@sports.com', 'player123')}
-                className="w-full rounded bg-blue-500/20 p-2 text-sm text-blue-300 transition hover:bg-blue-500/30"
-              >
-                Player 1 (John Doe - 250pts)
-              </button>
-              <button
-                onClick={() => quickLogin('player2@sports.com', 'player123')}
-                className="w-full rounded bg-blue-500/20 p-2 text-sm text-blue-300 transition hover:bg-blue-500/30"
-              >
-                Player 2 (Jane Smith - 420pts)
-              </button>
-              <button
-                onClick={() => quickLogin('player3@sports.com', 'player123')}
-                className="w-full rounded bg-blue-500/20 p-2 text-sm text-blue-300 transition hover:bg-blue-500/30"
-              >
-                Player 3 (Mike Wilson - 180pts)
-              </button>
-            </div>
+          <div className="mt-6 border-t border-gray-700 pt-6 text-center">
+            <p className="text-xs text-gray-400">Use your registered {BRAND.shortName} email and password to sign in.</p>
           </div>
         </div>
 
