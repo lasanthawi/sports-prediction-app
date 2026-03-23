@@ -1,92 +1,149 @@
 const FB_GRAPH_VERSION = 'v19.0'
 const FACEBOOK_API_TIMEOUT_MS = 8000
 
-/**
- * Publishes an image as a Facebook Page Story using the official two-step flow:
- * 1. Upload photo via Page Photos API (published=false) → get photo_id
- * 2. Publish story via Page Photo Stories API with photo_id
- *
- * We send a URL to Facebook (not base64). FB’s servers fetch the image from that URL,
- * so the response must be raw image bytes with a supported type. FB Stories accept
- * only: .jpeg, .bmp, .png, .gif, .tiff. SVG is not supported.
- *
- * Requires env: FB_PAGE_ID, FB_PAGE_ACCESS_TOKEN.
- * Page token must have: pages_show_list, pages_read_engagement, pages_manage_posts.
- */
-export type FacebookStoryResult =
+export type FacebookPublishResult =
   | { ok: true; postId?: string }
   | { ok: false; skipped: true; reason: string }
   | { ok: false; skipped: false; error: string }
 
-export async function publishToFacebookStory(assetUrl: string, _caption?: string): Promise<FacebookStoryResult> {
+function getFacebookConfig() {
   const pageId = process.env.FB_PAGE_ID
   const accessToken = process.env.FB_PAGE_ACCESS_TOKEN
 
   if (!pageId || !accessToken) {
+    return null
+  }
+
+  return { pageId, accessToken }
+}
+
+function normalizeAssetUrl(assetUrl: string) {
+  return assetUrl.replace(/([^:]\/)\/+/g, '$1')
+}
+
+function validatePublicAssetUrl(assetUrl: string): FacebookPublishResult | null {
+  const normalized = normalizeAssetUrl(assetUrl)
+  if (normalized.startsWith('http://localhost') || normalized.startsWith('http://127.0.0.1')) {
+    console.error('[Facebook] Asset URL is localhost; Facebook cannot fetch it.')
+    return {
+      ok: false,
+      skipped: false,
+      error: 'Asset URL must be public HTTPS. Facebook cannot fetch localhost. Set NEXT_PUBLIC_APP_URL to your deployed URL.',
+    }
+  }
+
+  return null
+}
+
+async function postForm(endpoint: string, params: URLSearchParams) {
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params.toString(),
+    signal: AbortSignal.timeout(FACEBOOK_API_TIMEOUT_MS),
+  })
+
+  const data = (await response.json()) as {
+    id?: string
+    post_id?: string
+    success?: boolean
+    error?: { message?: string }
+  }
+
+  if (!response.ok || data.error) {
+    throw new Error(`Facebook API Error: ${data.error?.message || 'Request failed'}`)
+  }
+
+  return data
+}
+
+export async function publishToFacebookStory(assetUrl: string, _caption?: string): Promise<FacebookPublishResult> {
+  const config = getFacebookConfig()
+  if (!config) {
     console.log('[Facebook] Skipping FB Story publish. FB_PAGE_ID or FB_PAGE_ACCESS_TOKEN not configured.')
     return { ok: false, skipped: true, reason: 'FB_PAGE_ID or FB_PAGE_ACCESS_TOKEN not set' }
   }
 
-  assetUrl = assetUrl.replace(/([^:]\/)\/+/g, '$1')
-  if (assetUrl.startsWith('http://localhost') || assetUrl.startsWith('http://127.0.0.1')) {
-    console.error('[Facebook] Asset URL is localhost; Facebook’s servers cannot fetch it. Set NEXT_PUBLIC_APP_URL to a public HTTPS URL (e.g. your Vercel URL or ngrok).')
-    return { ok: false, skipped: false, error: 'Asset URL must be public HTTPS. Facebook cannot fetch localhost. Set NEXT_PUBLIC_APP_URL to your deployed URL.' }
-  }
+  const invalid = validatePublicAssetUrl(assetUrl)
+  if (invalid) return invalid
+  const normalizedUrl = normalizeAssetUrl(assetUrl)
 
-  console.log(`[Facebook] Publishing story to Page ${pageId}...`)
+  console.log(`[Facebook] Publishing story to Page ${config.pageId}...`)
 
   try {
-    // Step 1: Upload photo to Page (unpublished) so we get a photo_id.
-    // Facebook fetches the image from assetUrl; it must be publicly accessible (HTTPS).
-    const photosEndpoint = `https://graph.facebook.com/${FB_GRAPH_VERSION}/${pageId}/photos`
     const uploadParams = new URLSearchParams()
-    uploadParams.append('access_token', accessToken)
-    uploadParams.append('url', assetUrl)
+    uploadParams.append('access_token', config.accessToken)
+    uploadParams.append('url', normalizedUrl)
     uploadParams.append('published', 'false')
-
-    const uploadRes = await fetch(photosEndpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: uploadParams.toString(),
-      signal: AbortSignal.timeout(FACEBOOK_API_TIMEOUT_MS),
-    })
-    const uploadData = (await uploadRes.json()) as { id?: string; error?: { message?: string } }
-
-    if (!uploadRes.ok || uploadData.error) {
-      console.error('[Facebook] Photo upload error:', uploadData.error?.message || uploadData)
-      throw new Error(`Facebook API Error: ${uploadData.error?.message || 'Upload failed'}`)
-    }
+    const uploadData = await postForm(`https://graph.facebook.com/${FB_GRAPH_VERSION}/${config.pageId}/photos`, uploadParams)
 
     const photoId = uploadData.id
     if (!photoId) {
       throw new Error('Facebook did not return a photo id')
     }
 
-    // Step 2: Publish the uploaded photo as a Page Story.
-    const storiesEndpoint = `https://graph.facebook.com/${FB_GRAPH_VERSION}/${pageId}/photo_stories`
     const storyParams = new URLSearchParams()
-    storyParams.append('access_token', accessToken)
+    storyParams.append('access_token', config.accessToken)
     storyParams.append('photo_id', photoId)
-
-    const storyRes = await fetch(storiesEndpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: storyParams.toString(),
-      signal: AbortSignal.timeout(FACEBOOK_API_TIMEOUT_MS),
-    })
-    const storyData = (await storyRes.json()) as { post_id?: string; id?: string; success?: boolean; error?: { message?: string } }
-
-    if (!storyRes.ok || storyData.error) {
-      console.error('[Facebook] Story publish error:', storyData.error?.message || storyData)
-      throw new Error(`Facebook API Error: ${storyData.error?.message || 'Story publish failed'}`)
-    }
+    const storyData = await postForm(`https://graph.facebook.com/${FB_GRAPH_VERSION}/${config.pageId}/photo_stories`, storyParams)
 
     const postId = storyData.post_id || storyData.id
     console.log('[Facebook] Successfully published story ID:', postId)
-    return { ok: true, postId: String(postId) }
+    return { ok: true, postId: String(postId || '') || undefined }
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
     console.error('[Facebook] Failed to publish story:', error)
+    return { ok: false, skipped: false, error: msg }
+  }
+}
+
+export async function publishFacebookPagePhoto(input: {
+  imageUrl: string
+  caption: string
+}): Promise<FacebookPublishResult> {
+  const config = getFacebookConfig()
+  if (!config) {
+    return { ok: false, skipped: true, reason: 'FB_PAGE_ID or FB_PAGE_ACCESS_TOKEN not set' }
+  }
+
+  const invalid = validatePublicAssetUrl(input.imageUrl)
+  if (invalid) return invalid
+  const normalizedUrl = normalizeAssetUrl(input.imageUrl)
+
+  try {
+    const params = new URLSearchParams()
+    params.append('access_token', config.accessToken)
+    params.append('url', normalizedUrl)
+    params.append('published', 'true')
+    params.append('message', input.caption)
+
+    const data = await postForm(`https://graph.facebook.com/${FB_GRAPH_VERSION}/${config.pageId}/photos`, params)
+    return { ok: true, postId: String(data.post_id || data.id || '') || undefined }
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error)
+    console.error('[Facebook] Failed to publish page photo:', error)
+    return { ok: false, skipped: false, error: msg }
+  }
+}
+
+export async function publishFacebookPageText(input: {
+  message: string
+}): Promise<FacebookPublishResult> {
+  const config = getFacebookConfig()
+  if (!config) {
+    return { ok: false, skipped: true, reason: 'FB_PAGE_ID or FB_PAGE_ACCESS_TOKEN not set' }
+  }
+
+  try {
+    const params = new URLSearchParams()
+    params.append('access_token', config.accessToken)
+    params.append('message', input.message)
+
+    const data = await postForm(`https://graph.facebook.com/${FB_GRAPH_VERSION}/${config.pageId}/feed`, params)
+    return { ok: true, postId: String(data.post_id || data.id || '') || undefined }
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error)
+    console.error('[Facebook] Failed to publish page text:', error)
     return { ok: false, skipped: false, error: msg }
   }
 }

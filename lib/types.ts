@@ -1,5 +1,6 @@
 export type MatchStatus = 'upcoming' | 'live' | 'finished' | 'cancelled'
 export type FeedQueueStatus = 'queued' | 'imported' | 'dismissed'
+export type SocialPostType = 'daily_schedule' | 'daily_results' | 'story'
 
 export type AssetType = 'artwork' | 'card'
 export type AssetVariant = 'prediction' | 'result'
@@ -87,6 +88,21 @@ export interface AutomationRunRecord {
   payload: unknown
   started_at: string
   finished_at: string | null
+}
+
+export interface SocialPublicationRecord {
+  id: number
+  post_type: SocialPostType
+  platform: string
+  dedupe_key: string
+  status: string
+  message: string | null
+  asset_url: string | null
+  external_post_id: string | null
+  payload: unknown
+  created_at: string
+  updated_at: string
+  published_at: string | null
 }
 
 export interface MatchInput {

@@ -190,6 +190,24 @@ async function ensureSchemaInner() {
   `
 
   await sql`
+    CREATE TABLE IF NOT EXISTS social_publications (
+      id SERIAL PRIMARY KEY,
+      post_type TEXT NOT NULL,
+      platform TEXT NOT NULL DEFAULT 'facebook',
+      dedupe_key TEXT NOT NULL UNIQUE,
+      status TEXT NOT NULL DEFAULT 'pending',
+      message TEXT,
+      asset_url TEXT,
+      external_post_id TEXT,
+      payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+      published_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      CONSTRAINT social_publications_post_type_check CHECK (post_type IN ('daily_schedule', 'daily_results', 'story'))
+    )
+  `
+
+  await sql`
     CREATE TABLE IF NOT EXISTS feed_sync_items (
       id SERIAL PRIMARY KEY,
       external_id TEXT NOT NULL UNIQUE,
@@ -294,6 +312,13 @@ async function ensureSchemaInner() {
   await sql`
     CREATE OR REPLACE TRIGGER set_feed_sync_items_updated_at
     BEFORE UPDATE ON feed_sync_items
+    FOR EACH ROW
+    EXECUTE FUNCTION set_updated_at();
+  `
+
+  await sql`
+    CREATE OR REPLACE TRIGGER set_social_publications_updated_at
+    BEFORE UPDATE ON social_publications
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
   `
