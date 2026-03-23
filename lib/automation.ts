@@ -6,7 +6,7 @@ import { getMatch, listMatches, listMatchIdsNeedingAssetGeneration } from './mat
 import { getActivePublishStatus, isPublishedStatus } from './publish'
 import { AssetRecord, AssetVariant, MatchRecord } from './types'
 import { publishToFacebookStory } from './facebook'
-import { generateDailyResultsPost, generateDailySchedulePost, runDailyFacebookPosts } from './social-publications'
+import { generateDailyResultsPost, generateDailySchedulePost, generateFacebookMatchPost, runDailyFacebookPosts } from './social-publications'
 import { renderTextAsSvgPath } from './text-to-path'
 
 const DEFAULT_WEBHOOK_TIMEOUT_MS = 10000
@@ -792,6 +792,17 @@ export async function runDailyResultsFacebookPost() {
   const result = await generateDailyResultsPost()
   await logAutomationRun(
     'facebook_daily_results',
+    result.status === 'failed' ? 'failed' : result.skipped ? 'skipped' : 'success',
+    result.message,
+    result
+  )
+  return result
+}
+
+export async function runMatchFacebookPost() {
+  const result = await generateFacebookMatchPost()
+  await logAutomationRun(
+    'facebook_match_post',
     result.status === 'failed' ? 'failed' : result.skipped ? 'skipped' : 'success',
     result.message,
     result

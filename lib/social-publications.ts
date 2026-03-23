@@ -4,12 +4,15 @@ import { ensureSchema } from './db'
 import { publishFacebookPagePhoto, publishFacebookPageText } from './facebook'
 import { listMatches } from './matches'
 import { getActivePublishStatus, isPublishedStatus } from './publish'
-import { MatchRecord, SocialPostType, SocialPublicationRecord } from './types'
+import { AssetVariant, MatchRecord, SocialPostType, SocialPublicationRecord } from './types'
 
 const DEFAULT_DAILY_POST_MATCH_LIMIT = 5
 const DEFAULT_DAILY_SCHEDULE_WINDOW_HOURS = 24
 const DEFAULT_DAILY_RESULTS_LOOKBACK_HOURS = 24
 const DEFAULT_SOCIAL_TIMEZONE = 'Asia/Colombo'
+const DEFAULT_DAILY_SCHEDULE_HOUR_LOCAL = 8
+const DEFAULT_DAILY_RESULTS_HOUR_LOCAL = 20
+const DEFAULT_MATCH_POST_RECENCY_HOURS = 72
 
 type DailyPostKind = Extract<SocialPostType, 'daily_schedule' | 'daily_results'>
 
@@ -18,6 +21,21 @@ export interface DailyFacebookPostResult {
   selectedMatchIds: number[]
   selectedCount: number
   dedupeKey: string
+  skipped: boolean
+  skipReason?: string
+  facebookPostId?: string
+  publicationId?: number
+  assetUrl?: string | null
+  message: string
+  status: 'published' | 'skipped' | 'failed'
+}
+
+export interface MatchFacebookPostResult {
+  postType: 'match_post'
+  matchId?: number
+  assetId?: number
+  assetVariant?: AssetVariant
+  dedupeKey?: string
   skipped: boolean
   skipReason?: string
   facebookPostId?: string
@@ -51,6 +69,13 @@ function getEnvNumber(name: string, fallback: number) {
   return Number.isFinite(value) && value > 0 ? value : fallback
 }
 
+function getEnvBoolean(name: string, fallback: boolean) {
+  const value = process.env[name]
+  if (value == null || value.trim() === '') return fallback
+  const normalized = value.trim().toLowerCase()
+  return !['false', '0', 'off', 'no'].includes(normalized)
+}
+
 function getLocalDateKey(date = new Date()) {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: getTimezone(),
@@ -79,6 +104,16 @@ function formatMatchTime(matchTime: string) {
     hour: 'numeric',
     minute: '2-digit',
   }).format(date)
+}
+
+function getLocalHour(date = new Date()) {
+  const formatted = new Intl.DateTimeFormat('en-US', {
+    timeZone: getTimezone(),
+    hour: 'numeric',
+    hour12: false,
+  }).format(date)
+
+  return Number(formatted)
 }
 
 function normalizeKeyPart(value: string | null | undefined) {
@@ -323,7 +358,7 @@ async function findPublicationByDedupeKey(dedupeKey: string) {
 }
 
 async function createPendingPublication(input: {
-  postType: DailyPostKind
+  postType: SocialPostType
   dedupeKey: string
   payload: Record<string, unknown>
 }) {
@@ -346,6 +381,85 @@ async function createPendingPublication(input: {
     RETURNING *
   `
   return rows[0]
+}
+
+function getMatchPostCaption(match: MatchRecord, variant: AssetVariant) {
+  const matchUrl = `${getBaseUrl()}/?match=${match.id}`
+  const dateLabel = formatMatchTime(match.match_time)
+
+  if (variant === 'result') {
+    return [
+      `Final verdict: ${match.team1} vs ${match.team2}.`,
+      resultLine(match),
+      '',
+      'Did the crowd call it right, or did this one flip the script?',
+      `See the latest card and drop your take: ${matchUrl}`,
+    ].join('\n')
+  }
+
+  return [
+    `Battle card drop: ${match.team1} vs ${match.team2}.`,
+    `${dateLabel}${match.venue ? ` • ${match.venue}` : ''}`,
+    '',
+    'Who are you backing in this clash?',
+    `Comment your pick and open the matchup: ${matchUrl}`,
+  ].join('\n')
+}
+
+function isReservedDailyPostHour(date = new Date()) {
+  if (!getEnvBoolean('FB_DAILY_POSTS_ENABLED', true)) {
+    return false
+  }
+  const localHour = getLocalHour(date)
+  const scheduleHour = getEnvNumber('FB_DAILY_SCHEDULE_HOUR_LOCAL', DEFAULT_DAILY_SCHEDULE_HOUR_LOCAL)
+  const resultsHour = getEnvNumber('FB_DAILY_RESULTS_HOUR_LOCAL', DEFAULT_DAILY_RESULTS_HOUR_LOCAL)
+  return localHour === scheduleHour || localHour === resultsHour
+}
+
+async function selectNextMatchPostCandidate() {
+  await ensureSchema()
+  const recencyHours = getEnvNumber('FB_MATCH_POST_RECENCY_HOURS', DEFAULT_MATCH_POST_RECENCY_HOURS)
+  const { rows } = await sql<(MatchRecord & {
+    asset_id: number
+    asset_variant: AssetVariant
+    asset_caption: string | null
+    asset_published_at: string
+  })>`
+    SELECT
+      m.*,
+      ga.id AS asset_id,
+      ga.asset_variant AS asset_variant,
+      ga.publication_caption AS asset_caption,
+      ga.published_at AS asset_published_at
+    FROM generated_assets ga
+    INNER JOIN matches m
+      ON m.id = ga.match_id
+    WHERE LOWER(TRIM(ga.published_status)) = 'published'
+      AND ga.asset_type = 'card'
+      AND ga.published_at IS NOT NULL
+      AND ga.published_at >= NOW() - (${recencyHours} * INTERVAL '1 hour')
+      AND m.status <> 'cancelled'
+      AND (
+        (ga.asset_variant = 'prediction' AND m.status IN ('upcoming', 'live'))
+        OR (ga.asset_variant = 'result' AND m.status = 'finished')
+      )
+      AND NOT EXISTS (
+        SELECT 1
+        FROM social_publications sp
+        WHERE sp.dedupe_key = CONCAT('facebook:match_post:asset:', ga.id::text)
+      )
+    ORDER BY
+      CASE
+        WHEN ga.asset_variant = 'result' AND m.status = 'finished' THEN 0
+        WHEN ga.asset_variant = 'prediction' AND m.status IN ('upcoming', 'live') THEN 1
+        ELSE 2
+      END,
+      ga.published_at DESC,
+      ga.id DESC
+    LIMIT 1
+  `
+
+  return rows[0] || null
 }
 
 async function updatePublicationAsset(publicationId: number, assetUrl: string, payload: Record<string, unknown>) {
@@ -560,6 +674,133 @@ export async function generateDailySchedulePost() {
 
 export async function generateDailyResultsPost() {
   return runDailyPost('daily_results')
+}
+
+export async function generateFacebookMatchPost(): Promise<MatchFacebookPostResult> {
+  if (!getEnvBoolean('FB_MATCH_POSTS_ENABLED', true)) {
+    return {
+      postType: 'match_post',
+      skipped: true,
+      skipReason: 'FB_MATCH_POSTS_ENABLED is disabled',
+      message: 'Facebook match posts are disabled.',
+      status: 'skipped',
+    }
+  }
+
+  if (isReservedDailyPostHour()) {
+    return {
+      postType: 'match_post',
+      skipped: true,
+      skipReason: 'Reserved for daily Facebook schedule/results posts.',
+      message: 'Skipped match post because this hour is reserved for daily summary posts.',
+      status: 'skipped',
+    }
+  }
+
+  const candidate = await selectNextMatchPostCandidate()
+  if (!candidate) {
+    return {
+      postType: 'match_post',
+      skipped: true,
+      skipReason: 'No eligible published match cards are waiting for a page post.',
+      message: 'Skipped: no eligible published match cards are waiting for a page post.',
+      status: 'skipped',
+    }
+  }
+
+  const dedupeKey = `facebook:match_post:asset:${candidate.asset_id}`
+  const existing = await findPublicationByDedupeKey(dedupeKey)
+  if (existing) {
+    return {
+      postType: 'match_post',
+      matchId: candidate.id,
+      assetId: candidate.asset_id,
+      assetVariant: candidate.asset_variant,
+      dedupeKey,
+      skipped: true,
+      skipReason: 'This asset already has a Facebook page post.',
+      facebookPostId: existing.external_post_id || undefined,
+      publicationId: existing.id,
+      assetUrl: existing.asset_url,
+      message: existing.message || 'Already processed',
+      status: existing.status === 'published' ? 'published' : 'skipped',
+    }
+  }
+
+  const caption = candidate.asset_caption?.trim() || getMatchPostCaption(candidate, candidate.asset_variant)
+  const assetUrl = `${getBaseUrl()}/api/assets/${candidate.asset_id}?format=png`
+  const publication = await createPendingPublication({
+    postType: 'match_post',
+    dedupeKey,
+    payload: {
+      matchId: candidate.id,
+      assetId: candidate.asset_id,
+      assetVariant: candidate.asset_variant,
+      caption,
+    },
+  })
+
+  const facebook = await publishFacebookPagePhoto({ imageUrl: assetUrl, caption })
+
+  if (facebook.ok) {
+    await finalizePublication(publication.id, {
+      status: 'published',
+      message: `Published ${candidate.asset_variant} card post to Facebook.`,
+      externalPostId: facebook.postId,
+      assetUrl,
+      payload: {
+        matchId: candidate.id,
+        assetId: candidate.asset_id,
+        assetVariant: candidate.asset_variant,
+        caption,
+      },
+    })
+
+    return {
+      postType: 'match_post',
+      matchId: candidate.id,
+      assetId: candidate.asset_id,
+      assetVariant: candidate.asset_variant,
+      dedupeKey,
+      skipped: false,
+      facebookPostId: facebook.postId,
+      publicationId: publication.id,
+      assetUrl,
+      message: `Published ${candidate.asset_variant} card post to Facebook.`,
+      status: 'published',
+    }
+  }
+
+  const message = facebook.skipped
+    ? `Facebook skipped: ${facebook.reason}`
+    : `Facebook failed: ${facebook.error}`
+
+  await finalizePublication(publication.id, {
+    status: facebook.skipped ? 'skipped' : 'failed',
+    message,
+    assetUrl,
+    payload: {
+      matchId: candidate.id,
+      assetId: candidate.asset_id,
+      assetVariant: candidate.asset_variant,
+      caption,
+      facebook,
+    },
+  })
+
+  return {
+    postType: 'match_post',
+    matchId: candidate.id,
+    assetId: candidate.asset_id,
+    assetVariant: candidate.asset_variant,
+    dedupeKey,
+    skipped: facebook.skipped,
+    skipReason: facebook.skipped ? facebook.reason : facebook.error,
+    publicationId: publication.id,
+    assetUrl,
+    message,
+    status: facebook.skipped ? 'skipped' : 'failed',
+  }
 }
 
 export async function runDailyFacebookPosts() {

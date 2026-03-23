@@ -1,6 +1,6 @@
 export type MatchStatus = 'upcoming' | 'live' | 'finished' | 'cancelled'
 export type FeedQueueStatus = 'queued' | 'imported' | 'dismissed'
-export type SocialPostType = 'daily_schedule' | 'daily_results' | 'story'
+export type SocialPostType = 'daily_schedule' | 'daily_results' | 'story' | 'match_post'
 
 export type AssetType = 'artwork' | 'card'
 export type AssetVariant = 'prediction' | 'result'

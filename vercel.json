@@ -5,6 +5,10 @@
       "schedule": "0 * * * *"
     },
     {
+      "path": "/api/automation/facebook/match-post",
+      "schedule": "30 * * * *"
+    },
+    {
       "path": "/api/automation/facebook/daily-schedule",
       "schedule": "30 2 * * *"
     },

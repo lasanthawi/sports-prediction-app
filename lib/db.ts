@@ -203,8 +203,19 @@ async function ensureSchemaInner() {
       published_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      CONSTRAINT social_publications_post_type_check CHECK (post_type IN ('daily_schedule', 'daily_results', 'story'))
+      CONSTRAINT social_publications_post_type_check CHECK (post_type IN ('daily_schedule', 'daily_results', 'story', 'match_post'))
     )
+  `
+
+  await sql`
+    ALTER TABLE social_publications
+    DROP CONSTRAINT IF EXISTS social_publications_post_type_check
+  `
+
+  await sql`
+    ALTER TABLE social_publications
+    ADD CONSTRAINT social_publications_post_type_check
+    CHECK (post_type IN ('daily_schedule', 'daily_results', 'story', 'match_post'))
   `
 
   await sql`
