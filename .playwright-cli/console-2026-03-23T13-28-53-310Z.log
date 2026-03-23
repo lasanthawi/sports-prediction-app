@@ -1,0 +1,76 @@
+[  201299ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/api/perf:0
+[  201305ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/api/perf:0
+[  201811ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/api/perf:0
+[  201821ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/api/perf:0
+[  202874ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/api/perf:0
+[  202877ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/api/perf:0
+[  203832ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/api/perf:0
+[  203846ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/api/perf:0
+[  206650ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/perf:0
+[  206650ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/perf:0
+[  206671ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/perf:0
+[  206671ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/perf:0
+[  206739ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/?_rsc=1xuj0:0
+[  206784ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/?_rsc=1xuj0:0
+[  206826ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/perf:0
+[  206851ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/api/perf:0
+[  207099ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/:0
+[  208986ms] Error: Cannot find module './1638.js'
+Require stack:
+- C:\Users\deepa\Documents\GitHub\sports-prediction-app\.next\server\webpack-runtime.js
+- C:\Users\deepa\Documents\GitHub\sports-prediction-app\.next\server\pages\_document.js
+- C:\Users\deepa\Documents\GitHub\sports-prediction-app\node_modules\next\dist\server\require.js
+- C:\Users\deepa\Documents\GitHub\sports-prediction-app\node_modules\next\dist\server\load-components.js
+- C:\Users\deepa\Documents\GitHub\sports-prediction-app\node_modules\next\dist\build\utils.js
+- C:\Users\deepa\Documents\GitHub\sports-prediction-app\node_modules\next\dist\server\dev\hot-middleware.js
+- C:\Users\deepa\Documents\GitHub\sports-prediction-app\node_modules\next\dist\server\dev\hot-reloader-webpack.js
+- C:\Users\deepa\Documents\GitHub\sports-prediction-app\node_modules\next\dist\server\lib\router-utils\setup-dev-bundler.js
+- C:\Users\deepa\Documents\GitHub\sports-prediction-app\node_modules\next\dist\server\lib\router-server.js
+- C:\Users\deepa\Documents\GitHub\sports-prediction-app\node_modules\next\dist\server\lib\start-server.js
+    at Module.<anonymous> (node:internal/modules/cjs/loader:1448:15)
+    at <unknown> (file://C:\Users\deepa\Documents\GitHub\sports-prediction-app\node_modules\next\dist\server\require-hook.js:55:36)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1059:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1064:22)
+    at Module._load (node:internal/modules/cjs/loader:1234:25)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)
+    at Module.<anonymous> (node:internal/modules/cjs/loader:1548:12)
+    at mod.require (file://C:\Users\deepa\Documents\GitHub\sports-prediction-app\node_modules\next\dist\server\require-hook.js:65:28)
+    at require (node:internal/modules/helpers:152:16)
+    at __webpack_require__.f.require (file://C:\Users\deepa\Documents\GitHub\sports-prediction-app\.next\server\webpack-runtime.js:198:28)
+    at <unknown> (file://C:\Users\deepa\Documents\GitHub\sports-prediction-app\.next\server\webpack-runtime.js:111:40)
+    at Array.reduce (<anonymous>)
+    at __webpack_require__.e (file://C:\Users\deepa\Documents\GitHub\sports-prediction-app\.next\server\webpack-runtime.js:110:67)
+    at Array.map (<anonymous>)
+    at __webpack_require__.X (file://C:\Users\deepa\Documents\GitHub\sports-prediction-app\.next\server\webpack-runtime.js:162:22)
+    at <unknown> (file://C:\Users\deepa\Documents\GitHub\sports-prediction-app\.next\server\app\page.js:26:14739)
+    at Object.<anonymous> (file://C:\Users\deepa\Documents\GitHub\sports-prediction-app\.next\server\app\page.js:26:14806)
+    at Module._compile (node:internal/modules/cjs/loader:1804:14)
+    at Object..js (node:internal/modules/cjs/loader:1936:10)
+    at Module.load (node:internal/modules/cjs/loader:1525:32)
+    at Module._load (node:internal/modules/cjs/loader:1327:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)
+    at Module.<anonymous> (node:internal/modules/cjs/loader:1548:12)
+    at mod.require (file://C:\Users\deepa\Documents\GitHub\sports-prediction-app\node_modules\next\dist\server\require-hook.js:65:28)
+    at require (node:internal/modules/helpers:152:16)
+    at requirePage (file://C:\Users\deepa\Documents\GitHub\sports-prediction-app\node_modules\next\dist\server\require.js:109:84)
+    at <unknown> (file://C:\Users\deepa\Documents\GitHub\sports-prediction-app\node_modules\next\dist\server\load-components.js:74:84)
+    at async loadComponentsImpl (file://C:\Users\deepa\Documents\GitHub\sports-prediction-app\node_modules\next\dist\server\load-components.js:74:26)
+    at async DevServer.findPageComponentsImpl (file://C:\Users\deepa\Documents\GitHub\sports-prediction-app\node_modules\next\dist\server\next-server.js:675:36)
+[  209098ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/favicon.ico:0
+[  261441ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ webpack-internal:///./node_modules/next/dist/client/dev/error-overlay/websocket.js:76
+[  264807ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ webpack-internal:///./node_modules/next/dist/client/dev/error-overlay/websocket.js:76
+[  268187ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ webpack-internal:///./node_modules/next/dist/client/dev/error-overlay/websocket.js:76
+[  271567ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ webpack-internal:///./node_modules/next/dist/client/dev/error-overlay/websocket.js:76
+[  274936ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ webpack-internal:///./node_modules/next/dist/client/dev/error-overlay/websocket.js:76
+[  282271ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ webpack-internal:///./node_modules/next/dist/client/dev/error-overlay/websocket.js:76
+[  289643ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ webpack-internal:///./node_modules/next/dist/client/dev/error-overlay/websocket.js:76
+[  297021ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ webpack-internal:///./node_modules/next/dist/client/dev/error-overlay/websocket.js:76
+[  304376ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ webpack-internal:///./node_modules/next/dist/client/dev/error-overlay/websocket.js:76
+[  311730ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ webpack-internal:///./node_modules/next/dist/client/dev/error-overlay/websocket.js:76
+[  319110ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ webpack-internal:///./node_modules/next/dist/client/dev/error-overlay/websocket.js:76
+[  326484ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ webpack-internal:///./node_modules/next/dist/client/dev/error-overlay/websocket.js:76
+[  333869ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ webpack-internal:///./node_modules/next/dist/client/dev/error-overlay/websocket.js:76
+[  342297ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/_next/static/webpack/ddf53db02a60ff25.webpack.hot-update.json:0
+[  342297ms] [WARNING] [Fast Refresh] performing full reload because your application had an unrecoverable error @ webpack-internal:///./node_modules/next/dist/client/dev/error-overlay/hot-dev-client.js:299
