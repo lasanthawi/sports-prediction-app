@@ -505,24 +505,49 @@ async function createPendingPublication(input: {
 function getMatchPostCaption(match: MatchRecord, variant: AssetVariant) {
   const matchUrl = `${getBaseUrl()}/?match=${match.id}`
   const dateLabel = formatMatchTime(match.match_time)
+  const competitionLine = [match.sport, match.league].filter(Boolean).join(' - ')
+  const venueLine = match.venue?.trim() || 'Venue to be confirmed'
+  const rivalryLine = match.rivalry_tagline?.trim() || `${match.team1} vs ${match.team2}. One crown.`
+  const statusLabel =
+    variant === 'result'
+      ? 'Final result now available'
+      : match.status === 'live'
+        ? 'This matchup is live right now'
+        : 'Upcoming featured matchup'
 
   if (variant === 'result') {
     return [
-      `Final verdict: ${match.team1} vs ${match.team2}.`,
-      resultLine(match),
+      `FINAL VERDICT: ${match.team1} vs ${match.team2}`,
+      '',
+      competitionLine,
+      `Kickoff: ${dateLabel}`,
+      `Venue: ${venueLine}`,
+      `Status: ${statusLabel}`,
+      '',
+      `Result: ${resultLine(match)}`,
+      match.result_summary?.trim() ? `Match summary: ${match.result_summary.trim()}` : null,
+      `Storyline: ${rivalryLine}`,
       '',
       'Did the crowd call it right, or did this one flip the script?',
-      `See the latest card and drop your take: ${matchUrl}`,
-    ].join('\n')
+      `Open the full match card and share your take: ${matchUrl}`,
+    ].filter(Boolean).join('\n')
   }
 
   return [
-    `Battle card drop: ${match.team1} vs ${match.team2}.`,
-    `${dateLabel}${match.venue ? ` • ${match.venue}` : ''}`,
+    `MATCH SPOTLIGHT: ${match.team1} vs ${match.team2}`,
+    '',
+    competitionLine,
+    `Start time: ${dateLabel}`,
+    `Venue: ${venueLine}`,
+    `Status: ${statusLabel}`,
+    '',
+    `Storyline: ${rivalryLine}`,
+    `Why it matters: ${match.team1} and ${match.team2} step into the arena with momentum, pressure, and everything to prove.`,
     '',
     'Who are you backing in this clash?',
-    `Comment your pick and open the matchup: ${matchUrl}`,
+    `Comment your prediction and open the full matchup here: ${matchUrl}`,
   ].join('\n')
+
 }
 
 function isReservedDailyPostHour(date = new Date()) {
