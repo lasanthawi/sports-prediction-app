@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server'
-import sharp from 'sharp'
-import { getAsset, getCardSvgForPublish } from '@/lib/automation'
-import { replaceTextWithPaths } from '@/lib/text-to-path'
+import { getAsset } from '@/lib/automation'
 
 const STORY_WIDTH = 1080
 const STORY_HEIGHT = 1920
@@ -15,6 +13,7 @@ interface RouteContext {
 
 /** Replace embedded data:image/* in SVG with data:image/png;base64 so sharp/librsvg renders them. */
 async function inlineEmbeddedImagesAsPng(svgBuffer: Buffer): Promise<Buffer> {
+  const { default: sharp } = await import('sharp')
   const str = svgBuffer.toString('utf8')
   let out = str
   const attrs = ['href', 'xlink:href']
@@ -72,6 +71,11 @@ export async function GET(request: Request, { params }: RouteContext) {
 
   if (formatPng && isSvg) {
     try {
+      const [{ default: sharp }, { getCardSvgForPublish }, { replaceTextWithPaths }] = await Promise.all([
+        import('sharp'),
+        import('@/lib/automation'),
+        import('@/lib/text-to-path'),
+      ])
       const cardSvg =
         asset.asset_type === 'card'
           ? await getCardSvgForPublish(id)

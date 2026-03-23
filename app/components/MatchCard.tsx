@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react'
 import { Clock3, MapPin, Sparkles, TrendingUp, Zap } from 'lucide-react'
+import { formatMatchDateTime } from '@/lib/date-format'
 
 interface MatchCardProps {
   match: {
@@ -337,13 +338,7 @@ function isRenderableImageUrl(value?: string | null) {
 }
 
 function formatMatchTime(matchTime: string) {
-  return new Date(matchTime).toLocaleString(undefined, {
-    weekday: 'short',
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  return formatMatchDateTime(matchTime)
 }
 
 function formatCountdown(timeLeft: CountdownState) {

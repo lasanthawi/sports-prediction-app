@@ -10,6 +10,7 @@ import MatchCard from '@/app/components/MatchCard'
 import SiteFooter from '@/app/components/SiteFooter'
 import VotedMatchCard from '@/app/components/VotedMatchCard'
 import { BRAND } from '@/lib/brand'
+import { formatMatchDateTime } from '@/lib/date-format'
 import type { HomePageData, HomePageMatchRecord } from '@/lib/homepage'
 import { buildArenaMatchStack, sortMatchesForArena } from '@/lib/homepage'
 
@@ -720,13 +721,7 @@ function MiniMatchCard({ match }: { match: HomePageMatchRecord }) {
   const totalVotes = match.poll_team1_votes + match.poll_team2_votes
   const summaryParts = [match.sport, match.league, match.venue].filter(Boolean)
   const summaryLine = summaryParts.length > 0 ? summaryParts.join(' · ') : match.sport
-  const timeStr = new Date(match.match_time).toLocaleString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  })
+  const timeStr = formatMatchDateTime(match.match_time)
 
   return (
     <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-3">

@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react'
 import Link from 'next/link'
+import { formatMatchDate } from '@/lib/date-format'
 
 interface VotedMatchCardProps {
   match: any
@@ -69,7 +70,7 @@ export default function VotedMatchCard({ match, className = '' }: VotedMatchCard
       <div className="absolute inset-0 flex flex-col p-4 z-10">
         <div className="flex justify-between items-center text-[10px] uppercase tracking-[0.2em] font-black text-white/80 mb-auto drop-shadow-md">
           <span className="truncate pr-2">{match.league || match.sport}</span>
-          <span className="shrink-0 opacity-70 border border-white/20 px-2 py-0.5 rounded-full">{new Date(match.match_time).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+          <span className="shrink-0 opacity-70 border border-white/20 px-2 py-0.5 rounded-full">{formatMatchDate(match.match_time)}</span>
         </div>
         
         <div className="mt-auto space-y-3">
