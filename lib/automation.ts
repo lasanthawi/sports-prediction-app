@@ -1,4 +1,5 @@
 import { sql } from '@vercel/postgres'
+import { getAsset } from './assets'
 import { ensureSchema } from './db'
 import { fetchConfiguredFeedMatches, importFeedQueueItem, listFeedQueueItemIdsForAutomation, stageFeedMatches } from './feed'
 import { buildGeminiPrompt, generateGeminiPortraitArtwork, getPromptVersion } from './gemini'
@@ -881,16 +882,6 @@ export async function listAutomationRuns(limit = 10) {
     LIMIT ${limit}
   `
   return rows
-}
-
-export async function getAsset(id: number) {
-  await ensureSchema()
-  const { rows } = await sql<AssetRecord>`
-    SELECT *
-    FROM generated_assets
-    WHERE id = ${id}
-  `
-  return rows[0] || null
 }
 
 export async function regenerateAssetBundle(matchId: number, variant?: AssetVariant) {

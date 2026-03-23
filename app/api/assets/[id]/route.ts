@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getAsset } from '@/lib/automation'
+import { getAsset } from '@/lib/assets'
 
 const STORY_WIDTH = 1080
 const STORY_HEIGHT = 1920

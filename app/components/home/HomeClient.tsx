@@ -55,6 +55,7 @@ export default function HomeClient({
   const [nowMs, setNowMs] = useState(initialNowMs)
   const voteModeCloseRequestedRef = useRef(false)
   const reportedMetricIdsRef = useRef(new Set<string>())
+  const [mobileBattleSlide, setMobileBattleSlide] = useState(0)
 
   useReportWebVitals((metric) => {
     if (reportedMetricIdsRef.current.has(metric.id)) {
@@ -185,10 +186,15 @@ export default function HomeClient({
   const spotlightResult = [...finishedMatches].sort((a, b) => (b.poll_team1_votes + b.poll_team2_votes) - (a.poll_team1_votes + a.poll_team2_votes))[0]
   const maxDesktopSlide = Math.max(0, arenaMatches.length - 1)
   const hasInfiniteSlider = arenaMatches.length > 1
+  const maxMobileBattleSlide = Math.max(0, mobileVotingMatches.length - 1)
 
   useEffect(() => {
     setDesktopSlide((current) => Math.min(current, maxDesktopSlide))
   }, [maxDesktopSlide])
+
+  useEffect(() => {
+    setMobileBattleSlide((current) => Math.min(current, maxMobileBattleSlide))
+  }, [maxMobileBattleSlide])
 
   useEffect(() => {
     const matchParam = searchParams.get('match')
@@ -273,9 +279,12 @@ export default function HomeClient({
         error={error}
         refreshing={refreshing}
         currentTimeMs={nowMs}
+        currentBattleSlide={mobileBattleSlide}
         onOpenMatch={openMatchViewer}
         onOpenResultDetail={setResultDetailMatchId}
         onRefresh={() => void refreshHomeData()}
+        onPreviousBattle={() => setMobileBattleSlide((current) => (current - 1 + mobileVotingMatches.length) % mobileVotingMatches.length)}
+        onNextBattle={() => setMobileBattleSlide((current) => (current + 1) % mobileVotingMatches.length)}
       />
 
       <div className="relative mx-auto hidden max-w-[1380px] px-4 py-6 md:block md:px-8 md:py-8">
@@ -550,9 +559,12 @@ function MobileArenaApp({
   error,
   refreshing,
   currentTimeMs,
+  currentBattleSlide,
   onOpenMatch,
   onOpenResultDetail,
   onRefresh,
+  onPreviousBattle,
+  onNextBattle,
 }: {
   matches: HomePageMatchRecord[]
   finishedMatches: HomePageMatchRecord[]
@@ -563,10 +575,16 @@ function MobileArenaApp({
   error: string
   refreshing: boolean
   currentTimeMs: number
+  currentBattleSlide: number
   onOpenMatch: (matchId: number) => void
   onOpenResultDetail: (matchId: number) => void
   onRefresh: () => void
+  onPreviousBattle: () => void
+  onNextBattle: () => void
 }) {
+  const activeBattleMatch = matches[currentBattleSlide] || null
+  const hasBattleCarousel = matches.length > 1
+
   return (
     <div className="mobile-arena-shell md:hidden">
       <div className="mobile-arena-topbar">
@@ -603,25 +621,54 @@ function MobileArenaApp({
       <section style={MOBILE_SECTION_STYLE}>
         <div className="mb-3 flex items-center justify-between">
           <p className="text-xs font-bold uppercase tracking-[0.24em] text-white/55">Battle Cards</p>
-          <span className="text-[0.65rem] uppercase tracking-[0.18em] text-white/40">Tap to vote</span>
+          <span className="text-[0.65rem] uppercase tracking-[0.18em] text-white/40">
+            {matches.length > 0 ? `${currentBattleSlide + 1} / ${matches.length}` : 'Tap to vote'}
+          </span>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          {matches.length > 0 ? matches.map((match, index) => (
-            <MatchCard
-              key={match.id}
-              match={match}
-              onCardClick={() => onOpenMatch(match.id)}
-              compact
-              interactive
-              priorityArtwork={index === 0}
-              countdownActive={index === 0}
-              currentTimeMs={currentTimeMs}
-              className="!min-h-0"
-            />
-          )) : (
-            <div className="glass-panel col-span-2 p-5 text-sm text-white/60">No published battle cards are visible yet.</div>
-          )}
-        </div>
+        {activeBattleMatch ? (
+          <div className="space-y-3">
+            <div className="overflow-hidden rounded-[1.8rem]">
+              <MatchCard
+                key={activeBattleMatch.id}
+                match={activeBattleMatch}
+                onCardClick={() => onOpenMatch(activeBattleMatch.id)}
+                interactive
+                priorityArtwork
+                countdownActive
+                currentTimeMs={currentTimeMs}
+                className="!min-h-0"
+              />
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={onPreviousBattle}
+                disabled={!hasBattleCarousel}
+                className="glass-button !rounded-2xl !px-4 !py-3 text-sm disabled:opacity-40"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <div className="flex items-center gap-2">
+                {matches.map((match, index) => (
+                  <span
+                    key={match.id}
+                    className={`h-2.5 rounded-full transition-all ${index === currentBattleSlide ? 'w-8 bg-green-300' : 'w-2.5 bg-white/25'}`}
+                  />
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={onNextBattle}
+                disabled={!hasBattleCarousel}
+                className="glass-button !rounded-2xl !px-4 !py-3 text-sm disabled:opacity-40"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="glass-panel p-5 text-sm text-white/60">No published battle cards are visible yet.</div>
+        )}
       </section>
 
       <section style={MOBILE_SECTION_STYLE}>
