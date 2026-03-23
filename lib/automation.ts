@@ -659,11 +659,26 @@ export async function publishReadyAssets() {
     ? configuredBatchSize
     : DEFAULT_PUBLISH_BATCH_SIZE
   const { rows } = await sql<AssetRecord>`
-    SELECT *
-    FROM generated_assets
-    WHERE published_status = 'ready'
-      AND asset_type = 'card'
-    ORDER BY created_at ASC
+    SELECT ga.*
+    FROM generated_assets ga
+    INNER JOIN matches m
+      ON m.id = ga.match_id
+    WHERE ga.published_status = 'ready'
+      AND ga.asset_type = 'card'
+    ORDER BY
+      CASE
+        WHEN ga.asset_variant = 'prediction' AND m.status = 'live' THEN 0
+        WHEN ga.asset_variant = 'prediction' AND m.status = 'upcoming' THEN 1
+        WHEN ga.asset_variant = 'result' AND m.status = 'finished' THEN 2
+        ELSE 3
+      END ASC,
+      CASE
+        WHEN ga.asset_variant = 'prediction' AND m.status = 'live' THEN ABS(EXTRACT(EPOCH FROM (NOW() - m.match_time)))
+        WHEN ga.asset_variant = 'prediction' AND m.status = 'upcoming' THEN ABS(EXTRACT(EPOCH FROM (m.match_time - NOW())))
+        WHEN ga.asset_variant = 'result' AND m.status = 'finished' THEN ABS(EXTRACT(EPOCH FROM (NOW() - m.match_time)))
+        ELSE EXTRACT(EPOCH FROM (NOW() - ga.created_at))
+      END ASC,
+      ga.created_at ASC
     LIMIT ${batchSize}
   `
 
@@ -715,6 +730,38 @@ async function generateAssetsForMatchesNeedingThem(): Promise<{ matchCount: numb
   return { matchCount: matches.length, assetCount: generated.length }
 }
 
+async function getBlockedVisibleLiveMatchesSummary() {
+  await ensureSchema()
+  const { rows } = await sql<{ blocked_count: number; sample_ids: number[] }>`
+    SELECT
+      COUNT(*)::int AS blocked_count,
+      COALESCE(ARRAY_AGG(id ORDER BY match_time ASC, id ASC) FILTER (WHERE rn <= 5), ARRAY[]::int[]) AS sample_ids
+    FROM (
+      SELECT
+        m.id,
+        m.match_time,
+        ROW_NUMBER() OVER (ORDER BY m.match_time ASC, m.id ASC) AS rn
+      FROM matches m
+      LEFT JOIN LATERAL (
+        SELECT published_status
+        FROM generated_assets ga
+        WHERE ga.match_id = m.id
+          AND ga.asset_type = 'card'
+          AND ga.asset_variant = 'prediction'
+        ORDER BY (CASE WHEN LOWER(TRIM(published_status)) = 'published' THEN 0 ELSE 1 END), id DESC
+        LIMIT 1
+      ) prediction_card ON TRUE
+      WHERE m.status = 'live'
+        AND LOWER(TRIM(COALESCE(prediction_card.published_status, 'draft'))) <> 'published'
+    ) blocked
+  `
+
+  return {
+    count: rows[0]?.blocked_count ?? 0,
+    sampleIds: rows[0]?.sample_ids ?? [],
+  }
+}
+
 /** Generate assets for all unpublished matches, then publish any ready assets. For hourly cron. */
 export async function runUnpublishedQueuePipeline() {
   await ensureSchema()
@@ -726,15 +773,18 @@ export async function runUnpublishedQueuePipeline() {
   const reconciled = await reconcileFeedQueueIntoMatches(reconcileBatchSize)
   const { matchCount: needingMatchCount, assetCount: needingAssetCount } = await generateAssetsForMatchesNeedingThem()
   const unpublished = await listUnpublishedMatches()
+  const blockedLive = await getBlockedVisibleLiveMatchesSummary()
   const publish = await publishReadyAssets()
 
-  await logAutomationRun('unpublished_queue', 'success', `Synced ${sync.count}, reconciled ${reconciled.count}, generated for ${needingMatchCount} matches needing assets, ${unpublished.length} unpublished remain; published ${publish.published}`, {
+  await logAutomationRun('unpublished_queue', 'success', `Synced ${sync.count}, reconciled ${reconciled.count}, generated for ${needingMatchCount} matches needing assets, ${unpublished.length} unpublished remain; blocked live cards ${blockedLive.count}; published ${publish.published}`, {
     syncedCount: sync.count,
     syncError: sync.error,
     reconciledCount: reconciled.count,
     reconcileBatchSize,
     needingGenerationCount: needingMatchCount,
     unpublishedCount: unpublished.length,
+    blockedVisibleLiveCount: blockedLive.count,
+    blockedVisibleLiveSampleIds: blockedLive.sampleIds,
     generatedCount: needingAssetCount,
     published: publish.published,
   })
@@ -744,6 +794,7 @@ export async function runUnpublishedQueuePipeline() {
     reconciled,
     needingGenerationCount: needingMatchCount,
     unpublishedCount: unpublished.length,
+    blockedVisibleLive: blockedLive,
     assets: { count: needingAssetCount },
     publish,
   }

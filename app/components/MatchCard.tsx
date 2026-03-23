@@ -32,8 +32,12 @@ interface MatchCardProps {
   compact?: boolean
   /** When true, artwork image loads with priority (e.g. current carousel slide). When false, use loading="lazy". Omit for default eager. */
   priorityArtwork?: boolean
-  /** Disable the live 1s countdown tick for off-screen cards to reduce mobile CPU/memory pressure. */
+  /** Disable countdown updates for off-screen cards to reduce mobile CPU/memory pressure. */
   countdownActive?: boolean
+  /** Shared ticker from the parent so only one interval is needed across the page. */
+  currentTimeMs?: number
+  /** Opt-in floating animation for the current hero card only. */
+  floating?: boolean
 }
 
 interface CountdownState {
@@ -54,41 +58,13 @@ export default function MatchCard({
   compact = false,
   priorityArtwork,
   countdownActive = true,
+  currentTimeMs,
+  floating = false,
 }: MatchCardProps) {
   const [voted, setVoted] = useState(false)
   const [selectedTeam, setSelectedTeam] = useState<number | null>(null)
-  const [timeLeft, setTimeLeft] = useState<CountdownState>({})
   const [voting, setVoting] = useState(false)
   const [votedFlash, setVotedFlash] = useState(false)
-
-  useEffect(() => {
-    if (!countdownActive) {
-      setTimeLeft({})
-      return
-    }
-
-    const updateCountdown = () => {
-      const now = Date.now()
-      const matchTime = new Date(match.match_time).getTime()
-      const distance = matchTime - now
-
-      if (distance <= 0) {
-        setTimeLeft({ expired: true })
-        return
-      }
-
-      setTimeLeft({
-        days: Math.floor(distance / (1000 * 60 * 60 * 24)),
-        hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-        minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
-        seconds: Math.floor((distance % (1000 * 60)) / 1000),
-      })
-    }
-
-    updateCountdown()
-    const timer = setInterval(updateCountdown, 1000)
-    return () => clearInterval(timer)
-  }, [countdownActive, match.match_time])
 
   const totalVotes = match.poll_team1_votes + match.poll_team2_votes
   const team1Percentage = totalVotes > 0 ? Math.round((match.poll_team1_votes / totalVotes) * 100) : 50
@@ -102,6 +78,7 @@ export default function MatchCard({
     match.status === 'finished'
       ? match.result_summary || 'Result locked in'
       : match.rivalry_tagline || `Who wins the battle of ${match.team1} and ${match.team2}?`
+  const timeLeft = getCountdownState(match.match_time, countdownActive ? currentTimeMs : undefined)
 
   async function handleVote(team: number) {
     if (!isVotingOpen || voting) {
@@ -139,7 +116,7 @@ export default function MatchCard({
 
   return (
     <article
-      className={`match-poster pack-enter ${votedFlash ? 'vote-burst' : 'pack-float'} ${!interactive ? 'admin-poster' : ''} ${onCardClick ? 'cursor-pointer' : ''} ${className}`}
+      className={`match-poster pack-enter ${votedFlash ? 'vote-burst' : floating ? 'pack-float' : ''} ${!interactive ? 'admin-poster' : ''} ${onCardClick ? 'cursor-pointer' : ''} ${className}`}
       onClick={onCardClick}
       role={onCardClick ? 'button' : undefined}
       tabIndex={onCardClick ? 0 : undefined}
@@ -150,15 +127,15 @@ export default function MatchCard({
         }
       } : undefined}
     >
-      <div className="poster-noise" />
-      <div className="poster-vignette" />
+      {!compact ? <div className="poster-noise" /> : null}
+      <div className={`poster-vignette ${compact ? 'poster-vignette-compact' : ''}`} />
       {backgroundArtworkUrl ? (
         <>
           <img
             src={backgroundArtworkUrl}
             alt=""
-            loading={priorityArtwork === false ? 'lazy' : 'eager'}
-            fetchPriority={priorityArtwork === true ? 'high' : undefined}
+            loading={priorityArtwork ? 'eager' : 'lazy'}
+            fetchPriority={priorityArtwork ? 'high' : undefined}
             className="absolute inset-0 h-full w-full object-cover object-center"
           />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,10,20,0.14)_0%,rgba(7,10,20,0.22)_20%,rgba(7,10,20,0.08)_50%,rgba(7,10,20,0.48)_100%)]" />
@@ -368,4 +345,20 @@ function formatCountdown(timeLeft: CountdownState) {
   }
 
   return `${String(timeLeft.days || 0).padStart(2, '0')}d ${String(timeLeft.hours || 0).padStart(2, '0')}h ${String(timeLeft.minutes || 0).padStart(2, '0')}m ${String(timeLeft.seconds || 0).padStart(2, '0')}s`
+}
+
+function getCountdownState(matchTime: string, nowMs = Date.now()): CountdownState {
+  const targetMs = new Date(matchTime).getTime()
+  const distance = targetMs - nowMs
+
+  if (!Number.isFinite(targetMs) || distance <= 0) {
+    return { expired: true }
+  }
+
+  return {
+    days: Math.floor(distance / (1000 * 60 * 60 * 24)),
+    hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+    minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
+    seconds: Math.floor((distance % (1000 * 60)) / 1000),
+  }
 }

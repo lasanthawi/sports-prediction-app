@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { generateAssetsForMatches } from '@/lib/automation'
+import { getHomePageData } from '@/lib/homepage'
 import { MatchInput } from '@/lib/types'
 import { createMatch, listMatches, listMatchesForPublic } from '@/lib/matches'
 
@@ -9,6 +10,29 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const includeAll = searchParams.get('includeAll') === '1'
+    const view = searchParams.get('view')
+
+    if (view === 'home' && !includeAll) {
+      const data = await getHomePageData()
+      console.info('[matches] home payload', {
+        live: data.counts.live,
+        upcoming: data.counts.upcoming,
+        finishedVisible: data.counts.finishedVisible,
+        votingMatches: data.votingMatches.length,
+        bytes: Buffer.byteLength(JSON.stringify(data), 'utf8'),
+      })
+
+      return NextResponse.json(
+        data,
+        {
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate',
+            Pragma: 'no-cache',
+          },
+        }
+      )
+    }
+
     const matches = includeAll ? await listMatches() : await listMatchesForPublic()
     return NextResponse.json(
       { matches },
