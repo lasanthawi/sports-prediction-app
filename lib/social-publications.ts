@@ -495,6 +495,19 @@ async function createPendingPublication(input: {
 }
 
 function getMatchPostCaption(match: MatchRecord, variant: AssetVariant) {
+  const icon = {
+    trophy: String.fromCodePoint(0x1f3c6),
+    stadium: String.fromCodePoint(0x1f3df, 0xfe0f),
+    calendar: String.fromCodePoint(0x1f4c5),
+    pin: String.fromCodePoint(0x1f4cd),
+    megaphone: String.fromCodePoint(0x1f4e3),
+    check: String.fromCodePoint(0x2705),
+    memo: String.fromCodePoint(0x1f4dd),
+    fire: String.fromCodePoint(0x1f525),
+    link: String.fromCodePoint(0x1f517),
+    globe: String.fromCodePoint(0x1f310),
+    sports: String.fromCodePoint(0x1f3c0),
+  }
   const matchUrl = `https://voteleague.org/?match=${match.id}`
   const dateLabel = formatMatchTime(match.match_time)
   const competitionLine = [match.sport, match.league].filter(Boolean).join(' - ')
@@ -544,6 +557,67 @@ function getMatchPostCaption(match: MatchRecord, variant: AssetVariant) {
     '🌐 Visit Vote League: https://voteleague.org',
   ].join('\n')
 
+}
+
+function getFacebookRichMatchPostCaption(match: MatchRecord, variant: AssetVariant) {
+  const icon = {
+    trophy: String.fromCodePoint(0x1f3c6),
+    stadium: String.fromCodePoint(0x1f3df, 0xfe0f),
+    calendar: String.fromCodePoint(0x1f4c5),
+    pin: String.fromCodePoint(0x1f4cd),
+    megaphone: String.fromCodePoint(0x1f4e3),
+    check: String.fromCodePoint(0x2705),
+    memo: String.fromCodePoint(0x1f4dd),
+    fire: String.fromCodePoint(0x1f525),
+    link: String.fromCodePoint(0x1f517),
+    globe: String.fromCodePoint(0x1f310),
+    sports: String.fromCodePoint(0x1f3c0),
+  }
+
+  const matchUrl = `https://voteleague.org/?match=${match.id}`
+  const dateLabel = formatMatchTime(match.match_time)
+  const competitionLine = [match.sport, match.league].filter(Boolean).join(' - ')
+  const venueLine = match.venue?.trim() || 'Venue to be confirmed'
+  const rivalryLine = match.rivalry_tagline?.trim() || `${match.team1} vs ${match.team2}. One crown.`
+  const statusLabel =
+    variant === 'result'
+      ? 'Final result now available'
+      : match.status === 'live'
+        ? 'This matchup is live right now'
+        : 'Upcoming featured matchup'
+
+  if (variant === 'result') {
+    return [
+      `${icon.trophy} FINAL VERDICT: ${match.team1} vs ${match.team2}`,
+      '',
+      `${icon.stadium} ${competitionLine}`,
+      `${icon.calendar} Kickoff: ${dateLabel}`,
+      `${icon.pin} Venue: ${venueLine}`,
+      `${icon.megaphone} Status: ${statusLabel}`,
+      '',
+      `${icon.check} Result: ${resultLine(match)}`,
+      match.result_summary?.trim() ? `${icon.memo} Match summary: ${match.result_summary.trim()}` : null,
+      `${icon.fire} Storyline: ${rivalryLine}`,
+      '',
+      `${icon.link} Read more and open the full match card: ${matchUrl}`,
+      `${icon.globe} Visit Vote League: https://voteleague.org`,
+    ].filter(Boolean).join('\n')
+  }
+
+  return [
+    `${icon.stadium} MATCH SPOTLIGHT: ${match.team1} vs ${match.team2}`,
+    '',
+    `${icon.sports} ${competitionLine}`,
+    `${icon.calendar} Start time: ${dateLabel}`,
+    `${icon.pin} Venue: ${venueLine}`,
+    `${icon.megaphone} Status: ${statusLabel}`,
+    '',
+    `${icon.fire} Storyline: ${rivalryLine}`,
+    `${icon.memo} Why it matters: ${match.team1} and ${match.team2} step into the arena with momentum, pressure, and everything to prove.`,
+    '',
+    `${icon.link} Open the full matchup here: ${matchUrl}`,
+    `${icon.globe} Visit Vote League: https://voteleague.org`,
+  ].join('\n')
 }
 
 function isReservedDailyPostHour(date = new Date()) {
@@ -878,7 +952,7 @@ export async function generateFacebookMatchPost(): Promise<MatchFacebookPostResu
     }
   }
 
-  const caption = getMatchPostCaption(candidate, candidate.asset_variant)
+  const caption = getFacebookRichMatchPostCaption(candidate, candidate.asset_variant)
   const artworkDataUrl = getAssetDataUrl({
     mime_type: candidate.artwork_mime_type,
     content_encoding: candidate.artwork_content_encoding,
