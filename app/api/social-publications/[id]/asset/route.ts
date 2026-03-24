@@ -1,6 +1,7 @@
 import sharp from 'sharp'
 import { NextResponse } from 'next/server'
 import { getSocialPublicationSvg } from '@/lib/social-publications'
+import { replaceTextWithPaths } from '@/lib/text-to-path'
 
 const FEED_IMAGE_SIZE = 1200
 
@@ -60,7 +61,14 @@ export async function GET(
 
   const format = new URL(request.url).searchParams.get('format')
   if (format === 'png') {
-    const svgBuffer = await inlineEmbeddedImagesAsPng(svg)
+    let preparedSvg = svg
+    try {
+      preparedSvg = await replaceTextWithPaths(svg)
+    } catch (error) {
+      console.warn('[social-publications] Text-to-path failed, continuing with raw SVG:', error)
+    }
+
+    const svgBuffer = await inlineEmbeddedImagesAsPng(preparedSvg)
     const png = await sharp(svgBuffer)
       .resize(FEED_IMAGE_SIZE, FEED_IMAGE_SIZE)
       .png()

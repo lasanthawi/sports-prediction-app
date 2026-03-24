@@ -408,7 +408,7 @@ function buildMatchPostSvg(match: MatchRecord, variant: AssetVariant) {
   const footer = variant === 'result' ? 'Results are in on Vote League' : 'The arena is open on Vote League'
   const titleLines = wrapSvgLines(title, 14, 2)
   const taglineLines = wrapSvgLines(tagline, 24, 2)
-  const teamLines = wrapSvgLines(`${match.team1} vs ${match.team2}`, 28, 2)
+  const teamLines = wrapSvgLines(`${match.team1} vs ${match.team2}`, 30, 2)
   const titleSvg = titleLines
     .map((line, index) => `<text x="600" y="${154 + index * 92}" fill="#FFF9EC" text-anchor="middle" font-family="Arial, sans-serif" font-size="88" font-style="italic" font-weight="900">${svgEscape(line)}</text>`)
     .join('')
@@ -416,7 +416,7 @@ function buildMatchPostSvg(match: MatchRecord, variant: AssetVariant) {
     .map((line, index) => `<text x="600" y="${284 + index * 56}" fill="#FFD45B" text-anchor="middle" font-family="Arial, sans-serif" font-size="54" font-style="italic" font-weight="700">${svgEscape(line)}</text>`)
     .join('')
   const teamSvg = teamLines
-    .map((line, index) => `<text x="600" y="${930 + index * 48}" fill="#FFFFFF" text-anchor="middle" font-family="Arial, sans-serif" font-size="42" font-weight="800">${svgEscape(line)}</text>`)
+    .map((line, index) => `<text x="600" y="${930 + index * 50}" fill="#FFFFFF" text-anchor="middle" font-family="Arial, sans-serif" font-size="46" font-weight="900">${svgEscape(line)}</text>`)
     .join('')
 
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -430,6 +430,10 @@ function buildMatchPostSvg(match: MatchRecord, variant: AssetVariant) {
       <stop stop-color="rgba(6,10,22,0)"/>
       <stop offset="1" stop-color="rgba(6,10,22,0.88)"/>
     </linearGradient>
+    <radialGradient id="centerGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(600 930) rotate(90) scale(180 340)">
+      <stop stop-color="rgba(255,255,255,0.18)"/>
+      <stop offset="1" stop-color="rgba(255,255,255,0)"/>
+    </radialGradient>
     <linearGradient id="accent" x1="144" y1="1030" x2="1056" y2="1030" gradientUnits="userSpaceOnUse">
       <stop stop-color="${svgEscape(accentLeft)}"/>
       <stop offset="1" stop-color="${svgEscape(accentRight)}"/>
@@ -445,11 +449,11 @@ function buildMatchPostSvg(match: MatchRecord, variant: AssetVariant) {
   <text x="600" y="88" fill="#9EE9C5" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="800" letter-spacing="5">${svgEscape(BRAND.name.toUpperCase())}</text>
   ${titleSvg}
   ${taglineSvg}
-  <rect x="118" y="846" width="964" height="188" rx="34" fill="rgba(6,10,22,0.46)" stroke="rgba(255,255,255,0.14)" stroke-width="2"/>
+  <ellipse cx="600" cy="935" rx="420" ry="130" fill="url(#centerGlow)"/>
   ${teamSvg}
-  <text x="600" y="1012" fill="#B7C3DB" text-anchor="middle" font-family="Arial, sans-serif" font-size="26" font-weight="700">${svgEscape(meta)}</text>
-  <rect x="144" y="1062" width="912" height="74" rx="24" fill="url(#accent)" opacity="0.95"/>
-  <text x="600" y="1110" fill="#08111F" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="900">${svgEscape(footer)}</text>
+  <text x="600" y="1022" fill="#DCE6F7" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="700">${svgEscape(meta)}</text>
+  <line x1="176" y1="1060" x2="1024" y2="1060" stroke="url(#accent)" stroke-width="8" stroke-linecap="round"/>
+  <text x="600" y="1114" fill="#FFFFFF" text-anchor="middle" font-family="Arial, sans-serif" font-size="30" font-weight="800">${svgEscape(footer)}</text>
 </svg>`
 }
 
