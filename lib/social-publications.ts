@@ -400,21 +400,11 @@ function buildSummarySvg(postType: DailyPostKind, matches: RankedMatch[]) {
 }
 
 function buildMatchPostSvg(match: MatchRecord, variant: AssetVariant) {
-  const title = buildMatchPostTitle(match, variant)
-  const tagline = buildMatchPostTagline(match, variant)
   const meta = [match.league || match.sport, formatMatchTime(match.match_time)].filter(Boolean).join(' • ')
   const accentLeft = match.team1_palette || '#58F4A7'
   const accentRight = match.team2_palette || '#FF5CA8'
   const footer = variant === 'result' ? 'Results are in on Vote League' : 'The arena is open on Vote League'
-  const titleLines = wrapSvgLines(title, 14, 2)
-  const taglineLines = wrapSvgLines(tagline, 24, 2)
   const teamLines = wrapSvgLines(`${match.team1} vs ${match.team2}`, 30, 2)
-  const titleSvg = titleLines
-    .map((line, index) => `<text x="600" y="${154 + index * 92}" fill="#FFF9EC" text-anchor="middle" font-family="Arial, sans-serif" font-size="88" font-style="italic" font-weight="900">${svgEscape(line)}</text>`)
-    .join('')
-  const taglineSvg = taglineLines
-    .map((line, index) => `<text x="600" y="${284 + index * 56}" fill="#FFD45B" text-anchor="middle" font-family="Arial, sans-serif" font-size="54" font-style="italic" font-weight="700">${svgEscape(line)}</text>`)
-    .join('')
   const teamSvg = teamLines
     .map((line, index) => `<text x="600" y="${930 + index * 50}" fill="#FFFFFF" text-anchor="middle" font-family="Arial, sans-serif" font-size="46" font-weight="900">${svgEscape(line)}</text>`)
     .join('')
@@ -446,9 +436,7 @@ function buildMatchPostSvg(match: MatchRecord, variant: AssetVariant) {
   <rect y="756" width="1200" height="444" fill="url(#bottomShade)"/>
   <circle cx="208" cy="212" r="220" fill="${svgEscape(accentLeft)}" fill-opacity="0.1"/>
   <circle cx="990" cy="210" r="248" fill="${svgEscape(accentRight)}" fill-opacity="0.12"/>
-  <text x="600" y="88" fill="#9EE9C5" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="800" letter-spacing="5">${svgEscape(BRAND.name.toUpperCase())}</text>
-  ${titleSvg}
-  ${taglineSvg}
+  <image href="${svgEscape(BRAND.logoUrl)}" x="520" y="74" width="160" height="160" preserveAspectRatio="xMidYMid meet"/>
   <ellipse cx="600" cy="935" rx="420" ry="130" fill="url(#centerGlow)"/>
   ${teamSvg}
   <text x="600" y="1022" fill="#DCE6F7" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="700">${svgEscape(meta)}</text>
@@ -507,7 +495,7 @@ async function createPendingPublication(input: {
 }
 
 function getMatchPostCaption(match: MatchRecord, variant: AssetVariant) {
-  const matchUrl = `${getBaseUrl()}/?match=${match.id}`
+  const matchUrl = `https://voteleague.org/?match=${match.id}`
   const dateLabel = formatMatchTime(match.match_time)
   const competitionLine = [match.sport, match.league].filter(Boolean).join(' - ')
   const venueLine = match.venue?.trim() || 'Venue to be confirmed'
@@ -521,35 +509,39 @@ function getMatchPostCaption(match: MatchRecord, variant: AssetVariant) {
 
   if (variant === 'result') {
     return [
-      `FINAL VERDICT: ${match.team1} vs ${match.team2}`,
+      `🏆 FINAL VERDICT: ${match.team1} vs ${match.team2}`,
       '',
-      competitionLine,
-      `Kickoff: ${dateLabel}`,
-      `Venue: ${venueLine}`,
-      `Status: ${statusLabel}`,
+      `🏟️ ${competitionLine}`,
+      `📅 Kickoff: ${dateLabel}`,
+      `📍 Venue: ${venueLine}`,
+      `📣 Status: ${statusLabel}`,
       '',
-      `Result: ${resultLine(match)}`,
-      match.result_summary?.trim() ? `Match summary: ${match.result_summary.trim()}` : null,
-      `Storyline: ${rivalryLine}`,
+      `✅ Result: ${resultLine(match)}`,
+      match.result_summary?.trim() ? `📝 Match summary: ${match.result_summary.trim()}` : null,
+      `🔥 Storyline: ${rivalryLine}`,
       '',
-      'Did the crowd call it right, or did this one flip the script?',
-      `Open the full match card and share your take: ${matchUrl}`,
+      '💬 Did the crowd call it right, or did this one flip the script?',
+      '',
+      `🔗 Read more and open the full match card: ${matchUrl}`,
+      '🌐 Visit Vote League: https://voteleague.org',
     ].filter(Boolean).join('\n')
   }
 
   return [
-    `MATCH SPOTLIGHT: ${match.team1} vs ${match.team2}`,
+    `🏟️ MATCH SPOTLIGHT: ${match.team1} vs ${match.team2}`,
     '',
-    competitionLine,
-    `Start time: ${dateLabel}`,
-    `Venue: ${venueLine}`,
-    `Status: ${statusLabel}`,
+    `🏀 ${competitionLine}`,
+    `📅 Start time: ${dateLabel}`,
+    `📍 Venue: ${venueLine}`,
+    `📣 Status: ${statusLabel}`,
     '',
-    `Storyline: ${rivalryLine}`,
-    `Why it matters: ${match.team1} and ${match.team2} step into the arena with momentum, pressure, and everything to prove.`,
+    `🔥 Storyline: ${rivalryLine}`,
+    `📝 Why it matters: ${match.team1} and ${match.team2} step into the arena with momentum, pressure, and everything to prove.`,
     '',
-    'Who are you backing in this clash?',
-    `Comment your prediction and open the full matchup here: ${matchUrl}`,
+    '💬 Who are you backing in this clash?',
+    '',
+    `🔗 Open the full matchup here: ${matchUrl}`,
+    '🌐 Visit Vote League: https://voteleague.org',
   ].join('\n')
 
 }
@@ -886,7 +878,7 @@ export async function generateFacebookMatchPost(): Promise<MatchFacebookPostResu
     }
   }
 
-  const caption = candidate.asset_caption?.trim() || getMatchPostCaption(candidate, candidate.asset_variant)
+  const caption = getMatchPostCaption(candidate, candidate.asset_variant)
   const artworkDataUrl = getAssetDataUrl({
     mime_type: candidate.artwork_mime_type,
     content_encoding: candidate.artwork_content_encoding,
