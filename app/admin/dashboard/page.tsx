@@ -41,6 +41,26 @@ interface UserRecord {
   role: string
 }
 
+interface DashboardSummary {
+  total_votes_cast: number
+  unique_voters: number
+  latest_vote_at: string | null
+}
+
+interface DashboardUserDetail {
+  id: number
+  name: string
+  email: string
+  role: string
+  points: number
+  predictions_count: number
+  correct_predictions: number
+  vote_count: number
+  accuracy: number | null
+  created_at: string
+  last_vote_at: string | null
+}
+
 const emptyEditForm = {
   team1: '',
   team2: '',
@@ -66,6 +86,8 @@ export default function AdminDashboard() {
   const router = useRouter()
   const [user, setUser] = useState<UserRecord | null>(null)
   const [matches, setMatches] = useState<MatchRecord[]>([])
+  const [dashboardSummary, setDashboardSummary] = useState<DashboardSummary | null>(null)
+  const [dashboardUsers, setDashboardUsers] = useState<DashboardUserDetail[]>([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -88,7 +110,7 @@ export default function AdminDashboard() {
       }
 
       setUser(authData.user)
-      await fetchMatches()
+      await Promise.all([fetchMatches(), fetchDashboardInsights()])
     } finally {
       setLoading(false)
     }
@@ -100,10 +122,27 @@ export default function AdminDashboard() {
     setMatches(data.matches || [])
   }
 
+  async function fetchDashboardInsights() {
+    const res = await fetch('/api/admin/dashboard', { cache: 'no-store' })
+    if (res.status === 401) {
+      router.push('/login')
+      return
+    }
+
+    const data = await res.json()
+    setDashboardSummary(data.summary || null)
+    setDashboardUsers(data.users || [])
+  }
+
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' })
     router.push('/login')
   }
+
+  const totalVotes = matches.reduce((sum, match) => sum + match.poll_team1_votes + match.poll_team2_votes, 0)
+  const sortedVoteMatches = [...matches]
+    .sort((a, b) => (b.poll_team1_votes + b.poll_team2_votes) - (a.poll_team1_votes + a.poll_team2_votes))
+    .slice(0, 6)
 
   function startEdit(match: MatchRecord) {
     setEditingId(match.id)
@@ -248,7 +287,7 @@ export default function AdminDashboard() {
             <Link href="/admin" className="btn-game inline-flex items-center gap-2">
               <Plus size={18} /> Create Match
             </Link>
-            <button onClick={() => void fetchMatches()} className="rounded-lg border border-green-400/40 px-4 py-2 text-green-300">
+            <button onClick={() => void Promise.all([fetchMatches(), fetchDashboardInsights()])} className="rounded-lg border border-green-400/40 px-4 py-2 text-green-300">
               <RefreshCw size={18} className="inline" /> Refresh
             </button>
             <button onClick={handleLogout} className="rounded-lg bg-red-500/20 px-4 py-2 text-red-300">
@@ -262,8 +301,130 @@ export default function AdminDashboard() {
         <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
           <StatCard label="Total Matches" value={String(matches.length)} icon={<Users className="h-10 w-10 text-green-400/30" />} />
           <StatCard label="Active Polls" value={String(matches.filter((match) => match.status === 'upcoming').length)} icon={<ImageIcon className="h-10 w-10 text-yellow-400/30" />} />
-          <StatCard label="Total Votes" value={String(matches.reduce((sum, match) => sum + match.poll_team1_votes + match.poll_team2_votes, 0))} icon={<WandSparkles className="h-10 w-10 text-pink-400/30" />} />
+          <StatCard label="Total Votes" value={String(totalVotes)} icon={<WandSparkles className="h-10 w-10 text-pink-400/30" />} />
         </div>
+
+        <section className="mb-8 rounded-2xl border border-white/10 bg-gray-800/80 p-6 card-glow">
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-green-300/70">Audience Analytics</p>
+              <h2 className="mt-2 text-2xl font-black text-white">Vote summaries and user details</h2>
+              <p className="mt-2 max-w-2xl text-sm text-gray-400">Track where voting activity is concentrated and which accounts are participating most.</p>
+            </div>
+            <div className="text-right text-sm text-gray-400">
+              <p>{dashboardSummary?.unique_voters ?? 0} unique voters</p>
+              <p>{dashboardSummary?.latest_vote_at ? `Last vote ${formatDateTime(dashboardSummary.latest_vote_at)}` : 'No votes recorded yet'}</p>
+            </div>
+          </div>
+
+          <div className="mb-6 grid gap-4 md:grid-cols-3">
+            <InsightCard label="Votes Cast" value={String(dashboardSummary?.total_votes_cast ?? totalVotes)} detail="All recorded selections across matches" />
+            <InsightCard label="Users" value={String(dashboardUsers.length)} detail="Accounts available in the system" />
+            <InsightCard label="Active Voters" value={String(dashboardUsers.filter((entry) => entry.vote_count > 0).length)} detail="Users who have submitted at least one vote" />
+          </div>
+
+          <div className="grid gap-6 xl:grid-cols-[1.05fr,0.95fr]">
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-bold text-white">Top Match Vote Summaries</h3>
+                  <p className="text-sm text-gray-400">Highest-engagement matches ranked by total votes.</p>
+                </div>
+                <span className="rounded-full border border-white/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-gray-400">
+                  {sortedVoteMatches.length} shown
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                {sortedVoteMatches.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-white/10 px-4 py-5 text-sm text-gray-400">No matches available yet.</div>
+                ) : (
+                  sortedVoteMatches.map((match) => {
+                    const team1Votes = match.poll_team1_votes
+                    const team2Votes = match.poll_team2_votes
+                    const matchVotes = team1Votes + team2Votes
+                    const team1Pct = matchVotes > 0 ? Math.round((team1Votes / matchVotes) * 100) : 50
+                    const team2Pct = matchVotes > 0 ? Math.round((team2Votes / matchVotes) * 100) : 50
+
+                    return (
+                      <div key={`summary-${match.id}`} className="rounded-xl border border-white/10 bg-gray-900/60 p-4">
+                        <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="font-bold text-white">{match.team1} vs {match.team2}</p>
+                            <p className="text-xs uppercase tracking-[0.16em] text-gray-500">{match.sport}{match.league ? ` | ${match.league}` : ''}</p>
+                          </div>
+                          <div className="text-right text-sm text-gray-400">
+                            <p>{matchVotes} votes</p>
+                            <p>{formatDateTime(match.match_time)}</p>
+                          </div>
+                        </div>
+                        <div className="h-3 overflow-hidden rounded-full bg-white/10">
+                          <div className="h-full bg-gradient-to-r from-green-400 via-yellow-300 to-cyan-400" style={{ width: `${team1Pct}%` }} />
+                        </div>
+                        <div className="mt-3 grid gap-2 text-sm text-gray-300 md:grid-cols-2">
+                          <p>{match.team1}: {team1Votes} votes ({team1Pct}%)</p>
+                          <p>{match.team2}: {team2Votes} votes ({team2Pct}%)</p>
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
+              <div className="mb-4">
+                <h3 className="text-lg font-bold text-white">User Details</h3>
+                <p className="text-sm text-gray-400">Roles, activity, and performance for every account.</p>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-white/10 text-xs uppercase tracking-[0.18em] text-gray-500">
+                      <th className="px-3 py-3">User</th>
+                      <th className="px-3 py-3">Role</th>
+                      <th className="px-3 py-3">Votes</th>
+                      <th className="px-3 py-3">Points</th>
+                      <th className="px-3 py-3">Accuracy</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dashboardUsers.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-3 py-5 text-gray-400">No users found.</td>
+                      </tr>
+                    ) : (
+                      dashboardUsers.map((entry) => (
+                        <tr key={entry.id} className="border-b border-white/5 align-top text-gray-200 last:border-b-0">
+                          <td className="px-3 py-4">
+                            <p className="font-semibold text-white">{entry.name}</p>
+                            <p className="text-xs text-gray-400">{entry.email}</p>
+                            <p className="mt-1 text-xs text-gray-500">
+                              Joined {formatDateTime(entry.created_at)}
+                              {entry.last_vote_at ? ` | Last vote ${formatDateTime(entry.last_vote_at)}` : ''}
+                            </p>
+                          </td>
+                          <td className="px-3 py-4">
+                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-[0.15em] ${entry.role === 'admin' ? 'bg-yellow-400/15 text-yellow-200' : 'bg-cyan-400/15 text-cyan-200'}`}>
+                              {entry.role}
+                            </span>
+                          </td>
+                          <td className="px-3 py-4">{entry.vote_count}</td>
+                          <td className="px-3 py-4">{entry.points}</td>
+                          <td className="px-3 py-4">
+                            <p>{entry.accuracy === null ? 'N/A' : `${entry.accuracy}%`}</p>
+                            <p className="text-xs text-gray-500">{entry.correct_predictions}/{entry.predictions_count} correct</p>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
 
         <div className="grid gap-6">
           {loading ? (
@@ -418,6 +579,16 @@ function StatCard({ label, value, icon }: { label: string; value: string; icon: 
   )
 }
 
+function InsightCard({ label, value, detail }: { label: string; value: string; detail: string }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-gray-900/60 p-4">
+      <p className="text-xs uppercase tracking-[0.18em] text-gray-500">{label}</p>
+      <p className="mt-2 text-3xl font-black text-green-300">{value}</p>
+      <p className="mt-2 text-sm text-gray-400">{detail}</p>
+    </div>
+  )
+}
+
 function ActionButton({
   children,
   onClick,
@@ -449,4 +620,8 @@ function Field({ label, value, onChange, type = 'text', required = true }: { lab
       />
     </label>
   )
+}
+
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleString()
 }
