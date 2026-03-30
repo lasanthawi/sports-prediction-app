@@ -636,8 +636,8 @@ export default function AdminPage() {
               </div>
             </section>
 
-            <section className="grid gap-6 lg:grid-cols-2">
-              <div className="rounded-2xl border border-white/10 bg-gray-800/80 p-6">
+            <section className="grid auto-rows-fr gap-6 lg:grid-cols-2">
+              <div className="flex h-full flex-col rounded-2xl border border-white/10 bg-gray-800/80 p-6">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <h3 className="text-xl font-bold text-white">Priority Queue</h3>
                   <span className="text-xs uppercase tracking-[0.18em] text-gray-400">Action first</span>
@@ -674,12 +674,12 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-gray-800/80 p-6">
+              <div className="flex h-full flex-col rounded-2xl border border-white/10 bg-gray-800/80 p-6">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <h3 className="text-xl font-bold text-white">Operational Pulse</h3>
                   <span className="text-xs uppercase tracking-[0.18em] text-gray-400">What matters now</span>
                 </div>
-                <div className="space-y-4 text-sm text-gray-300">
+                <div className="flex-1 space-y-4 text-sm text-gray-300">
                   <PulseRow label="Next kickoff" value={nextKickoff ? `${nextKickoff.team1} vs ${nextKickoff.team2}` : 'No future match'} />
                   <PulseRow label="Live match count" value={`${liveMatches.length}`} />
                   <PulseRow label="Asset backlog" value={`${pendingAssets.length} cards needing attention`} />
@@ -691,8 +691,8 @@ export default function AdminPage() {
 
           </div>
 
-          <div className="space-y-6">
-            <section className="rounded-2xl border border-white/10 bg-gray-800/80 p-6">
+          <div className="grid auto-rows-fr gap-6">
+            <section className="flex h-full flex-col rounded-2xl border border-white/10 bg-gray-800/80 p-6">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <h3 className="text-xl font-bold text-white">Spotlight Matches</h3>
                 <button onClick={() => setActiveTab('matches')} className="text-sm text-green-300 hover:text-green-200">
@@ -702,7 +702,7 @@ export default function AdminPage() {
               {spotlightMatches.length === 0 ? (
                 <p className="text-sm text-gray-400">No matches available yet.</p>
               ) : (
-                <div className="space-y-4">
+                <div className="flex-1 space-y-4">
                   {spotlightMatches.map((match) => (
                     <div key={match.id} className="rounded-xl border border-white/10 bg-gray-900/50 p-4">
                       <p className="font-bold text-white">{match.team1} vs {match.team2}</p>
@@ -716,7 +716,7 @@ export default function AdminPage() {
               )}
             </section>
 
-            <section className="rounded-2xl border border-white/10 bg-gray-800/80 p-6">
+            <section className="flex h-full flex-col rounded-2xl border border-white/10 bg-gray-800/80 p-6">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <h3 className="text-xl font-bold text-white">Recent Automation</h3>
                 <button onClick={() => setActiveTab('automation')} className="text-sm text-green-300 hover:text-green-200">
@@ -726,7 +726,7 @@ export default function AdminPage() {
               {recentRuns.length === 0 ? (
                 <p className="text-sm text-gray-400">No automation history yet.</p>
               ) : (
-                <div className="space-y-3">
+                <div className="flex-1 space-y-3">
                   {recentRuns.map((run) => (
                     <div key={run.id} className="rounded-xl border border-white/10 bg-gray-900/50 p-4">
                       <div className="flex items-center justify-between gap-3">
@@ -803,7 +803,7 @@ export default function AdminPage() {
               {leaderboardMatches.length === 0 ? (
                 <p className="text-sm text-gray-400">No match votes yet.</p>
               ) : (
-                <div className="space-y-3">
+                <div className="flex-1 space-y-3">
                   {leaderboardMatches.map((match) => {
                     const team1Votes = match.poll_team1_votes
                     const team2Votes = match.poll_team2_votes
