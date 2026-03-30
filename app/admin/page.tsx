@@ -55,6 +55,26 @@ interface AutomationRun {
   started_at: string
 }
 
+interface DashboardSummary {
+  total_votes_cast: number
+  unique_voters: number
+  latest_vote_at: string | null
+}
+
+interface DashboardUserDetail {
+  id: number
+  name: string
+  email: string
+  role: string
+  points: number
+  predictions_count: number
+  correct_predictions: number
+  vote_count: number
+  accuracy: number | null
+  created_at: string
+  last_vote_at: string | null
+}
+
 interface PublishOutcome {
   published: number
   queued: number
@@ -133,6 +153,8 @@ export default function AdminPage() {
   const [matches, setMatches] = useState<MatchRecord[]>([])
   const [runs, setRuns] = useState<AutomationRun[]>([])
   const [feedQueue, setFeedQueue] = useState<FeedQueueItem[]>([])
+  const [dashboardSummary, setDashboardSummary] = useState<DashboardSummary | null>(null)
+  const [dashboardUsers, setDashboardUsers] = useState<DashboardUserDetail[]>([])
   const [formData, setFormData] = useState(initialForm)
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(true)
@@ -163,8 +185,12 @@ export default function AdminPage() {
   const spotlightMatches = [...matches]
     .sort((a, b) => (b.poll_team1_votes + b.poll_team2_votes) - (a.poll_team1_votes + a.poll_team2_votes))
     .slice(0, 2)
+  const leaderboardMatches = [...matches]
+    .sort((a, b) => (b.poll_team1_votes + b.poll_team2_votes) - (a.poll_team1_votes + a.poll_team2_votes))
+    .slice(0, 5)
   const recentRuns = runs.slice(0, 4)
   const queuedFeedItems = feedQueue.filter((item) => item.sync_status === 'queued')
+  const activeVoters = dashboardUsers.filter((entry) => entry.vote_count > 0).length
   const viewMatches = matches.filter((match) => {
     if (matchView === 'results') return match.status === 'finished'
     if (matchView === 'unpublished') {
@@ -230,18 +256,22 @@ export default function AdminPage() {
   async function refreshDashboard() {
     setLoading(true)
     try {
-      const [matchesRes, runsRes, queueRes] = await Promise.all([
+      const [matchesRes, runsRes, queueRes, analyticsRes] = await Promise.all([
         fetch('/api/matches?includeAll=1', { cache: 'no-store' }),
         fetch('/api/automation/runs', { cache: 'no-store' }),
         fetch('/api/feed/queue', { cache: 'no-store' }),
+        fetch('/api/admin/dashboard', { cache: 'no-store' }),
       ])
 
       const matchesPayload = await matchesRes.json()
       const runsPayload = await runsRes.json()
       const queuePayload = await queueRes.json()
+      const analyticsPayload = await analyticsRes.json()
       setMatches(matchesPayload.matches || [])
       setRuns(runsPayload.runs || [])
       setFeedQueue(queuePayload.items || [])
+      setDashboardSummary(analyticsRes.ok ? analyticsPayload.summary || null : null)
+      setDashboardUsers(analyticsRes.ok ? analyticsPayload.users || [] : [])
       setMatchPage(1)
       setRunsPage(1)
     } catch (error) {
@@ -642,6 +672,140 @@ export default function AdminPage() {
                   <PulseRow label="Asset backlog" value={`${pendingAssets.length} cards needing attention`} />
                   <PulseRow label="Top-voted battle" value={spotlightMatches[0] ? `${spotlightMatches[0].team1} vs ${spotlightMatches[0].team2}` : 'No votes yet'} />
                   <PulseRow label="Latest automation run" value={runs[0] ? `${runs[0].job_name} Ã‚Â· ${runs[0].status}` : 'No automation run yet'} />
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-cyan-400/20 bg-gray-800/80 p-6">
+              <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <h3 className="text-xl font-bold text-white">Community Insights</h3>
+                  <p className="mt-1 text-sm text-gray-400">Vote summaries and user details for the people using the app.</p>
+                </div>
+                <div className="text-right text-xs uppercase tracking-[0.18em] text-gray-400">
+                  <p>{dashboardSummary?.unique_voters ?? 0} unique voters</p>
+                  <p className="mt-1 normal-case tracking-normal text-gray-500">
+                    {dashboardSummary?.latest_vote_at ? `Last vote ${new Date(dashboardSummary.latest_vote_at).toLocaleString()}` : 'No votes recorded yet'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <OverviewStat
+                  title="Votes Cast"
+                  value={String(dashboardSummary?.total_votes_cast ?? totalVotes)}
+                  detail="All recorded selections across matches"
+                  accent="text-cyan-300"
+                />
+                <OverviewStat
+                  title="Registered Users"
+                  value={String(dashboardUsers.length)}
+                  detail="Accounts currently available in the system"
+                  accent="text-emerald-300"
+                />
+                <OverviewStat
+                  title="Active Voters"
+                  value={String(activeVoters)}
+                  detail="Users who have cast at least one vote"
+                  accent="text-yellow-300"
+                />
+              </div>
+
+              <div className="mt-6 grid gap-6 xl:grid-cols-[1.05fr,0.95fr]">
+                <div className="rounded-2xl border border-white/10 bg-gray-900/50 p-5">
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <h4 className="text-lg font-bold text-white">Top Vote Summaries</h4>
+                    <span className="text-xs uppercase tracking-[0.18em] text-gray-500">{leaderboardMatches.length} matches</span>
+                  </div>
+
+                  {leaderboardMatches.length === 0 ? (
+                    <p className="text-sm text-gray-400">No match votes yet.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {leaderboardMatches.map((match) => {
+                        const team1Votes = match.poll_team1_votes
+                        const team2Votes = match.poll_team2_votes
+                        const matchVotes = team1Votes + team2Votes
+                        const team1Pct = matchVotes > 0 ? Math.round((team1Votes / matchVotes) * 100) : 50
+
+                        return (
+                          <div key={`community-${match.id}`} className="rounded-xl border border-white/10 bg-black/20 p-4">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                              <div>
+                                <p className="font-semibold text-white">{match.team1} vs {match.team2}</p>
+                                <p className="mt-1 text-xs text-gray-500">{match.sport}{match.league ? ` | ${match.league}` : ''}</p>
+                              </div>
+                              <div className="text-right text-sm text-gray-300">
+                                <p>{matchVotes} votes</p>
+                                <p className="text-xs text-gray-500">{new Date(match.match_time).toLocaleString()}</p>
+                              </div>
+                            </div>
+
+                            <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-white/10">
+                              <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-green-300 to-yellow-300" style={{ width: `${team1Pct}%` }} />
+                            </div>
+
+                            <div className="mt-3 grid gap-2 text-sm text-gray-300 md:grid-cols-2">
+                              <p>{match.team1}: {team1Votes} votes</p>
+                              <p>{match.team2}: {team2Votes} votes</p>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-gray-900/50 p-5">
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <h4 className="text-lg font-bold text-white">User Details</h4>
+                    <span className="text-xs uppercase tracking-[0.18em] text-gray-500">{dashboardUsers.length} users</span>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-left text-sm">
+                      <thead>
+                        <tr className="border-b border-white/10 text-xs uppercase tracking-[0.18em] text-gray-500">
+                          <th className="px-3 py-3">User</th>
+                          <th className="px-3 py-3">Role</th>
+                          <th className="px-3 py-3">Votes</th>
+                          <th className="px-3 py-3">Points</th>
+                          <th className="px-3 py-3">Accuracy</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dashboardUsers.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="px-3 py-5 text-gray-400">No user records found.</td>
+                          </tr>
+                        ) : (
+                          dashboardUsers.map((entry) => (
+                            <tr key={entry.id} className="border-b border-white/5 align-top text-gray-200 last:border-b-0">
+                              <td className="px-3 py-4">
+                                <p className="font-semibold text-white">{entry.name}</p>
+                                <p className="text-xs text-gray-400">{entry.email}</p>
+                                <p className="mt-1 text-xs text-gray-500">
+                                  Joined {new Date(entry.created_at).toLocaleDateString()}
+                                  {entry.last_vote_at ? ` | Last vote ${new Date(entry.last_vote_at).toLocaleDateString()}` : ''}
+                                </p>
+                              </td>
+                              <td className="px-3 py-4">
+                                <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-[0.15em] ${entry.role === 'admin' ? 'bg-yellow-400/15 text-yellow-200' : 'bg-cyan-400/15 text-cyan-200'}`}>
+                                  {entry.role}
+                                </span>
+                              </td>
+                              <td className="px-3 py-4">{entry.vote_count}</td>
+                              <td className="px-3 py-4">{entry.points}</td>
+                              <td className="px-3 py-4">
+                                <p>{entry.accuracy === null ? 'N/A' : `${entry.accuracy}%`}</p>
+                                <p className="text-xs text-gray-500">{entry.correct_predictions}/{entry.predictions_count} correct</p>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </section>
