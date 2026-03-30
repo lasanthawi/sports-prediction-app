@@ -8,7 +8,7 @@ import { BRAND } from '@/lib/brand'
 import { getActivePublishStatus, getPublishStatusLabel, isPublishedStatus } from '@/lib/publish'
 
 type MatchStatus = 'upcoming' | 'live' | 'finished' | 'cancelled'
-type AdminTab = 'overview' | 'create' | 'matches' | 'automation'
+type AdminTab = 'overview' | 'create' | 'matches' | 'automation' | 'community'
 type MatchView = 'matches' | 'results' | 'unpublished'
 
 interface MatchRecord {
@@ -169,6 +169,8 @@ export default function AdminPage() {
   const [matchSort, setMatchSort] = useState<'newest' | 'oldest' | 'live-first'>('newest')
   const [matchView, setMatchView] = useState<MatchView>('matches')
   const [selectedMatchIds, setSelectedMatchIds] = useState<number[]>([])
+  const [communityUserQuery, setCommunityUserQuery] = useState('')
+  const [communityRoleFilter, setCommunityRoleFilter] = useState<'all' | 'admin' | 'player'>('all')
 
   const matchesPerPage = 5
   const runsPerPage = 6
@@ -191,6 +193,16 @@ export default function AdminPage() {
   const recentRuns = runs.slice(0, 4)
   const queuedFeedItems = feedQueue.filter((item) => item.sync_status === 'queued')
   const activeVoters = dashboardUsers.filter((entry) => entry.vote_count > 0).length
+  const topVoter = [...dashboardUsers].sort((a, b) => b.vote_count - a.vote_count || b.points - a.points)[0]
+  const topScorer = [...dashboardUsers].sort((a, b) => b.points - a.points || b.vote_count - a.vote_count)[0]
+  const mostAccurateUser = [...dashboardUsers]
+    .filter((entry) => entry.accuracy !== null)
+    .sort((a, b) => (b.accuracy ?? 0) - (a.accuracy ?? 0) || b.correct_predictions - a.correct_predictions)[0]
+  const filteredCommunityUsers = dashboardUsers.filter((entry) => {
+    const matchesRole = communityRoleFilter === 'all' || entry.role === communityRoleFilter
+    const haystack = `${entry.name} ${entry.email} ${entry.role}`.toLowerCase()
+    return matchesRole && haystack.includes(communityUserQuery.trim().toLowerCase())
+  })
   const viewMatches = matches.filter((match) => {
     if (matchView === 'results') return match.status === 'finished'
     if (matchView === 'unpublished') {
@@ -599,6 +611,7 @@ export default function AdminPage() {
           <TabButton active={activeTab === 'create'} onClick={() => setActiveTab('create')}>Create Match</TabButton>
           <TabButton active={activeTab === 'matches'} onClick={() => setActiveTab('matches')}>Matches</TabButton>
           <TabButton active={activeTab === 'automation'} onClick={() => setActiveTab('automation')}>Automation</TabButton>
+          <TabButton active={activeTab === 'community'} onClick={() => setActiveTab('community')}>Community Insights</TabButton>
         </nav>
 
         {activeTab === 'overview' ? (
@@ -676,139 +689,6 @@ export default function AdminPage() {
               </div>
             </section>
 
-            <section className="rounded-2xl border border-cyan-400/20 bg-gray-800/80 p-6">
-              <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-                <div>
-                  <h3 className="text-xl font-bold text-white">Community Insights</h3>
-                  <p className="mt-1 text-sm text-gray-400">Vote summaries and user details for the people using the app.</p>
-                </div>
-                <div className="text-right text-xs uppercase tracking-[0.18em] text-gray-400">
-                  <p>{dashboardSummary?.unique_voters ?? 0} unique voters</p>
-                  <p className="mt-1 normal-case tracking-normal text-gray-500">
-                    {dashboardSummary?.latest_vote_at ? `Last vote ${new Date(dashboardSummary.latest_vote_at).toLocaleString()}` : 'No votes recorded yet'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-3">
-                <OverviewStat
-                  title="Votes Cast"
-                  value={String(dashboardSummary?.total_votes_cast ?? totalVotes)}
-                  detail="All recorded selections across matches"
-                  accent="text-cyan-300"
-                />
-                <OverviewStat
-                  title="Registered Users"
-                  value={String(dashboardUsers.length)}
-                  detail="Accounts currently available in the system"
-                  accent="text-emerald-300"
-                />
-                <OverviewStat
-                  title="Active Voters"
-                  value={String(activeVoters)}
-                  detail="Users who have cast at least one vote"
-                  accent="text-yellow-300"
-                />
-              </div>
-
-              <div className="mt-6 grid gap-6 xl:grid-cols-[1.05fr,0.95fr]">
-                <div className="rounded-2xl border border-white/10 bg-gray-900/50 p-5">
-                  <div className="mb-4 flex items-center justify-between gap-3">
-                    <h4 className="text-lg font-bold text-white">Top Vote Summaries</h4>
-                    <span className="text-xs uppercase tracking-[0.18em] text-gray-500">{leaderboardMatches.length} matches</span>
-                  </div>
-
-                  {leaderboardMatches.length === 0 ? (
-                    <p className="text-sm text-gray-400">No match votes yet.</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {leaderboardMatches.map((match) => {
-                        const team1Votes = match.poll_team1_votes
-                        const team2Votes = match.poll_team2_votes
-                        const matchVotes = team1Votes + team2Votes
-                        const team1Pct = matchVotes > 0 ? Math.round((team1Votes / matchVotes) * 100) : 50
-
-                        return (
-                          <div key={`community-${match.id}`} className="rounded-xl border border-white/10 bg-black/20 p-4">
-                            <div className="flex flex-wrap items-start justify-between gap-3">
-                              <div>
-                                <p className="font-semibold text-white">{match.team1} vs {match.team2}</p>
-                                <p className="mt-1 text-xs text-gray-500">{match.sport}{match.league ? ` | ${match.league}` : ''}</p>
-                              </div>
-                              <div className="text-right text-sm text-gray-300">
-                                <p>{matchVotes} votes</p>
-                                <p className="text-xs text-gray-500">{new Date(match.match_time).toLocaleString()}</p>
-                              </div>
-                            </div>
-
-                            <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-white/10">
-                              <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-green-300 to-yellow-300" style={{ width: `${team1Pct}%` }} />
-                            </div>
-
-                            <div className="mt-3 grid gap-2 text-sm text-gray-300 md:grid-cols-2">
-                              <p>{match.team1}: {team1Votes} votes</p>
-                              <p>{match.team2}: {team2Votes} votes</p>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-gray-900/50 p-5">
-                  <div className="mb-4 flex items-center justify-between gap-3">
-                    <h4 className="text-lg font-bold text-white">User Details</h4>
-                    <span className="text-xs uppercase tracking-[0.18em] text-gray-500">{dashboardUsers.length} users</span>
-                  </div>
-
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full text-left text-sm">
-                      <thead>
-                        <tr className="border-b border-white/10 text-xs uppercase tracking-[0.18em] text-gray-500">
-                          <th className="px-3 py-3">User</th>
-                          <th className="px-3 py-3">Role</th>
-                          <th className="px-3 py-3">Votes</th>
-                          <th className="px-3 py-3">Points</th>
-                          <th className="px-3 py-3">Accuracy</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {dashboardUsers.length === 0 ? (
-                          <tr>
-                            <td colSpan={5} className="px-3 py-5 text-gray-400">No user records found.</td>
-                          </tr>
-                        ) : (
-                          dashboardUsers.map((entry) => (
-                            <tr key={entry.id} className="border-b border-white/5 align-top text-gray-200 last:border-b-0">
-                              <td className="px-3 py-4">
-                                <p className="font-semibold text-white">{entry.name}</p>
-                                <p className="text-xs text-gray-400">{entry.email}</p>
-                                <p className="mt-1 text-xs text-gray-500">
-                                  Joined {new Date(entry.created_at).toLocaleDateString()}
-                                  {entry.last_vote_at ? ` | Last vote ${new Date(entry.last_vote_at).toLocaleDateString()}` : ''}
-                                </p>
-                              </td>
-                              <td className="px-3 py-4">
-                                <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-[0.15em] ${entry.role === 'admin' ? 'bg-yellow-400/15 text-yellow-200' : 'bg-cyan-400/15 text-cyan-200'}`}>
-                                  {entry.role}
-                                </span>
-                              </td>
-                              <td className="px-3 py-4">{entry.vote_count}</td>
-                              <td className="px-3 py-4">{entry.points}</td>
-                              <td className="px-3 py-4">
-                                <p>{entry.accuracy === null ? 'N/A' : `${entry.accuracy}%`}</p>
-                                <p className="text-xs text-gray-500">{entry.correct_predictions}/{entry.predictions_count} correct</p>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            </section>
           </div>
 
           <div className="space-y-6">
@@ -863,6 +743,182 @@ export default function AdminPage() {
                   ))}
                 </div>
               )}
+            </section>
+          </div>
+        </section>
+        ) : null}
+
+        {activeTab === 'community' ? (
+        <section className="space-y-6">
+          <div className="rounded-2xl border border-cyan-400/20 bg-gray-800/80 p-6">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-bold text-white">Community Insights</h2>
+                <p className="mt-1 text-sm text-gray-400">Compact vote analytics, user activity, and leaderboard signals in one place.</p>
+              </div>
+              <div className="text-right text-sm text-gray-400">
+                <p>{dashboardSummary?.unique_voters ?? 0} unique voters</p>
+                <p>{dashboardSummary?.latest_vote_at ? `Last vote ${new Date(dashboardSummary.latest_vote_at).toLocaleString()}` : 'No votes recorded yet'}</p>
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <MiniStat label="Votes Cast" value={String(dashboardSummary?.total_votes_cast ?? totalVotes)} />
+              <MiniStat label="Users" value={String(dashboardUsers.length)} />
+              <MiniStat label="Active Voters" value={String(activeVoters)} />
+              <MiniStat label="Avg Votes/User" value={dashboardUsers.length ? ((dashboardSummary?.total_votes_cast ?? totalVotes) / dashboardUsers.length).toFixed(1) : '0'} />
+            </div>
+
+            <div className="mt-6 grid gap-4 xl:grid-cols-3">
+              <InsightPanel
+                title="Top Voter"
+                primary={topVoter ? topVoter.name : 'No activity yet'}
+                secondary={topVoter ? `${topVoter.vote_count} votes cast` : 'Waiting for the first vote'}
+              />
+              <InsightPanel
+                title="Top Scorer"
+                primary={topScorer ? topScorer.name : 'No scoring data'}
+                secondary={topScorer ? `${topScorer.points} points` : 'No score data available'}
+              />
+              <InsightPanel
+                title="Best Accuracy"
+                primary={mostAccurateUser ? mostAccurateUser.name : 'No completed predictions'}
+                secondary={mostAccurateUser ? `${mostAccurateUser.accuracy}% accuracy` : 'Accuracy appears after predictions resolve'}
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-6 xl:grid-cols-[0.95fr,1.05fr]">
+            <section className="rounded-2xl border border-white/10 bg-gray-800/80 p-5">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-bold text-white">Vote Summary</h3>
+                  <p className="text-sm text-gray-400">Most active matches with fast team split visibility.</p>
+                </div>
+                <button onClick={() => setActiveTab('matches')} className="text-sm text-cyan-300 hover:text-cyan-200">
+                  Open matches
+                </button>
+              </div>
+
+              {leaderboardMatches.length === 0 ? (
+                <p className="text-sm text-gray-400">No match votes yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {leaderboardMatches.map((match) => {
+                    const team1Votes = match.poll_team1_votes
+                    const team2Votes = match.poll_team2_votes
+                    const matchVotes = team1Votes + team2Votes
+                    const team1Pct = matchVotes > 0 ? Math.round((team1Votes / matchVotes) * 100) : 50
+                    const team2Pct = 100 - team1Pct
+
+                    return (
+                      <div key={`community-${match.id}`} className="rounded-xl border border-white/10 bg-gray-900/55 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate font-semibold text-white">{match.team1} vs {match.team2}</p>
+                            <p className="mt-1 text-xs text-gray-500">{match.sport}{match.league ? ` | ${match.league}` : ''}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-semibold text-white">{matchVotes}</p>
+                            <p className="text-[0.7rem] uppercase tracking-[0.16em] text-gray-500">votes</p>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-white/10">
+                          <div className="bg-cyan-400" style={{ width: `${team1Pct}%` }} />
+                          <div className="bg-yellow-300" style={{ width: `${team2Pct}%` }} />
+                        </div>
+
+                        <div className="mt-3 grid gap-2 text-xs text-gray-300 sm:grid-cols-2">
+                          <div className="rounded-lg bg-black/20 px-3 py-2">{match.team1}: {team1Votes} ({team1Pct}%)</div>
+                          <div className="rounded-lg bg-black/20 px-3 py-2">{match.team2}: {team2Votes} ({team2Pct}%)</div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </section>
+
+            <section className="rounded-2xl border border-white/10 bg-gray-800/80 p-5">
+              <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-bold text-white">User Details</h3>
+                  <p className="text-sm text-gray-400">Searchable account activity with role-aware filtering.</p>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <label className="relative">
+                    <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                    <input
+                      value={communityUserQuery}
+                      onChange={(event) => setCommunityUserQuery(event.target.value)}
+                      placeholder="Search users"
+                      className="rounded-xl border border-white/10 bg-gray-900/60 py-2 pl-9 pr-3 text-sm text-white outline-none transition focus:border-cyan-400/50"
+                    />
+                  </label>
+                  <select
+                    value={communityRoleFilter}
+                    onChange={(event) => setCommunityRoleFilter(event.target.value as 'all' | 'admin' | 'player')}
+                    className="rounded-xl border border-white/10 bg-gray-900/60 px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-400/50"
+                  >
+                    <option value="all">All roles</option>
+                    <option value="player">Players</option>
+                    <option value="admin">Admins</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="mb-4 grid gap-3 md:grid-cols-4">
+                <MiniStat label="Shown" value={String(filteredCommunityUsers.length)} />
+                <MiniStat label="Admins" value={String(dashboardUsers.filter((entry) => entry.role === 'admin').length)} />
+                <MiniStat label="Players" value={String(dashboardUsers.filter((entry) => entry.role === 'player').length)} />
+                <MiniStat label="Zero Votes" value={String(dashboardUsers.filter((entry) => entry.vote_count === 0).length)} />
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-white/10 text-xs uppercase tracking-[0.18em] text-gray-500">
+                      <th className="px-3 py-3">User</th>
+                      <th className="px-3 py-3">Role</th>
+                      <th className="px-3 py-3">Votes</th>
+                      <th className="px-3 py-3">Points</th>
+                      <th className="px-3 py-3">Accuracy</th>
+                      <th className="px-3 py-3">Last Active</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredCommunityUsers.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-3 py-5 text-gray-400">No users match the current filter.</td>
+                      </tr>
+                    ) : (
+                      filteredCommunityUsers.map((entry) => (
+                        <tr key={entry.id} className="border-b border-white/5 text-gray-200 last:border-b-0">
+                          <td className="px-3 py-4">
+                            <p className="font-semibold text-white">{entry.name}</p>
+                            <p className="text-xs text-gray-400">{entry.email}</p>
+                          </td>
+                          <td className="px-3 py-4">
+                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-[0.15em] ${entry.role === 'admin' ? 'bg-yellow-400/15 text-yellow-200' : 'bg-cyan-400/15 text-cyan-200'}`}>
+                              {entry.role}
+                            </span>
+                          </td>
+                          <td className="px-3 py-4">{entry.vote_count}</td>
+                          <td className="px-3 py-4">{entry.points}</td>
+                          <td className="px-3 py-4">
+                            <p>{entry.accuracy === null ? 'N/A' : `${entry.accuracy}%`}</p>
+                            <p className="text-xs text-gray-500">{entry.correct_predictions}/{entry.predictions_count}</p>
+                          </td>
+                          <td className="px-3 py-4 text-xs text-gray-400">
+                            {entry.last_vote_at ? new Date(entry.last_vote_at).toLocaleString() : 'No votes yet'}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </section>
           </div>
         </section>
@@ -1741,6 +1797,16 @@ function MiniStat({ label, value }: { label: string; value: string }) {
     <div className="rounded-xl border border-white/10 bg-gray-900/55 px-4 py-3 text-center">
       <p className="text-[0.65rem] font-bold uppercase tracking-[0.18em] text-gray-500">{label}</p>
       <p className="mt-1 text-lg font-black text-white">{value}</p>
+    </div>
+  )
+}
+
+function InsightPanel({ title, primary, secondary }: { title: string; primary: string; secondary: string }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-gray-900/55 px-4 py-4">
+      <p className="text-[0.65rem] font-bold uppercase tracking-[0.18em] text-gray-500">{title}</p>
+      <p className="mt-2 text-lg font-bold text-white">{primary}</p>
+      <p className="mt-1 text-sm text-gray-400">{secondary}</p>
     </div>
   )
 }
